@@ -120,7 +120,8 @@ Ian Holmes$^{1,2,\ast}$
 %\newpage
 \section{Abstract}
 State machine algorithms for aligning Nanopore read pairs.
-
+Initial goal is simple reusable code for aligning a nanopore read to a reference sequence.
+No attempt at optimization yet.
 
 % Please keep the Author Summary between 150 and 200 words
 % Use first person. PLoS ONE authors please skip this step. 
@@ -154,14 +155,14 @@ Rich model incorporates segment statistics.
 
 Given the following inputs
 \begin{itemize}
+\item Reference genome
 \item Segment-called reads (FAST5/HDF5)
 \item Parameterized rich model
 \end{itemize}
 
 Perform the following steps
 \begin{itemize}
-\item Prefilter read pairs using k-mer threshold heuristics
-\item Perform Viterbi alignment using intersection of two rich models
+\item Perform Viterbi alignment
 \end{itemize}
 
 \subsection{Implementation}
@@ -172,25 +173,9 @@ Perform the following steps
 
 \subsection{Model}
 
-\subsection{Parameterization}
+\subsection{Baum-Welch algorithm}
 
-\subsubsection{Baum-Welch algorithm}
-
-\subsection{Search}
-
-\subsubsection{Prefiltering heuristic}
-
-(Omit this step in first implementation?)
-
-\begin{itemize}
-\item Build database of k-mer frequencies across all reads
-\item Compute likelihood of each read using a ``bag of words'' model
-\item Compute likelihood of each read-pair using a ``bag of paired words'' model
-\item Compute posterior probability of a match
-\end{itemize}
-
-
-\subsubsection{Viterbi algorithm}
+\subsection{Viterbi algorithm}
 
 
 % Results and Discussion can be combined.
