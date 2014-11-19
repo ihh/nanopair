@@ -1,0 +1,218 @@
+\documentclass[10pt]{article}
+
+% amsmath package, useful for mathematical formulas
+\usepackage{amsmath}
+% amssymb package, useful for mathematical symbols
+\usepackage{amssymb}
+
+% graphicx package, useful for including eps and pdf graphics
+% include graphics with the command \includegraphics
+\usepackage{graphicx}
+
+% cite package, to clean up citations in the main text. Do not remove.
+\usepackage{cite}
+
+\usepackage{color} 
+
+% Use doublespacing - comment out for single spacing
+\usepackage{setspace} 
+\doublespacing
+
+
+% Use the PLoS provided bibtex style
+\bibliographystyle{PLoS2009}
+
+% Remove brackets from numbering in List of References
+\makeatletter
+\renewcommand{\@biblabel}[1]{\quad#1.}
+\makeatother
+
+
+% Leave date blank
+\date{}
+
+\pagestyle{myheadings}
+%% ** EDIT HERE **
+%% Please insert a running head of 30 characters or less.  
+%% Include it twice, once between each set of braces
+\markboth{Nanopore automata}{Nanopore automata}
+
+
+%% ** EDIT HERE **
+%% PLEASE INCLUDE ALL MACROS BELOW
+
+\usepackage{setspace}
+\doublespacing
+
+
+
+\newcommand\titlestring{Nanopore automata}
+\newcommand\authorstring{
+Ian Holmes$^{1,2,\ast}$
+\\
+\textbf{1} Lawrence Berkeley National Laboratory, Berkeley, CA, USA
+\\
+\textbf{2} Department of Bioengineering, University of California, Berkeley, CA, USA
+}
+
+\usepackage{array}
+
+
+% Labels & references for sections, figures and tables
+% Comment out \secref and \seclabel for PLoS, which doesn't like numbered section references
+\newcommand{\secref}[1]{Section~\ref{sec:#1}}
+\newcommand{\seclabel}[1]{\label{sec:#1}}
+\newcommand{\secname}[1]{``#1''}  % PLoS-style section names
+
+% "Text S1", "Text S2", etc.
+\newcommand{\supptext}[1]{Text S#1}
+
+% "Dataset S1", "Dataset S2", etc.
+\newcommand{\dataset}[1]{Dataset S#1}
+
+% Appendix
+\newcommand{\appref}[1]{Appendix~\ref{app:#1}}
+\newcommand{\applabel}[1]{\label{app:#1}}
+
+% Figure
+\newcommand{\figref}[1]{Figure~\ref{fig:#1}}
+\newcommand{\figlabel}[1]{\label{fig:#1}}
+
+% Table
+\newcommand{\tabnum}[1]{\ref{tab:#1}}
+\newcommand{\tabref}[1]{Table~\tabnum{#1}}
+\newcommand{\tablabel}[1]{\label{tab:#1}}
+
+% Equation
+\newcommand{\eqnref}[1]{Equation~\ref{eqn:#1}}
+\newcommand{\eqnlabel}[1]{\label{eqn:#1}}
+
+
+% need cite, check me, and other notes to self
+\newcommand\needcite{{\bf [CITE]}}
+\newcommand\checkme{{\bf [CHECK]}}
+
+% indicator function
+\newcommand\indicator[1]{\delta\left(#1\right)}
+
+% Probability
+\newcommand\prob[1]{\mbox{Pr} \left[ #1 \right]}
+
+%% END MACROS SECTION
+
+\begin{document}
+
+% Title must be 150 words or less
+\begin{flushleft}
+  {\Large
+    \textbf{\titlestring}
+  }
+\\
+\authorstring
+\end{flushleft}
+
+
+% Table of contents
+\tableofcontents
+
+
+% Please keep the abstract between 250 and 300 words
+%\newpage
+\section{Abstract}
+State machine algorithms for aligning Nanopore read pairs.
+
+
+% Please keep the Author Summary between 150 and 200 words
+% Use first person. PLoS ONE authors please skip this step. 
+% Author Summary not valid for PLoS ONE submissions.   
+%\newpage
+%\section{Author Summary}
+
+
+%\newpage
+%\section{Introduction}
+
+%\newpage
+\section{Specification}
+
+\subsection{Parameterization algorithm}
+
+Given the following inputs
+\begin{itemize}
+\item Reference genome (FASTA)
+\item Segment-called reads (FAST5/HDF5)
+\end{itemize}
+
+Perform the following steps
+\begin{itemize}
+\item Perform Baum-Welch to fit a rich model
+\end{itemize}
+
+Rich model incorporates segment statistics.
+
+\subsection{Reference search algorithm}
+
+Given the following inputs
+\begin{itemize}
+\item Segment-called reads (FAST5/HDF5)
+\item Parameterized rich model
+\end{itemize}
+
+Perform the following steps
+\begin{itemize}
+\item Prefilter read pairs using k-mer threshold heuristics
+\item Perform Viterbi alignment using intersection of two rich models
+\end{itemize}
+
+\subsection{Implementation}
+
+\subsection{Evaluation}
+
+\section{Methods}
+
+\subsection{Model}
+
+\subsection{Parameterization}
+
+\subsubsection{Baum-Welch algorithm}
+
+\subsection{Search}
+
+\subsubsection{Prefiltering heuristic}
+
+(Omit this step in first implementation?)
+
+\begin{itemize}
+\item Build database of k-mer frequencies across all reads
+\item Compute likelihood of each read using a ``bag of words'' model
+\item Compute likelihood of each read-pair using a ``bag of paired words'' model
+\item Compute posterior probability of a match
+\end{itemize}
+
+
+\subsubsection{Viterbi algorithm}
+
+
+% Results and Discussion can be combined.
+\newpage
+\section{Results}
+
+
+
+
+\section{Discussion}
+
+
+% Do NOT remove this, even if you are not including acknowledgments
+\newpage
+\section{Acknowledgments}
+
+%\section{References}
+% The bibtex filename
+\bibliography{../latex-inputs/alignment,../latex-inputs/reconstruction,../latex-inputs/duplication,../latex-inputs/genomics,../latex-inputs/ncrna,../latex-inputs/url}
+
+\clearpage
+\section{Figure Legends}
+
+\end{document}
+
