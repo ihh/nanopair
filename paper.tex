@@ -167,11 +167,43 @@ Perform the following steps
 
 \subsection{Implementation}
 
+Libraries etc.
+
+HDF5...
+
 \subsection{Evaluation}
+
+Strategy...
+
+Data sets...
 
 \section{Methods}
 
+Model \& inference algorithms.
+
 \subsection{Model}
+
+\begin{itemize}
+\item Order-$N$ transducer.
+\item Input: nucleotide
+\item Output: nucleotide, segment current mean \& precision, duration, move
+\item Emissions:
+ \begin{itemize}
+ \item categorical (base $k$-mer)
+ \item mixture of Normal-gamma+Gamma (mean-precision + duration)
+ \end{itemize}
+\item Transitions:
+ \begin{itemize}
+ \item {\em step}: emit single segment, absorb 1 base
+ \item {\em forward-slip}: emit single segment, absorb $2 \ldots N$ bases
+ \item {\em back-slip}: re-emit most recent $k$-mer ($1 \leq k \leq N$) as segments
+ \item {\em insert}: affine gap insertion, emits segments
+ \item {\em delete}: affine gap deletion, absorbs bases
+ \end{itemize}
+\end{itemize}
+
+Ideally, implement back-slip cleverly using same mechanism (or distributions) as step, forward-slip, insert, delete.
+
 
 \subsection{Baum-Welch algorithm}
 
