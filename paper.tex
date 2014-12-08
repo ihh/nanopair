@@ -186,28 +186,77 @@ Model \& inference algorithms.
 \begin{itemize}
 \item Order-$N$ transducer.
 \item Input: nucleotide
-\item Output: nucleotide, segment current mean \& precision, duration, move
+\item Output: nucleotide, segment mean, duration
 \item Emissions:
  \begin{itemize}
  \item categorical (base $k$-mer)
- \item mixture of Normal-gamma+Gamma (mean-precision + duration)
+ \item mixture of Normal/gamma (mean/duration)
  \end{itemize}
 \item Transitions:
  \begin{itemize}
- \item {\em step}: emit single segment, absorb 1 base
- \item {\em forward-slip}: emit single segment, absorb $2 \ldots N$ bases
- \item {\em back-slip}: re-emit most recent $k$-mer ($1 \leq k \leq N$) as segments
- \item {\em insert}: affine gap insertion, emits segments
- \item {\em delete}: affine gap deletion, absorbs bases
+ \item {\em Match}: emit single segment, absorb 1 base
+ \item {\em Insert}: affine gap insertion of bases: emits segments, absorbs no bases
+ \item {\em Delete}: affine gap deletion of bases: emits no segments, absorbs bases
+ \item {\em Merge}: emit single segment, absorb 2 or 3 bases
+ \item {\em Split}: emit single segment, absorb 0 bases
+ \item {\em Skip}: emit single segment, absorb $2 \ldots K$ bases (large $K$, low extension penalty)
  \end{itemize}
 \end{itemize}
 
-Ideally, implement back-slip cleverly using same mechanism (or distributions) as step, forward-slip, insert, delete.
+This can be achieved by a Mealy transducer with $3 \times 4^N$ states.
+The factor of $4^N$ accounts for the order-$N$ context.
+For each such context, the three states are MAT, INS and DEL.
+
+\newcommand\pgapopen{\theta_{go}}
+\newcommand\pgapextend{\theta_{gx}}
+\newcommand\pmergeopen{\theta_{mo}}
+\newcommand\pmergeextend{\theta_{mx}}
+\newcommand\psplit{\theta_s}
+\newcommand\pskipopen{\theta_{ko}}
+\newcommand\pskipextend{\theta_{kx}}
+
+Parameters:
+ \begin{itemize}
+ \item Gap opening \& extension probabilities $\pgapopen$, $\pgapextend$
+ \item Merge probability $\pmergeopen$, probability that it's a 3-merge is $\pmergeextend$
+ \item Split probability $\psplit$
+ \item Skip probability $\pskipopen$, skip extension probability $\pskipextend$
+ \end{itemize}
+
+
+The transition table is as follows:
+
+\begin{tabular}{llllll}
+Transition & From & To & Weight & Input $x$ & Output $(y,m,d)$
+\\
+\hline
+Match & MAT & MAT & $(1-\pgapopen)(1-\pmergeopen)(1-\psplit)(1-\pskipopen)$ & $x \in \Omega$ &
+$y \sim \mbox{Categorical}({\bf p}^m_{x,c})$,
+\\ & & & & &
+$m \sim \mbox{Normal}(\mu^m_{x,c},\tau^m_{x,c})$,
+\\ & & & & &
+$d \sim \mbox{Gamma}(\alpha^m_{x,c},\beta^m_{x,c})$
+\\
+Insert & MAT & INS & $\pgapopen/2$ \\
+       & INS & INS & $\pgapextend$ \\
+       & INS & MAT & $1 - \pgapextend$ & - & - \\
+Delete & MAT & DEL & $\pgapopen/2$ \\
+       & DEL & DEL & $\pgapextend$ \\
+       & DEL & MAT & $1 - \pgapextend$ & - & - \\
+Merge & MAT & MAT \\
+Split & MAT & MAT \\
+Skip & MAT & MAT \\
+\end{tabular}
+
+Here $y \in \Omega$ where $\Omega$ is the nucleotide alphabet
+and $c \in \Omega^N$ is the context.
+
 
 
 \subsection{Baum-Welch algorithm}
 
 \subsection{Viterbi algorithm}
+
 
 
 % Results and Discussion can be combined.
@@ -230,6 +279,41 @@ Ideally, implement back-slip cleverly using same mechanism (or distributions) as
 
 \clearpage
 \section{Figure Legends}
+
+\clearpage
+\section{Appendix}
+
+\subsection{Gamma distribution}
+
+\begin{eqnarray*}
+x & \sim & \mbox{Gamma}(\alpha,\beta) \\
+\mbox{E}[x] & = & \alpha/\beta \\
+\mbox{Var}[x] & = & \alpha/\beta^2
+\end{eqnarray*}
+
+Shape parameter $\alpha$, rate parameter $\beta$.
+\[
+P(x|\alpha,\beta) = \frac{x^{\alpha-1} \beta^\alpha \exp(-x \beta)}{\Gamma(\alpha)}
+\]
+where $\Gamma$ is the gamma function
+\[
+\Gamma(\alpha) = \int_0^{\infty} z^{\alpha-1} \exp(-z) dz
+\]
+Note $\Gamma(n) = (n-1)!$ for positive integer $n$.
+
+\subsection{Normal distribution}
+
+\begin{eqnarray*}
+x \sim \mbox{Normal}(\mu,\tau)
+\end{eqnarray*}
+
+
+Mean $\mu$, precision $\tau$ (precision is reciprocal of variance).
+\[
+P(x|\mu,\tau)
+ = \sqrt{\frac{\tau}{2\pi}} \exp \left( -\frac{\tau}{2}(x-\mu)^2 \right)
+\]
+
 
 \end{document}
 
