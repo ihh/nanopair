@@ -207,13 +207,13 @@ This can be achieved by a Mealy transducer with $3 \times 4^N$ states.
 The factor of $4^N$ accounts for the order-$N$ context.
 For each such context, the three states are MAT, INS and DEL.
 
-\newcommand\pgapopen{\theta_{go}}
-\newcommand\pgapextend{\theta_{gx}}
-\newcommand\pmergeopen{\theta_{mo}}
-\newcommand\pmergeextend{\theta_{mx}}
-\newcommand\psplit{\theta_s}
-\newcommand\pskipopen{\theta_{ko}}
-\newcommand\pskipextend{\theta_{kx}}
+\newcommand\pgapopen{\lambda_{go}}
+\newcommand\pgapextend{\lambda_{gx}}
+\newcommand\pmergeopen{\lambda_{mo}}
+\newcommand\pmergeextend{\lambda_{mx}}
+\newcommand\psplit{\lambda_s}
+\newcommand\pskipopen{\lambda_{ko}}
+\newcommand\pskipextend{\lambda_{kx}}
 
 Parameters:
  \begin{itemize}
@@ -223,26 +223,34 @@ Parameters:
  \item Skip probability $\pskipopen$, skip extension probability $\pskipextend$
  \end{itemize}
 
+In general the emissions are of the form
+\[
+(y,m,d) \sim \mbox{CNG}(L)
+\]
+where $L$ is a ``label'' indexing the appropriate emission distribution
+\begin{eqnarray*}
+y & \sim & \mbox{Categorical}({\bf p}_L)
+\\
+m & \sim & \mbox{Normal}(\mu_L,\tau_L)
+\\
+d & \sim & \mbox{Gamma}(\alpha_L,\beta_L)
+\end{eqnarray*}
 
 The transition table is as follows:
 
 \begin{tabular}{llllll}
-Transition & From & To & Weight & Input $x$ & Output $(y,m,d)$
+Transition & From & To & Weight & Input & Output
 \\
 \hline
 Match & MAT & MAT & $(1-\pgapopen)(1-\pmergeopen)(1-\psplit)(1-\pskipopen)$ & $x \in \Omega$ &
-$y \sim \mbox{Categorical}({\bf p}^m_{x,c})$,
-\\ & & & & &
-$m \sim \mbox{Normal}(\mu^m_{x,c},\tau^m_{x,c})$,
-\\ & & & & &
-$d \sim \mbox{Gamma}(\alpha^m_{x,c},\beta^m_{x,c})$
+$(y,m,d) \sim \mbox{CNG}(\mbox{match},x,c)$
 \\
 Insert & MAT & INS & $\pgapopen/2$ \\
        & INS & INS & $\pgapextend$ \\
-       & INS & MAT & $1 - \pgapextend$ & - & - \\
+       & INS & MAT & $1 - \pgapextend$ & none & none \\
 Delete & MAT & DEL & $\pgapopen/2$ \\
        & DEL & DEL & $\pgapextend$ \\
-       & DEL & MAT & $1 - \pgapextend$ & - & - \\
+       & DEL & MAT & $1 - \pgapextend$ & none & none \\
 Merge & MAT & MAT \\
 Split & MAT & MAT \\
 Skip & MAT & MAT \\
