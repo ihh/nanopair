@@ -203,9 +203,9 @@ Model \& inference algorithms.
  \end{itemize}
 \end{itemize}
 
-This can be achieved by a Mealy transducer with $3 \times 4^N$ states.
+This can be achieved by a Mealy transducer with $4 \times 4^N$ states.
 The factor of $4^N$ accounts for the order-$N$ context.
-For each such context, the three states are MAT, INS and DEL.
+For each such context, the four states are MAT, INS, DEL and SKP.
 
 \newcommand\pgapopen{\lambda_{go}}
 \newcommand\pgapextend{\lambda_{gx}}
@@ -225,7 +225,7 @@ Parameters:
 
 In general the emissions are of the form
 \[
-(y,m,d) \sim \mbox{CNG}(L)
+(y,m,d) \sim \mbox{CNE}(L)
 \]
 where $L$ is a ``label'' indexing the appropriate emission distribution
 \begin{eqnarray*}
@@ -233,8 +233,12 @@ y & \sim & \mbox{Categorical}({\bf p}_L)
 \\
 m & \sim & \mbox{Normal}(\mu_L,\tau_L)
 \\
-d & \sim & \mbox{Gamma}(\alpha_L,\beta_L)
+d & \sim & \mbox{Exponential}(\kappa_L)
 \end{eqnarray*}
+where $\Omega$ is the nucleotide alphabet,
+$y \in \Omega$ is the nucleotide as decoded by the basecaller,
+$m \in \Re$ is the mean segment current, and
+$d \in \Re^+$ is the segment duration.
 
 The transition table is as follows:
 
@@ -243,28 +247,35 @@ Transition & From & To & Weight & Input & Output
 \\
 \hline
 Match & MAT & MAT & $(1-\pgapopen)(1-\pmergeopen)(1-\psplit)(1-\pskipopen)$ & $x \in \Omega$ &
-$(y,m,d) \sim \mbox{CNG}(\mbox{match},x,c)$
+$(y,m,d) \sim \mbox{CNE}(\mbox{match},x,c)$
 \\
-Insert & MAT & INS & $\pgapopen/2$ \\
-       & INS & INS & $\pgapextend$ \\
+Insert & MAT & INS & $\pgapopen/2$ & none & $(y,m,d) \sim \mbox{CNE}(\mbox{insert})$ \\
+       & INS & INS & $\pgapextend$ & none & $(y,m,d) \sim \mbox{CNE}(\mbox{insert})$ \\
        & INS & MAT & $1 - \pgapextend$ & none & none \\
-Delete & MAT & DEL & $\pgapopen/2$ \\
-       & DEL & DEL & $\pgapextend$ \\
+Delete & MAT & DEL & $\pgapopen/2$ & $x \in \Omega$ & none \\
+       & DEL & DEL & $\pgapextend$ & $x \in \Omega$ & none \\
        & DEL & MAT & $1 - \pgapextend$ & none & none \\
-Merge & MAT & MAT \\
-Split & MAT & MAT \\
-Skip & MAT & MAT \\
+Merge & MAT & MAT & $\pmergeopen(1-\pmergeextend)$ & $x \in \Omega^2$ & $(y,m,d) \sim \mbox{CNE}(\mbox{merge2},x)$ \\
+      & MAT & MAT & $\pmergeopen\pmergeextend$ & $x \in \Omega^3$ & $(y,m,d) \sim \mbox{CNE}(\mbox{merge3},x)$ \\
+Split & MAT & MAT & $\psplit$ & none & $(y,m,d) \sim \mbox{CNE}(\mbox{split},x)$ \\
+Skip & MAT & SKP & $\pskipopen$ & $x \in \Omega$ & none \\
+     & SKP & SKP & $\pskipextend$ & $x \in \Omega$ & none \\
+     & SKP & MAT & $1 - \pskipextend$ & none & none
 \end{tabular}
 
-Here $y \in \Omega$ where $\Omega$ is the nucleotide alphabet
-and $c \in \Omega^N$ is the context.
+Here $c \in \Omega^N$ is the input context.
 
 
 
 \subsection{Baum-Welch algorithm}
 
+As usual.
+
+Forward fill order: INS, DEL, SKP, MAT.
+
 \subsection{Viterbi algorithm}
 
+As usual.
 
 
 % Results and Discussion can be combined.
@@ -291,19 +302,29 @@ and $c \in \Omega^N$ is the context.
 \clearpage
 \section{Appendix}
 
+\subsection{Exponential distribution}
+
+\begin{eqnarray*}
+x & \sim & \mbox{Exponential}(\kappa) \\
+P(x|\kappa) & = & \kappa \exp(-\kappa x) \\
+\mbox{E}[x] & = & \kappa^{-1} \\
+\mbox{Var}[x] & = & \kappa^{-2}
+\end{eqnarray*}
+
+Rate parameter $\kappa$.
+
+
 \subsection{Gamma distribution}
 
 \begin{eqnarray*}
 x & \sim & \mbox{Gamma}(\alpha,\beta) \\
+P(x|\alpha,\beta) & = & \frac{x^{\alpha-1} \beta^\alpha \exp(-x \beta)}{\Gamma(\alpha)} \\
 \mbox{E}[x] & = & \alpha/\beta \\
 \mbox{Var}[x] & = & \alpha/\beta^2
 \end{eqnarray*}
 
 Shape parameter $\alpha$, rate parameter $\beta$.
-\[
-P(x|\alpha,\beta) = \frac{x^{\alpha-1} \beta^\alpha \exp(-x \beta)}{\Gamma(\alpha)}
-\]
-where $\Gamma$ is the gamma function
+$\Gamma()$ is the gamma function
 \[
 \Gamma(\alpha) = \int_0^{\infty} z^{\alpha-1} \exp(-z) dz
 \]
