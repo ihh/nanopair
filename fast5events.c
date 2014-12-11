@@ -58,6 +58,53 @@ typedef struct fast5_event_array {
 fast5_event_array* alloc_fast5_event_array (int model_order, int n_events);
 void free_fast5_event_array (fast5_event_array* ev);
 
+/* fast5_event_array_iterator
+   Used to populate a fast5_event_array */
+typedef struct fast5_event_array_iterator {
+  fast5_event_array* event_array;
+  int event_array_index, n_template_events;
+  size_t strand_offset, mean_offset, stdv_offset, length_offset, model_state_offset, move_offset, mp_model_state_offset, raw_offset;
+  int model_order;
+} fast5_event_array_iterator;
+
+herr_t count_template_events (void *elem, hid_t type_id, unsigned ndim, 
+			      const hsize_t *point, void *operator_data)
+{
+  fast5_event_array_iterator *iter = (fast5_event_array_iterator*) operator_data;
+  char* strand = *((char**) (elem + iter->strand_offset));
+  if (strcmp(strand,"template") == 0)
+    {
+      ++iter->n_template_events;
+      return 0;
+    }
+  return 1;
+}
+
+herr_t populate_event_array (void *elem, hid_t type_id, unsigned ndim, 
+			     const hsize_t *point, void *operator_data)
+{
+  fast5_event_array_iterator *iter = (fast5_event_array_iterator*) operator_data;
+  char* strand = *((char**) (elem + iter->strand_offset));
+  if (strcmp(strand,"template") == 0)
+    {
+      fast5_event* ev = iter->event_array->event + (iter->event_array_index++);
+      ev->mean = (double) *((H5T_IEEE_F64LE*) (elem + iter->mean_offset));
+      ev->stdv = (double) *((H5T_IEEE_F64LE*) (elem + iter->stdv_offset));
+      ev->length = (double) *((H5T_IEEE_F64LE*) (elem + iter->length_offset));
+      for (int n = 0; n < iter->model_order; ++n) {
+	ev->model_state[n] = *((char*) (elem + iter->model_state_offset + n));
+	ev->mp_model_state[n] = *((char*) (elem + iter->mp_model_state_offset + n));
+      }
+      ev->model_state[iter->model_order] = ev->mp_model_state[iter->model_order] = '\0';
+      ev->move = (int) *((H5T_STD_I64LE*) (elem + iter->move_offset));
+      ev->raw = (int) *((H5T_STD_I64LE*) (elem + iter->raw_offset));
+      return 0;
+    }
+  return 1;
+}
+
+
+
 
 /* function defs */
 void Warn(char* warning, ...) {
@@ -157,6 +204,9 @@ int main(int argc, char * argv[])
         /* op status */
         herr_t status;
 
+	/* event_array */
+	fast5_event_array* event_array = NULL;
+
 	/* check for input file name */
 	if ( !(1<argc) )
 	{
@@ -179,20 +229,20 @@ int main(int argc, char * argv[])
         	return EXIT_FAILURE;
         }
 
+	/* get root group */
+	hid_t root_id = H5Gopen(file_id, "/", H5P_DEFAULT);
+	if (root_id < 0)
+	  {
+	    fprintf(stderr,"failed to open root group\n");
+	    return EXIT_FAILURE;
+	  }
+
         /* try list of paths to events data */
         for ( evp = &events_paths[0]; running && *evp; ++evp )
         {
         	/* events path */
         	char const * path = *evp;
 		
-		/* get root group */
-	        hid_t root_id = H5Gopen(file_id, "/", H5P_DEFAULT);
-		if (root_id < 0)
-	        {
-		  fprintf(stderr,"failed to open root group\n");
-		  break;
-	        }
-
 		/* see if path exists */
 		if (H5LTpath_valid ( file_id, path, 1))
 		  {
@@ -206,11 +256,9 @@ int main(int argc, char * argv[])
 			break;
 		      }
 
-		    H5O_info_t events_info;
-		    herr_t status = H5Oget_info( events_id, &events_info );
-		    fprintf(stderr,"events object has type %d\n",events_info.type);
-
 		    hid_t events_type_id = H5Dget_type( events_id );
+
+		    fast5_event_array_iterator iter;
 
 		    int strand_idx = H5Tget_member_index( events_type_id, "strand" );
 		    int mean_idx = H5Tget_member_index( events_type_id, "mean" );
@@ -219,22 +267,47 @@ int main(int argc, char * argv[])
 		    int model_state_idx = H5Tget_member_index( events_type_id, "model_state" );
 		    int move_idx = H5Tget_member_index( events_type_id, "move" );
 		    int mp_model_state_idx = H5Tget_member_index( events_type_id, "mp_model_state" );
-		    int raw_idx = H5Tget_member_index( events_type_id, "raw" );
+		    int raw_idx = H5Tget_member_index( events_type_id, "raw_index" );
 
-		    int model_order =  (int) H5Tget_size (H5Tget_member_type( events_type_id, model_state_idx ));
+		    iter.strand_offset = H5Tget_member_offset( events_type_id, strand_idx );
+		    iter.mean_offset = H5Tget_member_offset( events_type_id, mean_idx );
+		    iter.stdv_offset = H5Tget_member_offset( events_type_id, stdv_idx );
+		    iter.length_offset = H5Tget_member_offset( events_type_id, length_idx );
+		    iter.model_state_offset = H5Tget_member_offset( events_type_id, model_state_idx );
+		    iter.move_offset = H5Tget_member_offset( events_type_id, move_idx );
+		    iter.mp_model_state_offset = H5Tget_member_offset( events_type_id, mp_model_state_idx );
+		    iter.raw_offset = H5Tget_member_offset( events_type_id, raw_idx );
 
-		    fprintf(stderr,"model_order is %d\n",model_order);
+		    iter.model_order =  (int) H5Tget_size (H5Tget_member_type( events_type_id, model_state_idx ));
+
+		    fprintf(stderr,"model_order is %d\n",iter.model_order);
 
 		    hid_t events_space_id = H5Dget_space( events_id );
 		    hssize_t events_npoints = H5Sget_simple_extent_npoints( events_space_id );
 
-		    fprintf(stderr,"dataset has %d points\n",events_npoints);
+		    fprintf(stderr,"dataset has %lld points\n",events_npoints);
 
+		    /* read into memory buffer */
+		    hsize_t buf_size = H5Dget_storage_size( events_id );
+		    void *buf = SafeMalloc (buf_size);
+		    H5Dread( events_id, events_type_id, H5S_ALL, H5S_ALL, H5P_DEFAULT, buf );
+
+		    /* iterate to find number of template strand events */
+		    iter.n_template_events = 0;
+		    H5Diterate( buf, events_type_id, events_id, count_template_events, &iter );
+
+		    /* allocate & populate event_array */
+		    event_array = iter.event_array = alloc_fast5_event_array (iter.model_order, iter.n_template_events);
+		    iter.event_array_index = 0;
+		    H5Diterate( buf, events_type_id, events_id, populate_event_array, &iter );
+
+		    /* free */
+		    SafeFree (buf);
 		      
 		    /* close */
+		    H5Sclose(events_space_id);
 		    H5Tclose(events_type_id);
 		    H5Dclose(events_id);
-		    H5Gclose(root_id);
 
 		    /* stop looking */
 		    running = 0;
@@ -242,6 +315,9 @@ int main(int argc, char * argv[])
 		else
 		  fprintf(stderr,"path %s not valid\n",path);
 	}
+
+	/* close root */
+	H5Gclose(root_id);
 
 	/* close file */
 	status = H5Fclose(file_id);
