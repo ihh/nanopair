@@ -120,8 +120,6 @@ Ian Holmes$^{1,2,\ast}$
 %\newpage
 \section{Abstract}
 State machine algorithms for aligning Nanopore reads.
-Initial goal is simple reusable code for aligning a nanopore read to a reference sequence.
-No attempt at optimization yet.
 
 % Please keep the Author Summary between 150 and 200 words
 % Use first person. PLoS ONE authors please skip this step. 
@@ -135,6 +133,16 @@ No attempt at optimization yet.
 
 %\newpage
 \section{Specification}
+
+Initial goal (Preliminary Results) is simple reusable code for aligning a segmented nanopore read (with segment currents summarized) to a reference sequence.
+
+Longer-term goals (Specific Aims) include
+\begin{itemize}
+\item quasi-hierarchical series of models for processed$\to$raw data (raw, FAST5, FASTQ, FASTA)
+\item transducer intersection-style models for read-pair alignment
+\item systematic strategies for approximation/optimization algorithms, climbing the hierarchy (starting with k-mer or FM-index approaches)
+\item transducer intersection models for aligning reads from different sequencing technologies
+\end{itemize}
 
 \subsection{Parameterization algorithm}
 
