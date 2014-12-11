@@ -46,7 +46,7 @@ void *SafeCalloc(size_t count, size_t size);
 typedef struct fast5_event {
   double mean, stdv, length;
   char *model_state, *mp_model_state;
-  int move, raw;
+  long move, raw;
 } fast5_event;
 
 /* fast5_event_array */
@@ -62,12 +62,10 @@ void free_fast5_event_array (fast5_event_array* ev);
    Used to populate a fast5_event_array */
 typedef struct fast5_event_array_iterator {
   fast5_event_array* event_array;
-  int event_array_index, n_template_events;
+  int event_array_index;
   size_t mean_offset, stdv_offset, length_offset, model_state_offset, move_offset, mp_model_state_offset, raw_offset;
   int model_order;
 } fast5_event_array_iterator;
-
-/*
 
 herr_t populate_event_array (void *elem, hid_t type_id, unsigned ndim, 
 			     const hsize_t *point, void *operator_data)
@@ -75,19 +73,19 @@ herr_t populate_event_array (void *elem, hid_t type_id, unsigned ndim,
   fast5_event_array_iterator *iter = (fast5_event_array_iterator*) operator_data;
 
   fast5_event* ev = iter->event_array->event + (iter->event_array_index++);
-  ev->mean = (double) *((H5T_IEEE_F64LE*) (elem + iter->mean_offset));
-  ev->stdv = (double) *((H5T_IEEE_F64LE*) (elem + iter->stdv_offset));
-  ev->length = (double) *((H5T_IEEE_F64LE*) (elem + iter->length_offset));
+  ev->mean = *((double*) (elem + iter->mean_offset));
+  ev->stdv = *((double*) (elem + iter->stdv_offset));
+  ev->length = *((double*) (elem + iter->length_offset));
   for (int n = 0; n < iter->model_order; ++n) {
-  ev->model_state[n] = *((char*) (elem + iter->model_state_offset + n));
-  ev->mp_model_state[n] = *((char*) (elem + iter->mp_model_state_offset + n));
+    ev->model_state[n] = *((char*) (elem + iter->model_state_offset + n));
+    ev->mp_model_state[n] = *((char*) (elem + iter->mp_model_state_offset + n));
   }
   ev->model_state[iter->model_order] = ev->mp_model_state[iter->model_order] = '\0';
-  ev->move = (int) *((H5T_STD_I64LE*) (elem + iter->move_offset));
-  ev->raw = (int) *((H5T_STD_I64LE*) (elem + iter->raw_offset));
+  ev->move = *((long*) (elem + iter->move_offset));
+  ev->raw = *((long*) (elem + iter->raw_offset));
+  fprintf(stderr,"%d %g %g %g %s %s %ld %ld\n",iter->event_array_index-1,ev->mean,ev->stdv,ev->length,ev->model_state,ev->mp_model_state,ev->move,ev->raw);
   return 0;
 }
-*/
 
 
 
@@ -180,9 +178,7 @@ int main(int argc, char * argv[])
         herr_t status;
 
 	/* event_array */
-	/*
 	fast5_event_array* event_array = NULL;
-	*/
 
 	/* check for input file name */
 	if ( !(1<argc) )
@@ -274,7 +270,6 @@ int main(int argc, char * argv[])
 		    
 		/*
 		 * Create the compound datatype for memory.
-		 */
 		hid_t fast5_event_type_id = H5Tcreate (H5T_COMPOUND, sizeof (fast5_event));
 		H5Tinsert (fast5_event_type_id, "mean", HOFFSET (fast5_event, mean), H5T_NATIVE_DOUBLE);
 		H5Tinsert (fast5_event_type_id, "stdv", HOFFSET (fast5_event, stdv), H5T_NATIVE_DOUBLE);
@@ -283,18 +278,17 @@ int main(int argc, char * argv[])
 		H5Tinsert (fast5_event_type_id, "mp_model_state", HOFFSET (fast5_event, mp_model_state), strtype);
 		H5Tinsert (fast5_event_type_id, "move", HOFFSET (fast5_event, move), H5T_NATIVE_INT);
 		H5Tinsert (fast5_event_type_id, "raw_index", HOFFSET (fast5_event, raw), H5T_NATIVE_INT);
+		 */
 
 		/* read into memory buffer */
 		void *buf = SafeMalloc (events_npoints * event_size);
 		H5Dread( events_id, events_type_id, H5S_ALL, H5S_ALL, H5P_DEFAULT, buf );
 
 		/* convert */
-		/*
-		  H5Tconvert( events_type_id, fast5_event_type_id, events_npoints, buf, NULL, H5P_DEFAULT );
-
-		  fast5_event *events = SafeMalloc (events_npoints * sizeof(fast5_event));
-		*/
-
+		event_array = alloc_fast5_event_array (iter.model_order, events_npoints);
+		iter.event_array = event_array;
+		iter.event_array_index = 0;
+		H5Diterate( buf, events_type_id, events_space_id, populate_event_array, &iter );
 		      
 		/* close */
 		H5Sclose(events_space_id);
