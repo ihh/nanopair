@@ -126,12 +126,6 @@ fast5_event_array* read_fast5_event_array (const char* filename)
 	    fprintf(stderr,"dataset has %lld points, event takes %lu bytes\n",events_npoints,event_size);
 	  */
 
-	  /*
-	   * Create variable-length string datatype.
-	   */
-	  hid_t strtype = H5Tcopy (H5T_C_S1);
-	  H5Tset_size (strtype, H5T_VARIABLE);
-
 	  /* read into memory buffer */
 	  void *buf = SafeMalloc (events_npoints * event_size);
 	  H5Dread( events_id, events_type_id, H5S_ALL, H5S_ALL, H5P_DEFAULT, buf );
@@ -141,8 +135,11 @@ fast5_event_array* read_fast5_event_array (const char* filename)
 	  iter.event_array = event_array;
 	  iter.event_array_index = 0;
 	  H5Diterate( buf, events_type_id, events_space_id, populate_event_array, &iter );
-		      
-	  /* close */
+
+	  /* free buffer */
+	  SafeFree (buf);
+
+	  /* close objects */
 	  H5Sclose(events_space_id);
 	  H5Tclose(events_type_id);
 	  H5Dclose(events_id);
@@ -151,7 +148,7 @@ fast5_event_array* read_fast5_event_array (const char* filename)
   else
     fprintf(stderr,"path %s not valid\n",path);
 
-  /* close root */
+  /* close root group */
   H5Gclose(root_id);
 
   /* close file */
