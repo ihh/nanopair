@@ -42,12 +42,14 @@ endif
 LIBS += -lhdf5_hl -lhdf5
 CFLAGS += -O2 -g
 
+SRCFILES = $(wildcard src/*.c)
+
 
 bin:
 	mkdir $@
 
-bin/%: src/%.c Makefile bin
-	${CC} ${CPPFLAGS} ${CFLAGS} ${LDFLAGS} $< -o $@ ${LIBS}
+bin/dump_fast5events: $(SRCFILES) Makefile bin
+	${CC} ${CPPFLAGS} ${CFLAGS} ${LDFLAGS} $(SRCFILES) -o $@ ${LIBS}
 
 dump:
 	h5dump -d /Analyses/Basecall_2D_000/BaseCalled_template/Events $(TEST5) | less
@@ -55,5 +57,5 @@ dump:
 ptdump:
 	poretools events $(TEST5) | less
 
-test: bin/fast5events
-	bin/fast5events $(TEST5)
+test: bin/dump_fast5events
+	bin/dump_fast5events $(TEST5)
