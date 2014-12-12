@@ -43,8 +43,10 @@ LIBS += -lhdf5_hl -lhdf5
 CFLAGS += -O2 -g
 
 
+bin:
+	mkdir $@
 
-%: %.c Makefile
+bin/%: src/%.c Makefile bin
 	${CC} ${CPPFLAGS} ${CFLAGS} ${LDFLAGS} $< -o $@ ${LIBS}
 
 dump:
@@ -53,5 +55,5 @@ dump:
 ptdump:
 	poretools events $(TEST5) | less
 
-test: fast5events
-	./fast5events $(TEST5)
+test: bin/fast5events
+	bin/fast5events $(TEST5)
