@@ -38,11 +38,11 @@ int main(int argc, char * argv[])
 	fn = argv[1];
 
 	/* read & destroy event array */
-	fast5_event_array* event_array = read_fast5_event_array (fn);
+	Fast5_event_array* event_array = read_fast5_event_array (fn);
 
 	printf ("mean stdv length model_state mp_model_state move raw\n");
 	for (int n = 0; n < event_array->n_events; ++n) {
-	  fast5_event* ev = event_array->event + n;
+	  Fast5_event* ev = event_array->event + n;
 	  printf("%d %g %g %g %s %s %ld %ld\n",n,ev->mean,ev->stdv,ev->length,ev->model_state,ev->mp_model_state,ev->move,ev->raw);
 	}
 

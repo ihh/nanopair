@@ -1,21 +1,21 @@
 #include "fast5events.h"
 #include "util.h"
 
-/* fast5_event_array_iterator
-   Used to populate a fast5_event_array */
-typedef struct fast5_event_array_iterator {
-  fast5_event_array* event_array;
+/* Fast5_event_array_iterator
+   Used to populate a Fast5_event_array */
+typedef struct Fast5_event_array_iterator {
+  Fast5_event_array* event_array;
   int event_array_index;
   size_t mean_offset, stdv_offset, length_offset, model_state_offset, move_offset, mp_model_state_offset, raw_offset;
   int model_order;
-} fast5_event_array_iterator;
+} Fast5_event_array_iterator;
 
 herr_t populate_event_array (void *elem, hid_t type_id, unsigned ndim, 
 			     const hsize_t *point, void *operator_data)
 {
-  fast5_event_array_iterator *iter = (fast5_event_array_iterator*) operator_data;
+  Fast5_event_array_iterator *iter = (Fast5_event_array_iterator*) operator_data;
 
-  fast5_event* ev = iter->event_array->event + (iter->event_array_index++);
+  Fast5_event* ev = iter->event_array->event + (iter->event_array_index++);
   ev->mean = *((double*) (elem + iter->mean_offset));
   ev->stdv = *((double*) (elem + iter->stdv_offset));
   ev->length = *((double*) (elem + iter->length_offset));
@@ -29,10 +29,10 @@ herr_t populate_event_array (void *elem, hid_t type_id, unsigned ndim,
   return 0;
 }
 
-fast5_event_array* alloc_fast5_event_array (int model_order, int n_events) {
-  fast5_event_array* ev = SafeMalloc (sizeof (fast5_event_array));
+Fast5_event_array* alloc_fast5_event_array (int model_order, int n_events) {
+  Fast5_event_array* ev = SafeMalloc (sizeof (Fast5_event_array));
   ev->n_events = n_events;
-  ev->event = SafeMalloc (n_events * sizeof (fast5_event));
+  ev->event = SafeMalloc (n_events * sizeof (Fast5_event));
   for (int n = 0; n < n_events; ++n) {
     ev->event[n].model_state = SafeMalloc ((model_order + 1) * sizeof (char));
     ev->event[n].mp_model_state = SafeMalloc ((model_order + 1) * sizeof (char));
@@ -40,7 +40,7 @@ fast5_event_array* alloc_fast5_event_array (int model_order, int n_events) {
   return ev;
 };
 
-void free_fast5_event_array (fast5_event_array* ev) {
+void delete_fast5_event_array (Fast5_event_array* ev) {
   for (int n = 0; n < ev->n_events; ++n) {
     SafeFree (ev->event[n].model_state);
     SafeFree (ev->event[n].mp_model_state);
@@ -49,7 +49,7 @@ void free_fast5_event_array (fast5_event_array* ev) {
   SafeFree (ev);
 };
 
-fast5_event_array* read_fast5_event_array (const char* filename)
+Fast5_event_array* read_fast5_event_array (const char* filename)
 {
   /* path we check for events data */
   const char* path = "/Analyses/Basecall_2D_000/BaseCalled_template/Events";
@@ -58,7 +58,7 @@ fast5_event_array* read_fast5_event_array (const char* filename)
   hid_t file_id;
 
   /* event_array */
-  fast5_event_array* event_array = NULL;
+  Fast5_event_array* event_array = NULL;
 
   /* open file with default properties */
   file_id = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
@@ -93,7 +93,7 @@ fast5_event_array* read_fast5_event_array (const char* filename)
 	  /* get information about fields in an event */
 	  hid_t events_type_id = H5Dget_type( events_id );
 
-	  fast5_event_array_iterator iter;
+	  Fast5_event_array_iterator iter;
 
 	  int mean_idx = H5Tget_member_index( events_type_id, "mean" );
 	  int stdv_idx = H5Tget_member_index( events_type_id, "stdv" );
