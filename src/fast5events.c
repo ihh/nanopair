@@ -26,10 +26,13 @@ herr_t populate_event_array (void *elem, hid_t type_id, unsigned ndim,
   ev->model_state[iter->model_order] = ev->mp_model_state[iter->model_order] = '\0';
   ev->move = *((long*) (elem + iter->move_offset));
   ev->raw = *((long*) (elem + iter->raw_offset));
+  ev->ticks = ev->length / iter->event_array->tick_length;
+  ev->sumticks_cur = ev->ticks * ev->mean;
+  ev->sumticks_cur_sq = ev->ticks * (ev->stdv * ev->stdv + ev->mean * ev->mean);
   return 0;
 }
 
-Fast5_event_array* alloc_fast5_event_array (int model_order, int n_events) {
+Fast5_event_array* alloc_fast5_event_array (int model_order, int n_events, double tick_length) {
   Fast5_event_array* ev = SafeMalloc (sizeof (Fast5_event_array));
   ev->n_events = n_events;
   ev->event = SafeMalloc (n_events * sizeof (Fast5_event));
@@ -37,6 +40,7 @@ Fast5_event_array* alloc_fast5_event_array (int model_order, int n_events) {
     ev->event[n].model_state = SafeMalloc ((model_order + 1) * sizeof (char));
     ev->event[n].mp_model_state = SafeMalloc ((model_order + 1) * sizeof (char));
   }
+  ev->tick_length = tick_length;
   return ev;
 };
 
@@ -49,7 +53,7 @@ void delete_fast5_event_array (Fast5_event_array* ev) {
   SafeFree (ev);
 };
 
-Fast5_event_array* read_fast5_event_array (const char* filename)
+Fast5_event_array* read_fast5_event_array (const char* filename, double tick_length)
 {
   /* path we check for events data */
   const char* path = "/Analyses/Basecall_2D_000/BaseCalled_template/Events";
@@ -131,7 +135,7 @@ Fast5_event_array* read_fast5_event_array (const char* filename)
 	  H5Dread( events_id, events_type_id, H5S_ALL, H5S_ALL, H5P_DEFAULT, buf );
 
 	  /* convert */
-	  event_array = alloc_fast5_event_array (iter.model_order, events_npoints);
+	  event_array = alloc_fast5_event_array (iter.model_order, events_npoints, tick_length);
 	  iter.event_array = event_array;
 	  iter.event_array_index = 0;
 	  H5Diterate( buf, events_type_id, events_space_id, populate_event_array, &iter );

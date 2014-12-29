@@ -40,12 +40,12 @@ int main(int argc, char * argv[])
 	fn = argv[1];
 
 	/* read & destroy event array */
-	Fast5_event_array* event_array = read_fast5_event_array (fn);
+	Fast5_event_array* event_array = read_fast5_event_array (fn, DefaultFast5TickLength);
 
-	printf ("n mean stdv length model_state mp_model_state move raw\n");
+	printf ("n mean stdv length model_state mp_model_state move raw ticks sumticks_cur sumticks_cur_sq\n");
 	for (int n = 0; n < event_array->n_events; ++n) {
 	  Fast5_event* ev = event_array->event + n;
-	  printf("%d %g %g %g %s %s %ld %ld\n",n,ev->mean,ev->stdv,ev->length,ev->model_state,ev->mp_model_state,ev->move,ev->raw);
+	  printf("%d %g %g %g %s %s %ld %ld %g %g %g\n",n,ev->mean,ev->stdv,ev->length,ev->model_state,ev->mp_model_state,ev->move,ev->raw,ev->ticks,ev->sumticks_cur,ev->sumticks_cur_sq);
 	}
 
 	delete_fast5_event_array (event_array);
