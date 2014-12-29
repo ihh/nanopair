@@ -35,8 +35,8 @@ HDF5 = /usr/local/hdf5
 TEST5 = ../../nanopore/loman/LomanLabz_PC_E.coli_MG1655_ONI_3058_1_ch101_file20_strand.fast5
 
 ifdef HDF5
-CPPFLAGS += -I${HDF5}/include -W -Wall -ansi
-LDFLAGS += -L${HDF5}/lib -Wl,-rpath -Wl,${HDF5}/lib
+CPPFLAGS += -I${HDF5}/include -W -Wall -Wno-unused-function -Wno-unused-parameter -std=c99
+LDFLAGS += -L${HDF5}/lib -Wl,-rpath -Wl,${HDF5}/lib -lz
 endif
 
 LIBS += -lhdf5_hl -lhdf5

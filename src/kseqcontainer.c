@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "kseqcontainer.h"
 #include "vector.h"
+#include "stringmap.h"
 
 KSEQ_INIT(gzFile, gzread)
 
@@ -44,6 +45,7 @@ Kseq_container* init_kseq_container (const char* filename) {
 }
 
 void free_kseq_container (Kseq_container* ksc) {
+  int i;
   for (i = 0; i < ksc->n; ++i) {
     SafeFree(ksc->name[i]);
     SafeFree(ksc->seq[i]);

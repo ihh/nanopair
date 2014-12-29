@@ -34,8 +34,8 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define KS_SEP_SPACE 0 // isspace(): \t, \n, \v, \f, \r
-#define KS_SEP_TAB   1 // isspace() && !' '
+#define KS_SEP_SPACE 0 /* isspace(): \t, \n, \v, \f, \r */
+#define KS_SEP_TAB   1 /* isspace() && !' ' */
 #define KS_SEP_MAX   1
 
 #define __KS_TYPE(type_t)						\
@@ -49,14 +49,14 @@
 #define ks_rewind(ks) ((ks)->is_eof = (ks)->begin = (ks)->end = 0)
 
 #define __KS_BASIC(type_t, __bufsize)								\
-	static inline kstream_t *ks_init(type_t f)						\
+	static kstream_t *ks_init(type_t f)						\
 	{																\
 		kstream_t *ks = (kstream_t*)calloc(1, sizeof(kstream_t));	\
 		ks->f = f;													\
 		ks->buf = (char*)malloc(__bufsize);							\
 		return ks;													\
 	}																\
-	static inline void ks_destroy(kstream_t *ks)					\
+	static void ks_destroy(kstream_t *ks)					\
 	{																\
 		if (ks) {													\
 			free(ks->buf);											\
@@ -65,7 +65,7 @@
 	}
 
 #define __KS_GETC(__read, __bufsize)						\
-	static inline int ks_getc(kstream_t *ks)				\
+	static int ks_getc(kstream_t *ks)				\
 	{														\
 		if (ks->is_eof && ks->begin >= ks->end) return -1;	\
 		if (ks->begin >= ks->end) {							\
@@ -115,7 +115,7 @@ typedef struct __kstring_t {
 				for (i = ks->begin; i < ks->end; ++i)					\
 					if (isspace(ks->buf[i]) && ks->buf[i] != ' ') break; \
 			} else i = 0; /* never come to here! */						\
-			if (str->m - str->l < i - ks->begin + 1) {					\
+			if ((int) (str->m - str->l) < i - ks->begin + 1) { \
 				str->m = str->l + (i - ks->begin) + 1;					\
 				kroundup32(str->m);										\
 				str->s = (char*)realloc(str->s, str->m);				\
@@ -143,18 +143,18 @@ typedef struct __kstring_t {
 	__KS_GETUNTIL(__read, __bufsize)
 
 #define __KSEQ_BASIC(type_t)											\
-	static inline kseq_t *kseq_init(type_t fd)							\
+	static kseq_t *kseq_init(type_t fd)							\
 	{																	\
 		kseq_t *s = (kseq_t*)calloc(1, sizeof(kseq_t));					\
 		s->f = ks_init(fd);												\
 		return s;														\
 	}																	\
-	static inline void kseq_rewind(kseq_t *ks)							\
+	static void kseq_rewind(kseq_t *ks)							\
 	{																	\
 		ks->last_char = 0;												\
 		ks->f->is_eof = ks->f->begin = ks->f->end = 0;					\
 	}																	\
-	static inline void kseq_destroy(kseq_t *ks)							\
+	static void kseq_destroy(kseq_t *ks)							\
 	{																	\
 		if (!ks) return;												\
 		free(ks->name.s); free(ks->comment.s); free(ks->seq.s);	free(ks->qual.s); \

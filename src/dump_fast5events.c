@@ -17,6 +17,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <locale.h>
+
 #include "fast5events.h"
 #include "util.h"
 
@@ -40,13 +42,13 @@ int main(int argc, char * argv[])
 	/* read & destroy event array */
 	Fast5_event_array* event_array = read_fast5_event_array (fn);
 
-	printf ("mean stdv length model_state mp_model_state move raw\n");
+	printf ("n mean stdv length model_state mp_model_state move raw\n");
 	for (int n = 0; n < event_array->n_events; ++n) {
 	  Fast5_event* ev = event_array->event + n;
 	  printf("%d %g %g %g %s %s %ld %ld\n",n,ev->mean,ev->stdv,ev->length,ev->model_state,ev->mp_model_state,ev->move,ev->raw);
 	}
 
-	free_fast5_event_array (event_array);
+	delete_fast5_event_array (event_array);
 	
 	return EXIT_SUCCESS;
 }
