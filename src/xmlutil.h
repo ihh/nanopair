@@ -10,7 +10,7 @@
  */
 
 /* all XML keyword #define's begin with this prefix */
-#define XMLPREFIX(KEYWORD)  XMLZOO_ ## KEYWORD
+#define XMLPREFIX(KEYWORD)  XMLNP_ ## KEYWORD
 
 /* private macros for matching XML nodes */
 #define MATCHES(NODE,KEYWORD) ((NODE)->type == XML_ELEMENT_NODE && strcmp ((const char*) (NODE)->name, XMLPREFIX(KEYWORD)) == 0)
