@@ -8,9 +8,11 @@
 /* Parameters */
 
 typedef struct Seq_event_pair_model {
-  double pEmitCurrent, pBeginDelete, pExtendDelete;
+  double *pEmitCurrent;
+  double pBeginDelete, pExtendDelete;
   int order, states;
   double *currentMean, *currentPrecision;
+  double startCurrentMean, startCurrentPrecision;
 } Seq_event_pair_model;
 
 Seq_event_pair_model* new_seq_event_pair_model (int order);
@@ -28,8 +30,8 @@ typedef struct Seq_event_pair_fb_matrix {
   Kseq_container* seq;
   Fast5_event_array* events;
   /* dynamic programming matrices */
-  long double *fwdMatch, *fwdDelete;
-  long double *backMatch, *backDelete;
+  long double *fwdStart, *fwdMatch, *fwdDelete;
+  long double *backStart, *backMatch, *backDelete;
   long double fwdLikelihood;
 } Seq_event_pair_fb_matrix;
 
@@ -39,11 +41,12 @@ void delete_seq_event_pair_fb_matrix (Seq_event_pair_fb_matrix* matrix);
 /* Expected counts */
 
 typedef struct Seq_event_pair_counts {
-  double nEmitCurrent_yes, nEmitCurrent_no;
+  double *nEmitCurrent_yes, *nEmitCurrent_no;
   double nBeginDelete_yes, nBeginDelete_no;
   double nExtendDelete_yes, nExtendDelete_no;
   int order, states;
   double *currentMoment0, *currentMoment1, *currentMoment2;
+  double startCurrentMoment0, startCurrentMoment1, startCurrentMoment2;
 } Seq_event_pair_counts;
 
 Seq_event_pair_counts* new_seq_event_pair_counts (Seq_event_pair_model* model);
