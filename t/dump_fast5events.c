@@ -19,8 +19,8 @@
 
 #include <locale.h>
 
-#include "fast5events.h"
-#include "util.h"
+#include "../src/fast5events.h"
+#include "../src/util.h"
 
 int main(int argc, char * argv[])
 {

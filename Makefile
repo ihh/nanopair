@@ -48,8 +48,8 @@ SRCFILES = $(wildcard src/*.c)
 bin:
 	mkdir $@
 
-bin/dump_fast5events: $(SRCFILES) Makefile bin
-	${CC} ${CPPFLAGS} ${CFLAGS} ${LDFLAGS} $(SRCFILES) -o $@ ${LIBS}
+bin/%: $(SRCFILES) t/%.c Makefile bin
+	${CC} ${CPPFLAGS} ${CFLAGS} ${LDFLAGS} $(SRCFILES) t/$*.c -o $@ ${LIBS}
 
 dump:
 	h5dump -d /Analyses/Basecall_2D_000/BaseCalled_template/Events $(TEST5) | less
