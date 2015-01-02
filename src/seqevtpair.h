@@ -12,14 +12,14 @@ typedef struct Seq_event_pair_model {
   double pBeginDelete, pExtendDelete;
   int order, states;
   double *currentMean, *currentPrecision;
-  double startCurrentMean, startCurrentPrecision;
+  double pStartEmitCurrent, startCurrentMean, startCurrentPrecision;
 } Seq_event_pair_model;
 
 Seq_event_pair_model* new_seq_event_pair_model (int order);
 void delete_seq_event_pair_model (Seq_event_pair_model* model);
 
 Seq_event_pair_model* new_seq_event_pair_model_from_xml_string (const char* xml);
-char* convert_seq_event_pair_model_to_xml_string (Seq_event_pair_model* model);
+xmlChar* convert_seq_event_pair_model_to_xml_string (Seq_event_pair_model* model);
 
 /* Forward-backward matrix */
 
