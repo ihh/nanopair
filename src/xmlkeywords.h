@@ -10,6 +10,7 @@
 #define XMLNP_CURRENT   "current"
 #define XMLNP_MEAN      "mean"
 #define XMLNP_PRECISION "precision"
+#define XMLNP_STATES    "states"
 #define XMLNP_STATE     "state"
 #define XMLNP_ID        "id"
 #define XMLNP_START     "start"

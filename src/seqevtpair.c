@@ -55,11 +55,19 @@ int decode_state_identifier (char* state_id) {
 }
 
 Seq_event_pair_model* new_seq_event_pair_model_from_xml_string (const char* xml) {
-  xmlNode *node, *modelNode;
+  xmlNode *node, *modelNode, *statesNode, *stateNode, *deleteNode, *currentNode;
   Seq_event_pair_model *model;
+  int state;
   node = xmlTreeFromString (xml);
   modelNode = CHILD(node,MODEL);
   model = new_seq_event_pair_model (CHILDINT(modelNode,ORDER));
+  statesNode = CHILD(modelNode,STATES);
+  for (stateNode = statesNode->children; stateNode; stateNode = stateNode->next) {
+    state = decode_state_identifier (model->order, CHILDINT(stateNode,ID));
+    currentNode = CHILD(stateNode,CURRENT);
+    deleteNode = CHILD(stateNode,DELETE);
+    /* more goes here */
+  }
   /* more goes here */
 }
 
