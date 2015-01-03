@@ -2,6 +2,7 @@
 
 #include "../src/seqevtpair.h"
 
+/* completely nonsense numbers, just used to test I/O */
 const char* xmlIn = "<?xml version=\"1.0\"?>\n"
 "<model><order>2</order>"
 "<delete><begin>0.1</begin><extend>0.9</extend></delete>"
