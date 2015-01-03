@@ -11,7 +11,7 @@ int base2token (char base);
 char token2base (int token);
 
 void encode_state_identifier (int state, int order, char* state_id);
-int decode_state_identifier (char* state_id);
+int decode_state_identifier (int order, char* state_id);
 
 Seq_event_pair_model* new_seq_event_pair_model (int order) {
   Seq_event_pair_model *model;
@@ -37,8 +37,8 @@ int base2token (char base) {
   return tok >= 4 ? -1 : tok;
 }
 
-char token2base (int token) {
-  return tok < 0 || tok >= 4 ? "N" : dna_alphabet[tok];
+char token2base (int tok) {
+  return tok < 0 || tok >= 4 ? 'N' : dna_alphabet[tok];
 }
 
 void encode_state_identifier (int state, int order, char* state_id) {
@@ -48,7 +48,7 @@ void encode_state_identifier (int state, int order, char* state_id) {
   state_id[order] = '\0';
 }
 
-int decode_state_identifier (char* state_id) {
+int decode_state_identifier (int order, char* state_id) {
   int k, token, p;
   for (token = 0, p = 1, k = 0; k < order; ++k, p *= 4)
     token += p * base2token (state_id[order - k - 1]);
@@ -56,32 +56,35 @@ int decode_state_identifier (char* state_id) {
 }
 
 Seq_event_pair_model* new_seq_event_pair_model_from_xml_string (const char* xml) {
-  xmlNode *node, *modelNode, *statesNode, *stateNode, *deleteNode, *currentNode, *startNode;
+  xmlNode *modelNode, *statesNode, *stateNode, *deleteNode, *startNode;
   Seq_event_pair_model *model;
   int state;
-  node = xmlTreeFromString (xml);
-  modelNode = CHILD(node,MODEL);
+  modelNode = xmlTreeFromString (xml);
   model = new_seq_event_pair_model (CHILDINT(modelNode,ORDER));
 
-  deleteNode = CHILD(stateNode,DELETE);
+  deleteNode = CHILD(modelNode,DELETE);
   model->pBeginDelete = CHILDFLOAT(deleteNode,BEGIN);
   model->pExtendDelete = CHILDFLOAT(deleteNode,EXTEND);
 
   statesNode = CHILD(modelNode,STATES);
   for (stateNode = statesNode->children; stateNode; stateNode = stateNode->next)
     if (MATCHES(stateNode,STATE)) {
-      state = decode_state_identifier (model->order, CHILDINT(stateNode,ID));
+      state = decode_state_identifier (model->order, (char*) CHILDSTRING(stateNode,ID));
       model->pEmitCurrent[state] = CHILDFLOAT(stateNode,EMIT);
       model->currentMean[state] = CHILDFLOAT(stateNode,MEAN);
       model->currentPrecision[state] = CHILDFLOAT(stateNode,PRECISION);
     }
+
   startNode = CHILD(modelNode,START);
   model->pStartEmitCurrent = CHILDFLOAT(startNode,EMIT);
   model->startCurrentMean = CHILDFLOAT(startNode,MEAN);
   model->startCurrentPrecision = CHILDFLOAT(startNode,PRECISION);
+
+  deleteXmlTree (modelNode);
+  return model;
 }
 
-char* convert_seq_event_pair_model_to_xml_string (Seq_event_pair_model* model) {
+xmlChar* convert_seq_event_pair_model_to_xml_string (Seq_event_pair_model* model) {
   xmlTextWriterPtr writer;
   char* id;
   int state;
@@ -89,30 +92,30 @@ char* convert_seq_event_pair_model_to_xml_string (Seq_event_pair_model* model) {
   id = SafeMalloc ((model->order + 1) * sizeof(char));
 
   writer = newXmlTextWriter();
-  xmlTextWriterStartElement (writer, XMLPREFIX(MODEL));
-  xmlTextWriterWriteFormatElement (writer, XMLPREFIX(ORDER), "%d", model->order);
+  xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(MODEL));
+  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(ORDER), "%d", model->order);
 
-  xmlTextWriterStartElement (writer, XMLPREFIX(DELETE));
-  xmlTextWriterWriteFormatElement (writer, XMLPREFIX(BEGIN), "%g", model->pBeginDelete);
-  xmlTextWriterWriteFormatElement (writer, XMLPREFIX(EXTEND), "%g", model->pExtendDelete);
+  xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(DELETE));
+  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(BEGIN), "%g", model->pBeginDelete);
+  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(EXTEND), "%g", model->pExtendDelete);
   xmlTextWriterEndElement (writer);
 
-  xmlTextWriterStartElement (writer, XMLPREFIX(STATES));
+  xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(STATES));
   for (state = 0; state < model->states; ++state) {
-    xmlTextWriterStartElement (writer, XMLPREFIX(STATE));
+    xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(STATE));
     encode_state_identifier (state, model->order, id);
-    xmlTextWriterWriteFormatElement (writer, XMLPREFIX(ID), "%s", id);
-    xmlTextWriterWriteFormatElement (writer, XMLPREFIX(EMIT), "%g", model->pEmitCurrent[state]);
-    xmlTextWriterWriteFormatElement (writer, XMLPREFIX(MEAN), "%g", model->currentMean[state]);
-    xmlTextWriterWriteFormatElement (writer, XMLPREFIX(PRECISION), "%g", model->currentPrecision[state]);
+    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(ID), "%s", id);
+    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(EMIT), "%g", model->pEmitCurrent[state]);
+    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(MEAN), "%g", model->currentMean[state]);
+    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(PRECISION), "%g", model->currentPrecision[state]);
     xmlTextWriterEndElement (writer);
   }
   xmlTextWriterEndElement (writer);
 
-  xmlTextWriterStartElement (writer, XMLPREFIX(START));
-  xmlTextWriterWriteFormatElement (writer, XMLPREFIX(EMIT), "%g", model->pStartEmitCurrent);
-  xmlTextWriterWriteFormatElement (writer, XMLPREFIX(MEAN), "%g", model->startCurrentMean);
-  xmlTextWriterWriteFormatElement (writer, XMLPREFIX(PRECISION), "%g", model->startCurrentPrecision);
+  xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(START));
+  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(EMIT), "%g", model->pStartEmitCurrent);
+  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(MEAN), "%g", model->startCurrentMean);
+  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(PRECISION), "%g", model->startCurrentPrecision);
   xmlTextWriterEndElement (writer);
 
   xmlTextWriterEndElement (writer);

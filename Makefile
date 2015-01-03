@@ -30,7 +30,7 @@ latex.zip: $(TEXFILES)
 .SECONDARY:
 
 
-HDF5 = /usr/local/hdf5
+HDF5 = /usr/local
 
 TEST5 = ../../nanopore/loman/LomanLabz_PC_E.coli_MG1655_ONI_3058_1_ch101_file20_strand.fast5
 
@@ -40,7 +40,8 @@ LDFLAGS += -L${HDF5}/lib -Wl,-rpath -Wl,${HDF5}/lib -lz
 endif
 
 LIBS += -lhdf5_hl -lhdf5
-CFLAGS += -O2 -g
+# CFLAGS += -O2 -g
+CFLAGS += -g
 
 SRCFILES = $(wildcard src/*.c)
 
