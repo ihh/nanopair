@@ -4,8 +4,7 @@
 #include "seqevtpair.h"
 #include "xmlutil.h"
 #include "xmlkeywords.h"
-
-const char* dna_alphabet = "ACGT";
+#include "kseqcontainer.h"
 
 int base2token (char base);
 char token2base (int token);
@@ -32,9 +31,7 @@ void delete_seq_event_pair_model (Seq_event_pair_model* model) {
 }
 
 int base2token (char base) {
-  int tok;
-  tok = strchr (dna_alphabet, toupper(base)) - dna_alphabet;
-  return tok >= 4 ? -1 : tok;
+  return tokenize (base, dna_alphabet);
 }
 
 char token2base (int tok) {
@@ -124,14 +121,46 @@ xmlChar* convert_seq_event_pair_model_to_xml_string (Seq_event_pair_model* model
 
 /* Forward-backward matrix */
 
-Seq_event_pair_fb_matrix* new_seq_event_pair_fb_matrix (Seq_event_pair_model* model, Kseq_container* seq, Fast5_event_array* events);  /* allocates only, does not fill */
-void delete_seq_event_pair_fb_matrix (Seq_event_pair_fb_matrix* matrix);
+Seq_event_pair_fb_matrix* new_seq_event_pair_fb_matrix (Seq_event_pair_model* model, int seqlen, int *dsq, Fast5_event_array* events) {
+  Seq_event_pair_fb_matrix* mx;
+  int n_events;
+
+  mx = SafeMalloc (sizeof (Seq_event_pair_fb_matrix));
+  mx->model = model;
+  mx->seqlen = seqlen;
+  mx->dsq = dsq;
+  mx->events = events;
+
+  n_events = events->n_events;
+
+  mx->fwdStart = SafeMalloc ((n_events + 1) * sizeof(long double));
+  mx->backStart = SafeMalloc ((n_events + 1) * sizeof(long double));
+
+  mx->fwdMatch = SafeMalloc ((n_events + 1) * (seqlen + 1) * sizeof(long double));
+  mx->fwdDelete = SafeMalloc ((n_events + 1) * (seqlen + 1) * sizeof(long double));
+  mx->backMatch = SafeMalloc ((n_events + 1) * (seqlen + 1) * sizeof(long double));
+  mx->backDelete = SafeMalloc ((n_events + 1) * (seqlen + 1) * sizeof(long double));
+  
+  return mx;
+}
+
+void delete_seq_event_pair_fb_matrix (Seq_event_pair_fb_matrix* mx) {
+  SafeFree (mx->fwdStart);
+  SafeFree (mx->backStart);
+  SafeFree (mx->fwdMatch);
+  SafeFree (mx->fwdDelete);
+  SafeFree (mx->backMatch);
+  SafeFree (mx->backDelete);
+  SafeFree (mx);
+}
 
 Seq_event_pair_counts* new_seq_event_pair_counts (Seq_event_pair_model* model);
 void delete_seq_event_pair_counts (Seq_event_pair_counts* counts);
 
 void reset_seq_event_pair_counts (Seq_event_pair_counts* counts);
-void fill_seq_event_pair_fb_matrix (Seq_event_pair_fb_matrix* matrix, Seq_event_pair_counts* counts);
+void inc_seq_event_pair_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_event_array* events);
+
+void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* matrix, Seq_event_pair_counts* counts);
 void update_seq_event_pair_model (Seq_event_pair_model* matrix, Seq_event_pair_counts* counts, Seq_event_pair_counts* prior);
 
 void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seq, Fast5_event_array* events, double minimum_fractional_log_likelihood_increase);

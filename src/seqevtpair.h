@@ -27,7 +27,8 @@ typedef struct Seq_event_pair_fb_matrix {
   /* parameters */
   Seq_event_pair_model* model;
   /* data */
-  Kseq_container* seq;
+  int seqlen;
+  int* dsq;
   Fast5_event_array* events;
   /* dynamic programming matrices */
   long double *fwdStart, *fwdMatch, *fwdDelete;
@@ -35,7 +36,7 @@ typedef struct Seq_event_pair_fb_matrix {
   long double fwdLikelihood;
 } Seq_event_pair_fb_matrix;
 
-Seq_event_pair_fb_matrix* new_seq_event_pair_fb_matrix (Seq_event_pair_model* model, Kseq_container* seq, Fast5_event_array* events);  /* allocates only, does not fill */
+Seq_event_pair_fb_matrix* new_seq_event_pair_fb_matrix (Seq_event_pair_model* model, int seqlen, int* dsq, Fast5_event_array* events);  /* allocates only, does not fill */
 void delete_seq_event_pair_fb_matrix (Seq_event_pair_fb_matrix* matrix);
 
 /* Expected counts */
@@ -52,10 +53,12 @@ typedef struct Seq_event_pair_counts {
 Seq_event_pair_counts* new_seq_event_pair_counts (Seq_event_pair_model* model);
 void delete_seq_event_pair_counts (Seq_event_pair_counts* counts);
 
+void reset_seq_event_pair_counts (Seq_event_pair_counts* counts);
+void inc_seq_event_pair_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_event_array* events);
+
 /* Single Baum-Welch iteration */
 
-void reset_seq_event_pair_counts (Seq_event_pair_counts* counts);
-void fill_seq_event_pair_fb_matrix (Seq_event_pair_fb_matrix* matrix, Seq_event_pair_counts* counts);
+void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* matrix, Seq_event_pair_counts* counts);
 void update_seq_event_pair_model (Seq_event_pair_model* matrix, Seq_event_pair_counts* counts, Seq_event_pair_counts* prior);
 
 /* Full Baum-Welch wrapper */
