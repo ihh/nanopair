@@ -42,12 +42,12 @@ void delete_seq_event_pair_fb_matrix (Seq_event_pair_fb_matrix* matrix);
 /* Expected counts */
 
 typedef struct Seq_event_pair_counts {
-  double *nEmitCurrent_yes, *nEmitCurrent_no;
-  double nBeginDelete_yes, nBeginDelete_no;
-  double nExtendDelete_yes, nExtendDelete_no;
+  long double *nEmitCurrent_yes, *nEmitCurrent_no;
+  long double nBeginDelete_yes, nBeginDelete_no;
+  long double nExtendDelete_yes, nExtendDelete_no;
   int order, states;
-  double *currentMoment0, *currentMoment1, *currentMoment2;
-  double startCurrentMoment0, startCurrentMoment1, startCurrentMoment2;
+  long double *currentMoment0, *currentMoment1, *currentMoment2;
+  long double startCurrentMoment0, startCurrentMoment1, startCurrentMoment2;
 } Seq_event_pair_counts;
 
 Seq_event_pair_counts* new_seq_event_pair_counts (Seq_event_pair_model* model);
