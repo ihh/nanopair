@@ -157,6 +157,8 @@ void delete_seq_event_pair_fb_matrix (Seq_event_pair_fb_matrix* mx) {
 Seq_event_pair_counts* new_seq_event_pair_counts (Seq_event_pair_model* model) {
   Seq_event_pair_counts* counts;
   counts = SafeMalloc (sizeof (Seq_event_pair_counts));
+  counts->order = model->order;
+  counts->states = model->states;
   counts->nEmitCurrent_yes = SafeMalloc (model->states * sizeof(long double));
   counts->nEmitCurrent_no = SafeMalloc (model->states * sizeof(long double));
   counts->currentMoment0 = SafeMalloc (model->states * sizeof(long double));
@@ -174,7 +176,24 @@ void delete_seq_event_pair_counts (Seq_event_pair_counts* counts) {
   SafeFree (counts);
 }
 
-void reset_seq_event_pair_counts (Seq_event_pair_counts* counts);
+void reset_seq_event_pair_counts (Seq_event_pair_counts* counts) {
+  int state;
+  for (state = 0; state < counts->states; ++state) {
+    counts->nEmitCurrent_yes[state] = 0;
+    counts->nEmitCurrent_no[state] = 0;
+    counts->currentMoment0[state] = 0;
+    counts->currentMoment1[state] = 0;
+    counts->currentMoment2[state] = 0;
+  }
+  counts->nBeginDelete_yes = 0;
+  counts->nBeginDelete_no = 0;
+  counts->nExtendDelete_yes = 0;
+  counts->nExtendDelete_no = 0;
+  counts->startCurrentMoment0 = 0;
+  counts->startCurrentMoment1 = 0;
+  counts->startCurrentMoment2 = 0;
+}
+
 void inc_seq_event_pair_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_event_array* events);
 
 void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* matrix, Seq_event_pair_counts* counts);
