@@ -8,11 +8,11 @@
 /* Parameters */
 
 typedef struct Seq_event_pair_model {
-  double *pEmitCurrent;
+  double *pMatchEmit;
   double pBeginDelete, pExtendDelete;
   int order, states;
-  double *currentMean, *currentPrecision;
-  double pStartEmitCurrent, startCurrentMean, startCurrentPrecision;
+  double *matchMean, *matchPrecision;
+  double pStartEmit, startMean, startPrecision;
 } Seq_event_pair_model;
 
 Seq_event_pair_model* new_seq_event_pair_model (int order);
@@ -28,26 +28,33 @@ typedef struct Seq_event_pair_fb_matrix {
   Seq_event_pair_model* model;
   /* data */
   int seqlen;
-  int* dsq;
+  char *seq;
+  int *state;
   Fast5_event_array* events;
-  /* dynamic programming matrices */
+  /* dynamic programming matrices: entries are all in log-probability space */
   long double *fwdStart, *fwdMatch, *fwdDelete;
   long double *backStart, *backMatch, *backDelete;
-  long double fwdLikelihood;
+  long double *startEmitDensity, *matchEmitDensity, *matchEmitProb;
+  long double fwdLogLikelihood;
 } Seq_event_pair_fb_matrix;
 
-Seq_event_pair_fb_matrix* new_seq_event_pair_fb_matrix (Seq_event_pair_model* model, int seqlen, int* dsq, Fast5_event_array* events);  /* allocates only, does not fill */
+#define Seq_event_pair_index(seqlen,seqpos,n_event) (n_event*(seqlen+1) + seqpos)
+
+Seq_event_pair_fb_matrix* new_seq_event_pair_fb_matrix (Seq_event_pair_model* model, int seqlen, char *seq, Fast5_event_array* events);  /* allocates only, does not fill */
 void delete_seq_event_pair_fb_matrix (Seq_event_pair_fb_matrix* matrix);
+
+double log_gaussian_density (double x, double mean, double precision, double log_precision);
+double log_event_density (Fast5_event* event, double mean, double precision, double log_precision);
 
 /* Expected counts */
 
 typedef struct Seq_event_pair_counts {
-  long double *nEmitCurrent_yes, *nEmitCurrent_no;
+  long double *nEmit_yes, *nEmit_no;
   long double nBeginDelete_yes, nBeginDelete_no;
   long double nExtendDelete_yes, nExtendDelete_no;
   int order, states;
-  long double *currentMoment0, *currentMoment1, *currentMoment2;
-  long double startCurrentMoment0, startCurrentMoment1, startCurrentMoment2;
+  long double *matchMoment0, *matchMoment1, *matchMoment2;
+  long double startMoment0, startMoment1, startMoment2;
 } Seq_event_pair_counts;
 
 Seq_event_pair_counts* new_seq_event_pair_counts (Seq_event_pair_model* model);
