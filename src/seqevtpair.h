@@ -34,7 +34,7 @@ typedef struct Seq_event_pair_fb_matrix {
   /* dynamic programming matrices: entries are all in log-probability space */
   long double *fwdStart, *fwdMatch, *fwdDelete;
   long double *backStart, *backMatch, *backDelete;
-  long double *startEmitDensity, *matchEmitDensity, *matchEmitProb;
+  long double *startEmitDensity, *matchEmitDensity, *matchEmitYes, *matchEmitNo;
   long double fwdLogLikelihood;
 } Seq_event_pair_fb_matrix;
 
@@ -45,6 +45,8 @@ void delete_seq_event_pair_fb_matrix (Seq_event_pair_fb_matrix* matrix);
 
 double log_gaussian_density (double x, double mean, double precision, double log_precision);
 double log_event_density (Fast5_event* event, double mean, double precision, double log_precision);
+
+long double log_sum_exp (long double a, long double b);  /* returns log(exp(a) + exp(b)) */
 
 /* Expected counts */
 
