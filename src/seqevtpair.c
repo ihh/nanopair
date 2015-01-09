@@ -123,7 +123,7 @@ xmlChar* convert_seq_event_pair_model_to_xml_string (Seq_event_pair_model* model
 
 Seq_event_pair_fb_matrix* new_seq_event_pair_fb_matrix (Seq_event_pair_model* model, int seqlen, char *seq, Fast5_event_array* events) {
   Seq_event_pair_fb_matrix* mx;
-  int n_events;
+  int n_events, matrix_cells;
 
   mx = SafeMalloc (sizeof (Seq_event_pair_fb_matrix));
   mx->model = model;
@@ -136,13 +136,15 @@ Seq_event_pair_fb_matrix* new_seq_event_pair_fb_matrix (Seq_event_pair_model* mo
   mx->fwdStart = SafeMalloc ((n_events + 1) * sizeof(long double));
   mx->backStart = SafeMalloc ((n_events + 1) * sizeof(long double));
 
-  mx->fwdMatch = SafeMalloc ((n_events + 1) * (seqlen + 1) * sizeof(long double));
-  mx->fwdDelete = SafeMalloc ((n_events + 1) * (seqlen + 1) * sizeof(long double));
-  mx->backMatch = SafeMalloc ((n_events + 1) * (seqlen + 1) * sizeof(long double));
-  mx->backDelete = SafeMalloc ((n_events + 1) * (seqlen + 1) * sizeof(long double));
+  matrix_cells = (n_events + 1) * (seqlen - order + 1);
+  mx->fwdMatch = SafeMalloc (matrix_cells * sizeof(long double));
+  mx->fwdDelete = SafeMalloc (matrix_cells * sizeof(long double));
+  mx->backMatch = SafeMalloc (matrix_cells * sizeof(long double));
+  mx->backDelete = SafeMalloc (matrix_cells * sizeof(long double));
 
   mx->startEmitDensity = SafeMalloc ((n_events + 1) * sizeof(long double));
-  mx->matchEmitDensity = SafeMalloc ((n_events + 1) * (seqlen + 1) * sizeof(long double));
+
+  mx->matchEmitDensity = SafeMalloc (matrix_cells * sizeof(long double));
   mx->matchEmitYes = SafeMalloc ((seqlen + 1) * sizeof(long double));
   mx->matchEmitNo = SafeMalloc ((seqlen + 1) * sizeof(long double));
 
@@ -234,10 +236,12 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
   Seq_event_pair_model* model;
   int seqlen, n_events, order, seqpos, n_event, state;
   double logStartPrecision;
-  double logStartEmitYes, logStartEmitNo;
-  double logBeginDeleteYes, logBeginDeleteNo;
-  double logExtendDeleteYes, logExtendDeleteNo;
+  double startEmitYes, startEmitNo;
+  double beginDeleteYes, beginDeleteNo;
+  double extendDeleteYes, extendDeleteNo;
   double mean, precision, logPrecision;
+  long double mat, del;
+  int idx, inputIdx, outputIdx;
   Fast5_event* event;
 
   seqlen = matrix->seqlen;
@@ -246,14 +250,14 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
   order = model->order;
 
   /* precalculate logs of transition probabilities & emit precisions */
-  logStartEmitYes = log (model->pStartEmit);
-  logStartEmitNo = log (1. - model->pStartEmit);
+  startEmitYes = log (model->pStartEmit);
+  startEmitNo = log (1. - model->pStartEmit);
 
-  logBeginDeleteYes = log (model->pBeginDelete);
-  logBeginDeleteNo = log (1. - model->pBeginDelete);
+  beginDeleteYes = log (model->pBeginDelete);
+  beginDeleteNo = log (1. - model->pBeginDelete);
 
-  logExtendDeleteYes = log (model->pExtendDelete);
-  logExtendDeleteNo = log (1. - model->pExtendDelete);
+  extendDeleteYes = log (model->pExtendDelete);
+  extendDeleteNo = log (1. - model->pExtendDelete);
 
   logStartPrecision = log (model->startPrecision);
 
@@ -273,8 +277,6 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
   for (seqpos = 0; seqpos < order; ++seqpos) {
     matrix->matchEmitYes[seqpos] = -INFINITY;
     matrix->matchEmitNo[seqpos] = -INFINITY;
-    for (n_event = 0; n_event < n_events; ++n_event)
-      matrix->matchEmitDensity[Seq_event_pair_index(seqlen,seqpos,n_event)] = -INFINITY;
   }
 
   for (seqpos = order; seqpos <= seqlen; ++seqpos) {
@@ -284,9 +286,11 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
     mean = model->matchMean[state];
     precision = model->matchPrecision[state];
     logPrecision = log (precision);
-    for (n_event = 0; n_event < n_events; ++n_event) {
-      event = matrix->events->event[n_event];
-      matrix->matchEmitDensity[Seq_event_pair_index(seqlen,seqpos,n_event)]
+
+    matrix->matchEmitDensity[Seq_event_pair_index(seqpos,0)] = -INFINITY;
+    for (n_event = 1; n_event <= n_events; ++n_event) {
+      event = matrix->events->event[n_event - 1];
+      matrix->matchEmitDensity[Seq_event_pair_index(seqpos,n_event)]
 	= log_event_density (event,
 			     mean,
 			     precision,
@@ -300,12 +304,35 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
     matrix->fwdStart[n_event] = matrix->fwdStart[n_event - 1] + startEmitDensity[n_event - 1];
 
   for (n_event = 0; n_event <= n_events; ++n_event) {
-    matrix->fwdMatch[Seq_event_pair_index(seqlen,order,n_event)] = matrix->fwdStart[n_event];
-    /* more to go here... this cell might need to be updated... */
-    for (seqpos = order + 1; seqpos <= seqlen; ++seqpos) {
-      
+    for (seqpos = order; seqpos <= seqlen; ++seqpos) {
+      idx = Seq_event_pair_index(seqpos,n_event);
+      inputIdx = Seq_event_pair_index(seqpos-1,n_event);
+      outputIdx = Seq_event_pair_index(seqpos,n_event-1);
+
+      mat = matrix->fwdStart[n_event] + startEmitNo;
+
+      if (n_event > 0)
+	mat = log_sum_exp (mat,
+			   matrix->fwdMatch[outputIdx]
+			   + matrix->matchEmitDensity[Seq_event_pair_index(seqpos,n_event)]
+			   + matrix->matchEmitYes[seqpos]);
+
+      if (seqpos == order) {
+	del = -INFINITY;
+      } else {  /* seqpos > order */
+	del = log_sum_exp (matrix->fwdMatch[inputIdx] + matrix->matchEmitNo[seqpos-1] + beginDeleteYes,
+			   matrix->fwdDelete[inputIdx] + extendDeleteYes);
+	mat = log_sum_exp (mat,
+			   matrix->fwdMatch[inputIdx] + matrix->matchEmitNo[seqpos-1] + beginDeleteNo);
+	mat = log_sum_exp (mat, del);
+      }
+
+      matrix->fwdMatch[idx] = mat;
+      matrix->fwdDelete[idx] = del;
     }
   }
+
+  matrix->fwdEnd = matrix->fwdMatch[Seq_event_pair_index(seqlen,n_events)] + matrix->matchEmitNo[seqlen];
 
   /* fill backward */
   /* update counts */

@@ -32,13 +32,14 @@ typedef struct Seq_event_pair_fb_matrix {
   int *state;
   Fast5_event_array* events;
   /* dynamic programming matrices: entries are all in log-probability space */
-  long double *fwdStart, *fwdMatch, *fwdDelete;
-  long double *backStart, *backMatch, *backDelete;
+  long double *fwdStart, *fwdMatch, *fwdDelete, fwdEnd;
+  long double *backStart, *backMatch, *backDelete, backEnd;
+  /* precalculated emit & transition scores */
   long double *startEmitDensity, *matchEmitDensity, *matchEmitYes, *matchEmitNo;
-  long double fwdLogLikelihood;
 } Seq_event_pair_fb_matrix;
 
-#define Seq_event_pair_index(seqlen,seqpos,n_event) (n_event*(seqlen+1) + seqpos)
+/* Seq_event_pair_index macro assumes seqlen & order are the same as in Seq_event_pair_fb_matrix */
+#define Seq_event_pair_index(seqpos,n_event) (n_event*(seqlen-order+1) + seqpos - order)
 
 Seq_event_pair_fb_matrix* new_seq_event_pair_fb_matrix (Seq_event_pair_model* model, int seqlen, char *seq, Fast5_event_array* events);  /* allocates only, does not fill */
 void delete_seq_event_pair_fb_matrix (Seq_event_pair_fb_matrix* matrix);
