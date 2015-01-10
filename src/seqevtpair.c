@@ -136,7 +136,7 @@ Seq_event_pair_fb_matrix* new_seq_event_pair_fb_matrix (Seq_event_pair_model* mo
   mx->fwdStart = SafeMalloc ((n_events + 1) * sizeof(long double));
   mx->backStart = SafeMalloc ((n_events + 1) * sizeof(long double));
 
-  matrix_cells = (n_events + 1) * (seqlen - order + 1);
+  matrix_cells = (n_events + 1) * (seqlen - model->order + 1);
   mx->fwdMatch = SafeMalloc (matrix_cells * sizeof(long double));
   mx->fwdDelete = SafeMalloc (matrix_cells * sizeof(long double));
   mx->backMatch = SafeMalloc (matrix_cells * sizeof(long double));
@@ -173,8 +173,8 @@ Seq_event_pair_counts* new_seq_event_pair_counts (Seq_event_pair_model* model) {
   counts = SafeMalloc (sizeof (Seq_event_pair_counts));
   counts->order = model->order;
   counts->states = model->states;
-  counts->nEmit_yes = SafeMalloc (model->states * sizeof(long double));
-  counts->nEmit_no = SafeMalloc (model->states * sizeof(long double));
+  counts->nMatchEmitYes = SafeMalloc (model->states * sizeof(long double));
+  counts->nMatchEmitNo = SafeMalloc (model->states * sizeof(long double));
   counts->matchMoment0 = SafeMalloc (model->states * sizeof(long double));
   counts->matchMoment1 = SafeMalloc (model->states * sizeof(long double));
   counts->matchMoment2 = SafeMalloc (model->states * sizeof(long double));
@@ -182,8 +182,8 @@ Seq_event_pair_counts* new_seq_event_pair_counts (Seq_event_pair_model* model) {
 }
 
 void delete_seq_event_pair_counts (Seq_event_pair_counts* counts) {
-  SafeFree (counts->nEmit_yes);
-  SafeFree (counts->nEmit_no);
+  SafeFree (counts->nMatchEmitYes);
+  SafeFree (counts->nMatchEmitNo);
   SafeFree (counts->matchMoment0);
   SafeFree (counts->matchMoment1);
   SafeFree (counts->matchMoment2);
@@ -193,16 +193,18 @@ void delete_seq_event_pair_counts (Seq_event_pair_counts* counts) {
 void reset_seq_event_pair_counts (Seq_event_pair_counts* counts) {
   int state;
   for (state = 0; state < counts->states; ++state) {
-    counts->nEmit_yes[state] = 0;
-    counts->nEmit_no[state] = 0;
+    counts->nMatchEmitYes[state] = 0;
+    counts->nMatchEmitNo[state] = 0;
     counts->matchMoment0[state] = 0;
     counts->matchMoment1[state] = 0;
     counts->matchMoment2[state] = 0;
   }
-  counts->nBeginDelete_yes = 0;
-  counts->nBeginDelete_no = 0;
-  counts->nExtendDelete_yes = 0;
-  counts->nExtendDelete_no = 0;
+  counts->nStartEmitYes = 0;
+  counts->nStartEmitNo = 0;
+  counts->nBeginDeleteYes = 0;
+  counts->nBeginDeleteNo = 0;
+  counts->nExtendDeleteYes = 0;
+  counts->nExtendDeleteNo = 0;
   counts->startMoment0 = 0;
   counts->startMoment1 = 0;
   counts->startMoment2 = 0;
@@ -268,11 +270,12 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
     matrix->state[seqpos] = decode_state_identifier (order, matrix->seq + seqpos - order);
 
   /* calculate emit densities & state-dependent transition probabilities */
+  matrix->startEmitDensity[0] = -INFINITY;
   for (n_event = 0; n_event < n_events; ++n_event)
-    matrix->startEmitDensity[n_event] = log_event_density (matrix->events->event[n_event],
-							   model->startMean,
-							   model->startPrecision,
-							   logStartPrecision);
+    matrix->startEmitDensity[n_event + 1] = log_event_density (&matrix->events->event[n_event],
+							       model->startMean,
+							       model->startPrecision,
+							       logStartPrecision);
 
   for (seqpos = 0; seqpos < order; ++seqpos) {
     matrix->matchEmitYes[seqpos] = -INFINITY;
@@ -289,7 +292,7 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 
     matrix->matchEmitDensity[Seq_event_pair_index(seqpos,0)] = -INFINITY;
     for (n_event = 1; n_event <= n_events; ++n_event) {
-      event = matrix->events->event[n_event - 1];
+      event = &matrix->events->event[n_event - 1];
       matrix->matchEmitDensity[Seq_event_pair_index(seqpos,n_event)]
 	= log_event_density (event,
 			     mean,
@@ -301,43 +304,165 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
   /* fill forward */
   matrix->fwdStart[0] = 0.;
   for (n_event = 1; n_event <= n_events; ++n_event)
-    matrix->fwdStart[n_event] = matrix->fwdStart[n_event - 1] + startEmitDensity[n_event - 1];
+    matrix->fwdStart[n_event]
+      = matrix->fwdStart[n_event - 1] + startEmitYes + matrix->startEmitDensity[n_event];  /* Start -> Start (output) */
 
-  for (n_event = 0; n_event <= n_events; ++n_event) {
-    for (seqpos = order; seqpos <= seqlen; ++seqpos) {
+  matrix->fwdEnd = -INFINITY;
+
+  for (seqpos = order; seqpos <= seqlen; ++seqpos) {
+    for (n_event = 0; n_event <= n_events; ++n_event) {
       idx = Seq_event_pair_index(seqpos,n_event);
       inputIdx = Seq_event_pair_index(seqpos-1,n_event);
       outputIdx = Seq_event_pair_index(seqpos,n_event-1);
 
-      mat = matrix->fwdStart[n_event] + startEmitNo;
+      mat = matrix->fwdStart[n_event] + startEmitNo;   /* Start -> Match (input) */
 
       if (n_event > 0)
 	mat = log_sum_exp (mat,
 			   matrix->fwdMatch[outputIdx]
-			   + matrix->matchEmitDensity[Seq_event_pair_index(seqpos,n_event)]
-			   + matrix->matchEmitYes[seqpos]);
+			   + matrix->matchEmitDensity[idx]
+			   + matrix->matchEmitYes[seqpos]);     /* Match -> Match (output) */
 
       if (seqpos == order) {
 	del = -INFINITY;
       } else {  /* seqpos > order */
-	del = log_sum_exp (matrix->fwdMatch[inputIdx] + matrix->matchEmitNo[seqpos-1] + beginDeleteYes,
-			   matrix->fwdDelete[inputIdx] + extendDeleteYes);
-	mat = log_sum_exp (mat,
-			   matrix->fwdMatch[inputIdx] + matrix->matchEmitNo[seqpos-1] + beginDeleteNo);
-	mat = log_sum_exp (mat, del);
+	del = log_sum_exp
+	  (matrix->fwdMatch[inputIdx] + matrix->matchEmitNo[seqpos-1] + beginDeleteYes,  /* Match -> Delete (input) */
+	   matrix->fwdDelete[inputIdx] + extendDeleteYes);   /* Delete -> Delete (input) */
+
+	mat = log_sum_exp
+	  (mat,
+	   matrix->fwdMatch[inputIdx] + matrix->matchEmitNo[seqpos-1] + beginDeleteNo);  /* Match -> Match (input) */
+
+	mat = log_sum_exp (mat, del + extendDeleteNo);  /* Delete -> Match */
       }
 
       matrix->fwdMatch[idx] = mat;
       matrix->fwdDelete[idx] = del;
     }
+
+    matrix->fwdEnd = log_sum_exp
+      (matrix->fwdEnd,
+       matrix->fwdMatch[Seq_event_pair_index(seqpos,n_events)] + matrix->matchEmitNo[seqpos]);  /* Match -> End (input) */
   }
 
-  matrix->fwdEnd = matrix->fwdMatch[Seq_event_pair_index(seqlen,n_events)] + matrix->matchEmitNo[seqlen];
+  /* fill backward & accumulate counts */
+  for (seqpos = seqlen; seqpos >= order; --seqpos) {
+    state = matrix->state[seqpos];
+    for (n_event = n_events; n_event >= 0; --n_event) {
+      event = n_event < n_events ? &matrix->events->event[n_event] : NULL;
 
-  /* fill backward */
-  /* update counts */
+      idx = Seq_event_pair_index(seqpos,n_event);
+      inputIdx = Seq_event_pair_index(seqpos+1,n_event);
+      outputIdx = Seq_event_pair_index(seqpos,n_event+1);
+
+      if (n_event == n_events) {
+	mat = accum_count (-INFINITY,
+			   matrix->fwdMatch[idx],
+			   matrix->matchEmitNo[seqpos],
+			   0.,
+			   matrix,
+			   &counts->nMatchEmitNo[state], NULL,
+			   NULL, NULL, NULL, NULL);   /* Match -> End (input) */
+      } else {  /* n_event < n_events */
+	mat = accum_count (-INFINITY,
+			   matrix->fwdMatch[idx],
+			   matrix->matchEmitDensity[outputIdx] + matrix->matchEmitYes[seqpos],
+			   matrix->backMatch[outputIdx],
+			   matrix,
+			   &counts->nMatchEmitYes[state], NULL,
+			   event,
+			   &counts->matchMoment0[state],
+			   &counts->matchMoment1[state],
+			   &counts->matchMoment2[state]);  /* Match -> Match (output) */
+      }
+
+      if (seqpos == seqlen) {
+	del = -INFINITY;
+      } else {
+	del = accum_count (-INFINITY,
+			   matrix->fwdDelete[idx],
+			   extendDeleteYes,
+			   matrix->backDelete[inputIdx],
+			   matrix,
+			   &counts->nExtendDeleteYes, NULL,
+			   NULL, NULL, NULL, NULL);   /* Delete -> Delete (input) */
+	mat = accum_count (mat,
+			   matrix->fwdMatch[idx],
+			   matrix->matchEmitNo[seqpos] + beginDeleteYes,
+			   matrix->backDelete[inputIdx],
+			   matrix,
+			   &counts->nMatchEmitNo[state],
+			   &counts->nBeginDeleteYes,
+			   NULL, NULL, NULL, NULL);  /* Match -> Delete (input) */
+	mat = accum_count (mat,
+			   matrix->fwdMatch[idx],
+			   matrix->matchEmitNo[seqpos] + beginDeleteNo,
+			   matrix->backMatch[inputIdx],
+			   matrix,
+			   &counts->nMatchEmitNo[state],
+			   &counts->nBeginDeleteNo,
+			   NULL, NULL, NULL, NULL);  /* Match -> Match (input) */
+      }
+
+      del = accum_count (del,
+			 matrix->fwdDelete[idx],
+			 extendDeleteNo,
+			 mat,
+			 matrix,
+			 &counts->nExtendDeleteNo, NULL,
+			 NULL, NULL, NULL, NULL);  /* Delete -> Match */
+    }
+  }
+
+  for (n_event = n_events; n_event >= 0; --n_event) {
+
+    matrix->backStart[n_event] = accum_count (-INFINITY,
+					      matrix->fwdStart[n_event],
+					      startEmitNo,
+					      matrix->backMatch[Seq_event_pair_index(order,n_event)],
+					      matrix,
+					      &counts->nStartEmitNo, NULL,
+					      NULL, NULL, NULL, NULL);   /* Start -> Match (input) */
+
+    if (n_event < n_events)
+      matrix->backStart[n_event] = accum_count (matrix->backStart[n_event],
+						matrix->fwdStart[n_event],
+						startEmitYes + matrix->startEmitDensity[n_event + 1],
+						matrix->backStart[n_event + 1],
+						matrix,
+						&counts->nStartEmitYes, NULL,
+						&matrix->events->event[n_event],
+						&counts->startMoment0,
+						&counts->startMoment1,
+						&counts->startMoment2);  /* Start -> Start (output) */
+  }
+}
+
+long double accum_count (long double back_src,
+			 long double fwd_src,
+			 long double trans,
+			 long double back_dest,
+			 Seq_event_pair_fb_matrix *matrix,
+			 long double *count1,
+			 long double *count2,
+			 Fast5_event *event,
+			 long double *moment0,
+			 long double *moment1,
+			 long double *moment2) {
+  long double weight;
+  weight = exp (fwd_src + trans + back_dest - matrix->fwdEnd);
+  *count1 += weight;
+  if (count2)
+    *count2 += weight;
+  if (event) {
+    *moment0 += weight * event->ticks;
+    *moment1 += weight * event->sumticks_cur;
+    *moment2 += weight * event->sumticks_cur_sq;
+  }
+  return log_sum_exp (back_src, trans + back_dest);
 }
 
 void optimize_seq_event_pair_model_for_counts (Seq_event_pair_model* matrix, Seq_event_pair_counts* counts, Seq_event_pair_counts* prior);
 
-void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seq, Fast5_event_array* events, double minimum_fractional_log_likelihood_increase);
+void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seq, Vector* event_arrays, double minimum_fractional_log_likelihood_increase);

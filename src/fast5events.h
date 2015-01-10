@@ -4,6 +4,8 @@
 #include <hdf5.h>
 #include <hdf5_hl.h>
 
+#include "vector.h"
+
 /* Default tick length.
    This is a crude hack to allow us to treat variable-length segments as a sequence of discrete current samples ("ticks").
    In practise it should be the lowest common denominator of the event lengths.
@@ -34,5 +36,11 @@ Fast5_event_array* alloc_fast5_event_array (int model_order, int n_events, doubl
 void delete_fast5_event_array (Fast5_event_array* ev);
 
 Fast5_event_array* read_fast5_event_array (const char* filename, double tick_length);
+
+/* read_fast5_directory(dirname,tick_length)
+   reads all files in the given directory with the given filename suffix
+   returns a Vector of Fast5_event_array*'s
+*/
+Vector* read_fast5_directory (const char* dirname, const char* suffix, double tick_length);
 
 #endif /* FAST5EVENTS_INCLUDED */
