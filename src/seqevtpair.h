@@ -67,23 +67,6 @@ void delete_seq_event_pair_counts (Seq_event_pair_counts* counts);
 void reset_seq_event_pair_counts (Seq_event_pair_counts* counts);
 void inc_seq_event_pair_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_event_array* events);
 
-/* accum_count(back_src,fwd_src,trans,back_dest,matrix,count,event,moment0,moment1,moment2)
-   increments *count1 and *count2 by weight = exp(fwd_src + trans + back_dest - matrix->fwdEnd)
-   also increments (moment0,moment1,moment2) by weight-ed event->(ticks,sumticks_cur,sumticks_cur_sq)
-   returns log_sum_exp(back_src,trans + back_dest)
- */
-long double accum_count (long double back_src,
-			 long double fwd_src,
-			 long double trans,
-			 long double back_dest,
-			 Seq_event_pair_fb_matrix *matrix,
-			 long double *count1,
-			 long double *count2,
-			 Fast5_event *event,
-			 long double *moment0,
-			 long double *moment1,
-			 long double *moment2);
-
 /* Single Baum-Welch iteration */
 
 void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* matrix, Seq_event_pair_counts* counts);

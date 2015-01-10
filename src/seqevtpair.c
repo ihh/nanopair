@@ -12,6 +12,23 @@ char token2base (int token);
 void encode_state_identifier (int state, int order, char* state_id);
 int decode_state_identifier (int order, char* state_id);
 
+/* accum_count(back_src,fwd_src,trans,back_dest,matrix,count,event,moment0,moment1,moment2)
+   increments *count1 and *count2 by (weight = exp(fwd_src + trans + back_dest - matrix->fwdEnd)) * event->ticks
+   also increments (moment0,moment1,moment2) by weight * event->(ticks,sumticks_cur,sumticks_cur_sq)
+   returns log_sum_exp(back_src,trans + back_dest)
+ */
+long double accum_count (long double back_src,
+			 long double fwd_src,
+			 long double trans,
+			 long double back_dest,
+			 Seq_event_pair_fb_matrix *matrix,
+			 long double *count1,
+			 long double *count2,
+			 Fast5_event *event,
+			 long double *moment0,
+			 long double *moment1,
+			 long double *moment2);
+
 Seq_event_pair_model* new_seq_event_pair_model (int order) {
   Seq_event_pair_model *model;
   model = SafeMalloc (sizeof (Seq_event_pair_model));
@@ -303,9 +320,13 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 
   /* fill forward */
   matrix->fwdStart[0] = 0.;
-  for (n_event = 1; n_event <= n_events; ++n_event)
+  for (n_event = 1; n_event <= n_events; ++n_event) {
+    event = &matrix->events->event[n_event - 1];
     matrix->fwdStart[n_event]
-      = matrix->fwdStart[n_event - 1] + startEmitYes + matrix->startEmitDensity[n_event];  /* Start -> Start (output) */
+      = matrix->fwdStart[n_event - 1]
+      + startEmitYes * event->ticks
+      + matrix->startEmitDensity[n_event];  /* Start -> Start (output) */
+  }
 
   matrix->fwdEnd = -INFINITY;
 
@@ -317,11 +338,13 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 
       mat = matrix->fwdStart[n_event] + startEmitNo;   /* Start -> Match (input) */
 
-      if (n_event > 0)
+      if (n_event > 0) {
+	event = &matrix->events->event[n_event - 1];
 	mat = log_sum_exp (mat,
 			   matrix->fwdMatch[outputIdx]
-			   + matrix->matchEmitDensity[idx]
-			   + matrix->matchEmitYes[seqpos]);     /* Match -> Match (output) */
+			   + matrix->matchEmitYes[seqpos] * event->ticks
+			   + matrix->matchEmitDensity[idx]);     /* Match -> Match (output) */
+      }
 
       if (seqpos == order) {
 	del = -INFINITY;
@@ -367,7 +390,8 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
       } else {  /* n_event < n_events */
 	mat = accum_count (-INFINITY,
 			   matrix->fwdMatch[idx],
-			   matrix->matchEmitDensity[outputIdx] + matrix->matchEmitYes[seqpos],
+			   matrix->matchEmitYes[seqpos] * event->ticks
+			   + matrix->matchEmitDensity[outputIdx],
 			   matrix->backMatch[outputIdx],
 			   matrix,
 			   &counts->nMatchEmitYes[state], NULL,
@@ -425,17 +449,20 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 					      &counts->nStartEmitNo, NULL,
 					      NULL, NULL, NULL, NULL);   /* Start -> Match (input) */
 
-    if (n_event < n_events)
+    if (n_event < n_events) {
+      event = &matrix->events->event[n_event];
       matrix->backStart[n_event] = accum_count (matrix->backStart[n_event],
 						matrix->fwdStart[n_event],
-						startEmitYes + matrix->startEmitDensity[n_event + 1],
+						startEmitYes * event->ticks
+						+ matrix->startEmitDensity[n_event + 1],
 						matrix->backStart[n_event + 1],
 						matrix,
 						&counts->nStartEmitYes, NULL,
-						&matrix->events->event[n_event],
+						event,
 						&counts->startMoment0,
 						&counts->startMoment1,
 						&counts->startMoment2);  /* Start -> Start (output) */
+    }
   }
 }
 
@@ -452,14 +479,15 @@ long double accum_count (long double back_src,
 			 long double *moment2) {
   long double weight;
   weight = exp (fwd_src + trans + back_dest - matrix->fwdEnd);
-  *count1 += weight;
-  if (count2)
-    *count2 += weight;
   if (event) {
     *moment0 += weight * event->ticks;
     *moment1 += weight * event->sumticks_cur;
     *moment2 += weight * event->sumticks_cur_sq;
+    weight *= event->ticks;
   }
+  *count1 += weight;
+  if (count2)
+    *count2 += weight;
   return log_sum_exp (back_src, trans + back_dest);
 }
 
