@@ -6,20 +6,6 @@
 #include <math.h>
 #include "util.h"
 
-int randomInt (int N) {
-  return (int) (randomDouble() * (double) N);
-}
-
-double randomDouble() {
-  return (double) rand() / ((double) RAND_MAX + 1.);   /* the +1 ensures that this function never returns 1 */
-}
-
-double randomExp() {
-  double r;
-  r = randomDouble();
-  return r > 0. ? -log(r) : 0.;
-}
-
 void Warn(char* warning, ...) {
   va_list argptr;
   va_start (argptr, warning);
@@ -173,4 +159,13 @@ unsigned int hexToUnsignedInt( const char *ca ) {
     else if (c >= 'a' && c <= 'f')
       ig = ig * 16LL + 10LL + (unsigned int) (c - 'a');
   return ig;
+}
+
+
+long double max_func (long double x, long double y) {
+  return MAX (x, y);
+}
+
+long double min_func (long double x, long double y) {
+  return MIN (x, y);
 }
