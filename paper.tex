@@ -197,9 +197,12 @@ Model \& inference algorithms.
 
 \begin{itemize}
 \item Order-$N$ transducer.
-\item Input: nucleotide alphabet $\Omega$
-\item Output: real numbers signifying current levels $\Re$
+\item Input alphabet: $\Omega = \{ A, C, G, T \}$ (nucleotides)
+\item Output alphabet: $\Re$ (real numbers signifying current levels)
 \item States: Start, Match${}_{x_1 \ldots x_N}$, Delete${}_{x_1 \ldots x_N}$, End
+\item Parameters:
+$p^{\paramlabel{StartEmit}}, p^{\paramlabel{BeginDelete}}, p^{\paramlabel{ExtendDelete}}, \mu^{\paramlabel{Start}},\tau^{\paramlabel{Start}},$ \\
+$\{ p^{\paramlabel{MatchEmit}}_{x_1\ldots x_N}, \mu^{\paramlabel{Match}}_{x_1\ldots x_N},\tau^{\paramlabel{Match}}_{x_1\ldots x_N} : x_1 \ldots x_N \in \Omega^N \}$
 \end{itemize}
 
 \noindent Transitions:
@@ -209,10 +212,12 @@ Model \& inference algorithms.
 \hline
 Source & Destination & Weight & Absorbs & Emits \\
 \hline
-Start & Start & $p^{\paramlabel{StartEmit}}$ & & $y_s \sim \paramlabel{Normal}(\mu^{\paramlabel{Start}},\tau^{\paramlabel{Start}})$ \\
+Start & Start & $p^{\paramlabel{StartEmit}}$ & & $y_s \sim \mbox{Normal}(\mu^{\paramlabel{Start}},\tau^{\paramlabel{Start}})$ \\
+& & $\times P(y_s|\mu^{\paramlabel{Start}},\tau^{\paramlabel{Start}})$ & & \\
 Start & Start & $1$ & $x \in \Omega$ & \\
 Start & Match${}_{x_1 \ldots x_N}$ & $1 - p^{\paramlabel{StartEmit}}$ & $x_1 \ldots x_N \in \Omega^N$ & \\
-Match${}_{x_1 \ldots x_N}$ & Match${}_{x_1 \ldots x_N}$ & ${p^{\paramlabel{MatchEmit}}_{x_1\ldots x_N}}$ & & $y_m \sim \paramlabel{Normal}(\mu^{\paramlabel{Match}}_{x_1\ldots x_N},\tau^{\paramlabel{Match}}_{x_1\ldots x_N})$ \\
+Match${}_{x_1 \ldots x_N}$ & Match${}_{x_1 \ldots x_N}$ & ${p^{\paramlabel{MatchEmit}}_{x_1\ldots x_N}}$ & & $y_m \sim \mbox{Normal}(\mu^{\paramlabel{Match}}_{x_1\ldots x_N},\tau^{\paramlabel{Match}}_{x_1\ldots x_N})$ \\
+& & $\times P(y_m|\mu^{\paramlabel{Match}}_{x_1\ldots x_N},\tau^{\paramlabel{Match}}_{x_1\ldots x_N})$ & & \\
 Match${}_{x_1 \ldots x_N}$ & Match${}_{x_2 \ldots x_{N+1}}$ & $(1 - {p^{\paramlabel{MatchEmit}}_{x_1\ldots x_N}})$ & $x_{N+1} \in \Omega$ & \\
 & & $\times (1 - p^{\paramlabel{BeginDelete}})$ & & \\
 Match${}_{x_1 \ldots x_N}$ & Delete${}_{x_2 \ldots x_{N+1}}$ & $(1 - {p^{\paramlabel{MatchEmit}}_{x_1\ldots x_N}})$ & $x_{N+1} \in \Omega$ & \\
