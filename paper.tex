@@ -191,6 +191,8 @@ Model \& inference algorithms.
 
 \subsection{Model}
 
+\includegraphics[width=\textwidth]{figs/Transducer.pdf}
+
 \begin{itemize}
 \item Order-$N$ transducer.
 \item Input: nucleotide
@@ -198,14 +200,16 @@ Model \& inference algorithms.
 \item States: Start, Match${}_{x_1 \ldots x_N}$, Delete${}_{x_1 \ldots x_N}$, End
 \item Transitions
 \begin{itemize}
-\item Start$\to$Start: weight $p^{\mbox{StartEmit}}$, emits current $y \sim \mbox{Normal}(\mu^{\mbox{Start}},\tau^{\mbox{Start}})$
-\item Start$\to$Match${}_{x_1 \ldots x_N}$: weight $1 - p^{\mbox{StartEmit}}$, absorbs $\geq N$ bases ending in $x_1 \ldots x_N$
-\item Match${}_{x_1 \ldots x_N}\to$Match${}_{x_1 \ldots x_N}$: weight ${p^{\mbox{MatchEmit}}_{x_1\ldots x_N}}$, emits current $y \sim \mbox{Normal}(\mu^{\mbox{Match}}_{x_1\ldots x_N},\tau^{\mbox{Match}}_{x_1\ldots x_N})$
-\item Match${}_{x_1 \ldots x_N}\to$Match${}_{x_2 \ldots x_{N+1}}$: weight $(1 - {p^{\mbox{MatchEmit}}_{x_1\ldots x_N}})(1 - p^{\mbox{BeginDelete}})$, absorbs 1 base $x_{N+1}$
-\item Match${}_{x_1 \ldots x_N}\to$Delete${}_{x_2 \ldots x_{N+1}}$: weight $(1 - {p^{\mbox{MatchEmit}}_{x_1\ldots x_N}}) p^{\mbox{BeginDelete}}$, absorbs 1 base $x_{N+1}$
-\item Match${}_{x_1 \ldots x_N}\to$End: weight $1 - {p^{\mbox{MatchEmit}}_{x_1\ldots x_N}}$, absorbs any string of bases
-\item Delete${}_{x_1 \ldots x_N}\to$Delete${}_{x_2 \ldots x_{N+1}}$: weight $p^{\mbox{ExtendDelete}}$, absorbs 1 base $x_{N+1}$
+\item Start$\to$Start: weight $p^{\mbox{StartEmit}}$, emits current $y_s \sim \mbox{Normal}(\mu^{\mbox{Start}},\tau^{\mbox{Start}})$
+\item Start$\to$Start: weight $1$, absorbs base $x$
+\item Start$\to$Match${}_{x_1 \ldots x_N}$: weight $1 - p^{\mbox{StartEmit}}$, absorbs $N$ bases $x_1 \ldots x_N$
+\item Match${}_{x_1 \ldots x_N}\to$Match${}_{x_1 \ldots x_N}$: weight ${p^{\mbox{MatchEmit}}_{x_1\ldots x_N}}$, emits current $y_m \sim \mbox{Normal}(\mu^{\mbox{Match}}_{x_1\ldots x_N},\tau^{\mbox{Match}}_{x_1\ldots x_N})$
+\item Match${}_{x_1 \ldots x_N}\to$Match${}_{x_2 \ldots x_{N+1}}$: weight $(1 - {p^{\mbox{MatchEmit}}_{x_1\ldots x_N}})(1 - p^{\mbox{BeginDelete}})$, absorbs base $x_{N+1}$
+\item Match${}_{x_1 \ldots x_N}\to$Delete${}_{x_2 \ldots x_{N+1}}$: weight $(1 - {p^{\mbox{MatchEmit}}_{x_1\ldots x_N}}) p^{\mbox{BeginDelete}}$, absorbs base $x_{N+1}$
+\item Match${}_{x_1 \ldots x_N}\to$End: weight $1 - {p^{\mbox{MatchEmit}}_{x_1\ldots x_N}}$
+\item Delete${}_{x_1 \ldots x_N}\to$Delete${}_{x_2 \ldots x_{N+1}}$: weight $p^{\mbox{ExtendDelete}}$, absorbs base $x_{N+1}$
 \item Delete${}_{x_1 \ldots x_N}\to$Match${}_{x_1 \ldots x_N}$: weight $1 - p^{\mbox{ExtendDelete}}$
+\item End$\to$End: weight 1, absorbs base $x$
 \end{itemize}
 \end{itemize}
 
