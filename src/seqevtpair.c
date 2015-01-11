@@ -370,10 +370,13 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
   }
 
   /* fill backward & accumulate counts */
-  for (seqpos = seqlen; seqpos >= order; --seqpos) {
-    state = matrix->state[seqpos];
-    for (n_event = n_events; n_event >= 0; --n_event) {
-      event = n_event < n_events ? &matrix->events->event[n_event] : NULL;
+  for (n_event = n_events; n_event >= 0; --n_event) {
+    event = n_event < n_events ? &matrix->events->event[n_event] : NULL;
+
+    matrix->backStart[n_event] = -INFINITY;
+
+    for (seqpos = seqlen; seqpos >= order; --seqpos) {
+      state = matrix->state[seqpos];
 
       idx = Seq_event_pair_index(seqpos,n_event);
       inputIdx = Seq_event_pair_index(seqpos+1,n_event);
@@ -436,21 +439,20 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 			 matrix,
 			 &counts->nExtendDeleteNo, NULL,
 			 NULL, NULL, NULL, NULL);  /* Delete -> Match */
+
+      matrix->backMatch[idx] = mat;
+      matrix->backDelete[idx] = del;
+
+      matrix->backStart[n_event] = accum_count (matrix->backStart[n_event],
+						matrix->fwdStart[n_event],
+						startEmitNo,
+						mat,
+						matrix,
+						&counts->nStartEmitNo, NULL,
+						NULL, NULL, NULL, NULL);   /* Start -> Match (input) */
     }
-  }
 
-  for (n_event = n_events; n_event >= 0; --n_event) {
-
-    matrix->backStart[n_event] = accum_count (-INFINITY,
-					      matrix->fwdStart[n_event],
-					      startEmitNo,
-					      matrix->backMatch[Seq_event_pair_index(order,n_event)],
-					      matrix,
-					      &counts->nStartEmitNo, NULL,
-					      NULL, NULL, NULL, NULL);   /* Start -> Match (input) */
-
-    if (n_event < n_events) {
-      event = &matrix->events->event[n_event];
+    if (n_event < n_events)
       matrix->backStart[n_event] = accum_count (matrix->backStart[n_event],
 						matrix->fwdStart[n_event],
 						startEmitYes * event->ticks
@@ -462,7 +464,6 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 						&counts->startMoment0,
 						&counts->startMoment1,
 						&counts->startMoment2);  /* Start -> Start (output) */
-    }
   }
 }
 

@@ -30,13 +30,15 @@ latex.zip: $(TEXFILES)
 .SECONDARY:
 
 
-HDF5 = /usr/local
+#HDF5 = /usr/local /usr/local/hdf5
+HDF5 = /usr/local/hdf5
+comma := ,
 
 TEST5 = ../../nanopore/loman/LomanLabz_PC_E.coli_MG1655_ONI_3058_1_ch101_file20_strand.fast5
 
 ifdef HDF5
-CPPFLAGS += -I${HDF5}/include -W -Wall -Wno-unused-function -Wno-unused-parameter -std=c99
-LDFLAGS += -L${HDF5}/lib -Wl,-rpath -Wl,${HDF5}/lib -lz
+CPPFLAGS += $(addprefix -I,$(addsuffix /include,${HDF5})) -W -Wall -Wno-unused-function -Wno-unused-parameter -std=c99
+LDFLAGS += $(addprefix -L,$(addsuffix /lib,${HDF5})) -Wl,-rpath $(addprefix -Wl${comma},$(addsuffix /lib,${HDF5})) -lz
 endif
 
 LIBS += -lhdf5_hl -lhdf5
