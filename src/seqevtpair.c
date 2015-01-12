@@ -1,10 +1,18 @@
 #include <math.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "seqevtpair.h"
 #include "xmlutil.h"
 #include "xmlkeywords.h"
 #include "kseqcontainer.h"
+
+static const double log_sqrt2pi = 1.83787706640935;
+
+static const char* unknown_seqname = "UnknownSequence";
+static const char* gff3_source = "nanopair";
+static const char* gff3_feature = "Match";
+static const char* gff3_gap_attribute = "Gap";
 
 int base2token (char base);
 char token2base (int token);
@@ -28,6 +36,8 @@ long double accum_count (long double back_src,
 			 long double *moment0,
 			 long double *moment1,
 			 long double *moment2);
+
+void update_max (long double *current_max, int* current_max_idx, long double candidate_max, int candidate_max_idx);
 
 Seq_event_pair_model* new_seq_event_pair_model (int order) {
   Seq_event_pair_model *model;
@@ -316,7 +326,6 @@ void inc_seq_event_pair_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_
   /* MORE TO GO HERE ... pending inspection of basecalled FAST5 data */
 }
 
-static const double log_sqrt2pi = 1.83787706640935;
 double log_gaussian_density (double x, double mean, double precision, double log_precision) {
   double xz;
   xz = x - mean;
@@ -536,30 +545,76 @@ void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seq,
   /* MORE TO GO HERE */
 }
 
-Seq_event_pair_alignment* new_seq_event_pair_alignment (Fast5_event_array *events, char *seq, int first_seqpos, int seqpos_len) {
-  /* MORE TO GO HERE */
-  return NULL;
+Seq_event_pair_alignment* new_seq_event_pair_alignment (Fast5_event_array *events, char *seq, int seqlen) {
+  Seq_event_pair_alignment* align;
+  align = SafeMalloc (sizeof (Seq_event_pair_alignment));
+  align->events = events;
+  align->seqname = unknown_seqname;
+  align->seq = seq;
+  align->seqlen = seqlen;
+  align->events_at_pos = NULL;
+  align->start_seqpos = 0;
+  align->end_seqpos = 0;
+  align->start_n_event = events->n_events;
+  return align;
 }
 
 void delete_seq_event_pair_alignment (Seq_event_pair_alignment* align) {
-  /* MORE TO GO HERE */
+  SafeFreeOrNull (align->events_at_pos);
+  SafeFree (align);
 }
 
 void write_seq_event_pair_alignment_as_gff_cigar (Seq_event_pair_alignment* align, FILE* out) {
-  /* MORE TO GO HERE */
+  int n, deleted;
+  fprintf (out, "%s\t%s\t%s\t%d\t%d\t.\t.\t.\t%s=", align->seqname, gff3_source, gff3_feature, align->start_seqpos + 1, align->end_seqpos, gff3_gap_attribute);
+  if (align->start_n_event > 0)
+    fprintf (out, "I%d ", align->start_n_event);
+  deleted = 0;
+  for (n = 0; n < align->end_seqpos - align->start_seqpos; ++n) {
+    ++deleted;
+    if (align->events_at_pos[n] > 0) {
+      fprintf (out, "D%d I%d ", deleted, align->events_at_pos[n]);
+      deleted = 0;
+    }
+  }
+  if (deleted)
+    fprintf (out, "D%d ", deleted);
+  fprintf (out, "\n");
 }
-
 
 Seq_event_pair_viterbi_matrix* new_seq_event_pair_viterbi_matrix (Seq_event_pair_model* model, int seqlen, char *seq, Fast5_event_array* events) {
-  /* MORE TO GO HERE */
-  return NULL;
+  Seq_event_pair_viterbi_matrix* mx;
+  int n_events, matrix_cells;
+
+  mx = SafeMalloc (sizeof (Seq_event_pair_viterbi_matrix));
+  mx->data = new_seq_event_pair_data (model, seqlen, seq, events);
+
+  n_events = mx->data->events->n_events;
+  matrix_cells = mx->data->matrix_cells;
+
+  mx->vitStart = SafeMalloc ((n_events + 1) * sizeof(long double));
+  mx->vitMatch = SafeMalloc (matrix_cells * sizeof(long double));
+  mx->vitDelete = SafeMalloc (matrix_cells * sizeof(long double));
+
+  return mx;
 }
 
-void delete_seq_event_pair_viterbi_matrix (Seq_event_pair_viterbi_matrix* matrix) {
-  /* MORE TO GO HERE */
+void delete_seq_event_pair_viterbi_matrix (Seq_event_pair_viterbi_matrix* mx) {
+  SafeFree (mx->vitStart);
+  SafeFree (mx->vitMatch);
+  SafeFree (mx->vitDelete);
+  SafeFree (mx->data);
+  SafeFree (mx);
 }
 
-Seq_event_pair_alignment* fill_seq_event_pair_viterbi_matrix_and_get_trace (Seq_event_pair_viterbi_matrix* matrix) {
+void update_max (long double *current_max, int *current_max_idx, long double candidate_max, int candidate_max_idx) {
+  if (candidate_max > *current_max) {
+    *current_max = candidate_max;
+    *current_max_idx = candidate_max_idx;
+  }
+}
+
+void fill_seq_event_pair_viterbi_matrix (Seq_event_pair_viterbi_matrix* matrix) {
   Seq_event_pair_model* model;
   Seq_event_pair_data* data;
   int seqlen, n_events, order, seqpos, n_event;
@@ -626,7 +681,153 @@ Seq_event_pair_alignment* fill_seq_event_pair_viterbi_matrix_and_get_trace (Seq_
       (matrix->vitEnd,
        matrix->vitMatch[Seq_event_pair_index(seqpos,n_events)] + data->matchEmitNo[seqpos]);  /* Match -> End (input) */
   }
+}
 
-  /* MORE TO GO HERE */
-  return NULL;
+Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event_pair_viterbi_matrix* matrix) {
+  Seq_event_pair_model* model;
+  Seq_event_pair_data* data;
+  int seqlen, n_events, order, seqpos, n_event, end_seqpos, start_seqpos, start_n_event, zero, n, k;
+  long double loglike;
+  int idx, inputIdx, outputIdx;
+  Fast5_event* event;
+  enum { None, StartMatchIn, MatchMatchOut, MatchMatchIn, MatchDeleteIn, DeleteDeleteIn, DeleteMatch } trans;
+  enum { Start, Match, Delete } state;
+  Vector *events_emitted;
+  Seq_event_pair_alignment *align;
+
+  data = matrix->data;
+  seqlen = data->seqlen;
+  n_events = data->events->n_events;
+  model = data->model;
+  order = model->order;
+
+  zero = 0;
+
+  /* traceback from End state */
+  end_seqpos = -1;
+  loglike = -INFINITY;
+  for (seqpos = seqlen; seqpos >= order; --seqpos)
+    update_max (&loglike,
+		&end_seqpos,
+		matrix->vitMatch[Seq_event_pair_index(seqpos,n_events)] + data->matchEmitNo[seqpos],
+		seqpos);
+  Assert (end_seqpos >= 0, "Traceback failed");
+
+  seqpos = end_seqpos;
+  n_event = n_events;
+  state = Match;
+
+  events_emitted = newVector (IntCopy, IntDelete, IntPrint);
+  VectorPushBack (events_emitted, &zero);
+
+  while (state != Start) {
+    idx = Seq_event_pair_index(seqpos,n_event);
+    inputIdx = Seq_event_pair_index(seqpos-1,n_event);
+    outputIdx = Seq_event_pair_index(seqpos,n_event-1);
+
+    event = n_event > 0 ? &data->events->event[n_event - 1] : NULL;
+
+    loglike = -INFINITY;
+    trans = None;
+
+    switch (state) {
+    case Match:
+      update_max (&loglike,
+		  (int*) &trans,
+		  matrix->vitStart[n_event] + data->startEmitNo,
+		  StartMatchIn);   /* Start -> Match (input) */      
+
+      if (n_event > 0)
+	update_max (&loglike,
+		    (int*) &trans,
+		    matrix->vitMatch[outputIdx]
+		    + data->matchEmitYes[seqpos] * event->ticks
+		    + data->matchEmitDensity[idx],
+		    MatchMatchOut);    /* Match -> Match (output) */
+
+      if (seqpos > order) {
+	update_max (&loglike,
+		    (int*) &trans,
+		    matrix->vitMatch[inputIdx] + data->matchEmitNo[seqpos-1] + data->beginDeleteNo,
+		    MatchMatchIn);    /* Match -> Match (input) */
+
+	update_max (&loglike,
+		    (int*) &trans,
+		    matrix->vitDelete[idx] + data->extendDeleteNo,
+		    DeleteMatch);    /* Delete -> Match */
+      }
+      break;
+
+    case Delete:
+	update_max (&loglike,
+		    (int*) &trans,
+		    matrix->vitMatch[inputIdx] + data->matchEmitNo[seqpos-1] + data->beginDeleteYes,
+		    MatchDeleteIn);   /* Match -> Delete (input) */
+
+	update_max (&loglike,
+		    (int*) &trans,
+		    matrix->vitDelete[inputIdx] + data->extendDeleteYes,
+		    DeleteDeleteIn);   /* Delete -> Delete (input) */
+
+	break;
+
+    default:
+      Abort ("Unknown traceback state");
+      break;
+    }
+
+    switch (trans) {
+
+    case StartMatchIn:
+      state = Start;
+      start_n_event = n_event;
+      start_seqpos = seqpos;
+      break;
+
+    case MatchMatchOut:
+      state = Match;  /* which it already is */
+      --n_event;
+      ++*((int*) VectorBack (events_emitted));
+      break;
+
+    case MatchMatchIn:
+      state = Match;  /* which it already is */
+      --seqpos;
+      VectorPushBack (events_emitted, &zero);
+      break;
+
+    case MatchDeleteIn:
+      state = Match;
+      --seqpos;
+      VectorPushBack (events_emitted, &zero);
+      break;
+
+    case DeleteDeleteIn:
+      state = Delete;  /* which it already is */
+      --seqpos;
+      VectorPushBack (events_emitted, &zero);
+      break;
+
+    case DeleteMatch:
+      state = Delete;
+      break;
+
+    case None:
+    default:
+      Abort ("Unknown traceback transition");
+      break;
+    }
+  }
+
+  align = new_seq_event_pair_alignment (data->events, data->seq, seqlen);
+  align->start_seqpos = start_seqpos;
+  align->end_seqpos = end_seqpos;
+  align->start_n_event = start_n_event;
+  align->events_at_pos = SafeMalloc (VectorSize(events_emitted) * sizeof(int));
+  for (n = VectorSize(events_emitted) - 1, k = 0; n >= 0; --n, ++k)
+    align->events_at_pos[k] = *((int*) VectorGet (events_emitted, n));
+
+  deleteVector (events_emitted);
+
+  return align;
 }

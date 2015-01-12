@@ -97,12 +97,14 @@ void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seq,
 
 typedef struct Seq_event_pair_alignment {
   Fast5_event_array *events;  /* not owned */
-  char *seqname, *seq;  /* not owned */
-  int *n_events_at_pos;  /* owned */
-  int first_seqpos, seqpos_len, n_first_event;
+  const char *seqname, *seq;  /* not owned */
+  int *events_at_pos;  /* owned. NB: events_at_pos[n] refers to seq[start_seqpos + n] */
+  /* end_seqpos = index of last aligned character + 1
+     thus, number of aligned bases = end_seqpos - start_seqpos */
+  int seqlen, start_seqpos, end_seqpos, start_n_event;
 } Seq_event_pair_alignment;
 
-Seq_event_pair_alignment* new_seq_event_pair_alignment (Fast5_event_array *events, char *seq, int first_seqpos, int seqpos_len);
+Seq_event_pair_alignment* new_seq_event_pair_alignment (Fast5_event_array *events, char *seq, int seqlen);
 void delete_seq_event_pair_alignment (Seq_event_pair_alignment* align);
 
 void write_seq_event_pair_alignment_as_gff_cigar (Seq_event_pair_alignment* align, FILE* out);
@@ -119,6 +121,7 @@ typedef struct Seq_event_pair_viterbi_matrix {
 Seq_event_pair_viterbi_matrix* new_seq_event_pair_viterbi_matrix (Seq_event_pair_model* model, int seqlen, char *seq, Fast5_event_array* events);  /* allocates only, does not fill */
 void delete_seq_event_pair_viterbi_matrix (Seq_event_pair_viterbi_matrix* matrix);
 
-Seq_event_pair_alignment* fill_seq_event_pair_viterbi_matrix_and_get_trace (Seq_event_pair_viterbi_matrix* matrix);
+void fill_seq_event_pair_viterbi_matrix (Seq_event_pair_viterbi_matrix* matrix);
+Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event_pair_viterbi_matrix* matrix);
 
 #endif /* SEQEVTPAIR_INCLUDED */
