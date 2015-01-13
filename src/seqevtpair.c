@@ -323,7 +323,29 @@ void reset_seq_event_pair_counts (Seq_event_pair_counts* counts) {
 }
 
 void inc_seq_event_pair_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_event_array* events) {
-  /* MORE TO GO HERE ... pending inspection of basecalled FAST5 data */
+  int n_event, moves, new_moves, state;
+  Fast5_event *event;
+  moves = 0;
+  for (n_event = 0; n_event < events->n_events; ++n_event) {
+    event = &events->event[n_event];
+    new_moves = moves + event->move;
+    if (new_moves < counts->order) {
+      counts->nStartEmitYes += 1.;
+      counts->startMoment0 += event->ticks;
+      counts->startMoment1 += event->sumticks_cur;
+      counts->startMoment2 += event->sumticks_cur_sq;
+    } else {
+      state = decode_state_identifier (counts->order, event->model_state);
+      if (moves < counts->order)
+	counts->nStartEmitNo += 1.;
+      counts->nMatchEmitNo[state] += event->move;
+      counts->nMatchEmitYes[state] += event->ticks;
+      counts->matchMoment0[state] += event->ticks;
+      counts->matchMoment1[state] += event->sumticks_cur;
+      counts->matchMoment2[state] += event->sumticks_cur_sq;
+    }
+    moves = new_moves;
+  }
 }
 
 double log_gaussian_density (double x, double mean, double precision, double log_precision) {

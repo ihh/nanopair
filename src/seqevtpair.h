@@ -82,7 +82,7 @@ Seq_event_pair_counts* new_seq_event_pair_counts (Seq_event_pair_model* model);
 void delete_seq_event_pair_counts (Seq_event_pair_counts* counts);
 
 void reset_seq_event_pair_counts (Seq_event_pair_counts* counts);
-void inc_seq_event_pair_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_event_array* events);
+void inc_seq_event_pair_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_event_array* events);  /* NB does not touch delete counts */
 
 /* Single Baum-Welch iteration */
 
