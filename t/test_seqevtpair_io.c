@@ -24,7 +24,8 @@ const char* xmlIn = "<?xml version=\"1.0\"?>\n"
 "<state><id>TG</id><emit>0.26</emit><mean>61</mean><precision>72</precision></state>"
 "<state><id>TT</id><emit>0.27</emit><mean>71</mean><precision>82</precision></state>"
 "</states>"
-"<start><emit>0.28</emit><mean>72</mean><precision>88</precision></start>"
+"<start><emit>0.28</emit></start>"
+"<null><emit>0.33</emit><mean>72</mean><precision>88</precision></null>"
 "</model>\n";
 
 int main(int argc, char * argv[])

@@ -12,7 +12,8 @@ typedef struct Seq_event_pair_model {
   double pBeginDelete, pExtendDelete;
   int order, states;
   double *matchMean, *matchPrecision;
-  double pStartEmit, startMean, startPrecision;
+  double pStartEmit;
+  double pNullEmit, nullMean, nullPrecision;
 } Seq_event_pair_model;
 
 Seq_event_pair_model* new_seq_event_pair_model (int order);
@@ -32,10 +33,13 @@ typedef struct Seq_event_pair_data {
   Fast5_event_array* events;  /* not owned */
   int *state;  /* owned */
   /* precalculated emit & transition scores */
-  long double *startEmitDensity, *matchEmitDensity, *matchEmitYes, *matchEmitNo;
+  long double *nullEmitDensity, *matchEmitDensity, *matchEmitYes, *matchEmitNo;
+  long double nullEmitYes, nullEmitNo;
   long double startEmitYes, startEmitNo;
   long double beginDeleteYes, beginDeleteNo;
   long double extendDeleteYes, extendDeleteNo;
+  /* null model log-likelihood */
+  long double nullModel;
 } Seq_event_pair_data;
 
 Seq_event_pair_data* new_seq_event_pair_data (Seq_event_pair_model* model, int seqlen, char *seq, Fast5_event_array* events);  /* allocates only, does not fill */
@@ -70,12 +74,13 @@ long double log_sum_exp (long double a, long double b);  /* returns log(exp(a) +
 
 typedef struct Seq_event_pair_counts {
   long double nStartEmitYes, nStartEmitNo;
+  long double nNullEmitYes, nNullEmitNo;
   long double *nMatchEmitYes, *nMatchEmitNo;
   long double nBeginDeleteYes, nBeginDeleteNo;
   long double nExtendDeleteYes, nExtendDeleteNo;
   int order, states;
   long double *matchMoment0, *matchMoment1, *matchMoment2;
-  long double startMoment0, startMoment1, startMoment2;
+  long double nullMoment0, nullMoment1, nullMoment2;
 } Seq_event_pair_counts;
 
 Seq_event_pair_counts* new_seq_event_pair_counts (Seq_event_pair_model* model);
@@ -91,7 +96,7 @@ void optimize_seq_event_pair_model_for_counts (Seq_event_pair_model* model, Seq_
 
 /* Full Baum-Welch wrapper */
 
-void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seq, Vector* event_arrays, double minimum_fractional_log_likelihood_increase);
+void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seq, Vector* event_arrays);
 
 /* Alignment */
 

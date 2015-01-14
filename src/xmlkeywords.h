@@ -13,5 +13,6 @@
 #define XMLNP_MEAN      "mean"
 #define XMLNP_PRECISION "precision"
 #define XMLNP_START     "start"
+#define XMLNP_NULLMODEL "null"
 
 #endif /* XMLKEYWORDS_INCLUDED */
