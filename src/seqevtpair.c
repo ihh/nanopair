@@ -14,6 +14,9 @@ static const char* gff3_source = "nanopair";
 static const char* gff3_feature = "Match";
 static const char* gff3_gap_attribute = "Gap";
 
+const double seq_evt_pair_EM_max_iterations = 0.0001;
+const double seq_evt_pair_EM_min_fractional_loglike_increment = 0.0001;
+
 int base2token (char base);
 char token2base (int token);
 
@@ -559,12 +562,26 @@ long double accum_count (long double back_src,
   return log_sum_exp (back_src, trans + back_dest);
 }
 
-void optimize_seq_event_pair_model_for_counts (Seq_event_pair_model* matrix, Seq_event_pair_counts* counts, Seq_event_pair_counts* prior) {
-  /* MORE TO GO HERE */
+void optimize_seq_event_pair_model_for_counts (Seq_event_pair_model* model, Seq_event_pair_counts* counts, Seq_event_pair_counts* prior) {
+  int state;
+  for (state = 0; state < model->states; ++state) {
+    model->pMatchEmit[state] = (counts->nMatchEmitYes[state] + prior->nMatchEmitYes[state]) / (counts->nMatchEmitYes[state] + prior->nMatchEmitYes[state] + counts->nMatchEmitNo[state] + prior->nMatchEmitNo[state]);
+    model->matchMean[state] = (counts->matchMoment1[state] + prior->matchMoment1[state]) / (counts->matchMoment0[state] + prior->matchMoment0[state]);
+    model->matchPrecision[state] = 1. / (model->matchMean[state] * model->matchMean[state] - (counts->matchMoment2[state] + prior->matchMoment2[state]) / (counts->matchMoment0[state] + prior->matchMoment0[state]));
+  }
+  model->pBeginDelete = (counts->nBeginDeleteYes[state] + prior->nBeginDeleteYes[state]) / (counts->nBeginDeleteYes[state] + prior->nBeginDeleteYes[state] + counts->nBeginDeleteNo[state] + prior->nBeginDeleteNo[state]);
+  model->pExtendDelete = (counts->nExtendDeleteYes[state] + prior->nExtendDeleteYes[state]) / (counts->nExtendDeleteYes[state] + prior->nExtendDeleteYes[state] + counts->nExtendDeleteNo[state] + prior->nExtendDeleteNo[state]);
+  model->pStartEmit = (counts->nStartEmitYes + prior->nStartEmitYes) / (counts->nStartEmitYes + prior->nStartEmitYes + counts->nStartEmitNo + prior->nStartEmitNo);
+  model->startMean = (counts->startMoment1 + prior->startMoment1) / (counts->startMoment0 + prior->startMoment0);      /* TODO: replace by null model, do not fit here */
+  model->startPrecision = 1. / (model->startMean * model->startMean - (counts->startMoment2 + prior->startMoment2) / (counts->startMoment0 + prior->startMoment0));      /* TODO: replace by null model, do not fit here */
 }
 
 void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seq, Vector* event_arrays, double minimum_fractional_log_likelihood_increase) {
-  /* MORE TO GO HERE */
+  int iter;
+  for (iter = 0; iter < seq_evt_pair_EM_max_iterations; ++iter) {
+    /* MORE TO GO HERE */
+    /* seq_evt_pair_EM_min_fractional_loglike_increment */
+  }
 }
 
 Seq_event_pair_alignment* new_seq_event_pair_alignment (Fast5_event_array *events, char *seq, int seqlen) {
