@@ -550,10 +550,13 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 						&counts->nStartEmitYes, NULL,
 						NULL, NULL, NULL, NULL);  /* Start -> Start (output) */
   }
+}
 
-  /* update null model */
-  for (n_event = 1; n_event <= n_events; ++n_event) {
-    event = &data->events->event[n_event - 1];
+void inc_seq_event_null_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_event_array* events) {
+  Fast5_event* event;
+  int n_event;
+  for (n_event = 1; n_event <= events->n_events; ++n_event) {
+    event = &events->event[n_event - 1];
     counts->nullMoment0 += event->ticks;
     counts->nullMoment1 += event->sumticks_cur;
     counts->nullMoment2 += event->sumticks_cur_sq;
@@ -588,6 +591,12 @@ long double accum_count (long double back_src,
   return log_sum_exp (back_src, trans + back_dest);
 }
 
+void optimize_seq_event_null_model_for_counts (Seq_event_pair_model* model, Seq_event_pair_counts* counts, Seq_event_pair_counts* prior) {
+  model->pNullEmit = (counts->nNullEmitYes + prior->nNullEmitYes) / (counts->nNullEmitYes + prior->nNullEmitYes + counts->nNullEmitNo + prior->nNullEmitNo);
+  model->nullMean = (counts->nullMoment1 + prior->nullMoment1) / (counts->nullMoment0 + prior->nullMoment0);
+  model->nullPrecision = 1. / (model->nullMean * model->nullMean - (counts->nullMoment2 + prior->nullMoment2) / (counts->nullMoment0 + prior->nullMoment0));
+}
+
 void optimize_seq_event_pair_model_for_counts (Seq_event_pair_model* model, Seq_event_pair_counts* counts, Seq_event_pair_counts* prior) {
   int state;
   for (state = 0; state < model->states; ++state) {
@@ -598,9 +607,6 @@ void optimize_seq_event_pair_model_for_counts (Seq_event_pair_model* model, Seq_
   model->pBeginDelete = (counts->nBeginDeleteYes[state] + prior->nBeginDeleteYes[state]) / (counts->nBeginDeleteYes[state] + prior->nBeginDeleteYes[state] + counts->nBeginDeleteNo[state] + prior->nBeginDeleteNo[state]);
   model->pExtendDelete = (counts->nExtendDeleteYes[state] + prior->nExtendDeleteYes[state]) / (counts->nExtendDeleteYes[state] + prior->nExtendDeleteYes[state] + counts->nExtendDeleteNo[state] + prior->nExtendDeleteNo[state]);
   model->pStartEmit = (counts->nStartEmitYes + prior->nStartEmitYes) / (counts->nStartEmitYes + prior->nStartEmitYes + counts->nStartEmitNo + prior->nStartEmitNo);
-  model->pNullEmit = (counts->nNullEmitYes + prior->nNullEmitYes) / (counts->nNullEmitYes + prior->nNullEmitYes + counts->nNullEmitNo + prior->nNullEmitNo);
-  model->nullMean = (counts->nullMoment1 + prior->nullMoment1) / (counts->nullMoment0 + prior->nullMoment0);
-  model->nullPrecision = 1. / (model->nullMean * model->nullMean - (counts->nullMoment2 + prior->nullMoment2) / (counts->nullMoment0 + prior->nullMoment0));
 }
 
 void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seq, Vector* event_arrays) {
