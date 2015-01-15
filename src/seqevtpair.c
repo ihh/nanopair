@@ -319,6 +319,14 @@ void delete_seq_event_pair_counts (Seq_event_pair_counts* counts) {
   SafeFree (counts);
 }
 
+void reset_seq_event_null_counts (Seq_event_pair_counts* counts) {
+  counts->nNullEmitYes = 0;
+  counts->nNullEmitNo = 0;
+  counts->nullMoment0 = 0;
+  counts->nullMoment1 = 0;
+  counts->nullMoment2 = 0;
+}
+
 void reset_seq_event_pair_counts (Seq_event_pair_counts* counts) {
   int state;
   for (state = 0; state < counts->states; ++state) {
@@ -334,11 +342,36 @@ void reset_seq_event_pair_counts (Seq_event_pair_counts* counts) {
   counts->nBeginDeleteNo = 0;
   counts->nExtendDeleteYes = 0;
   counts->nExtendDeleteNo = 0;
-  counts->nNullEmitYes = 0;
-  counts->nNullEmitNo = 0;
-  counts->nullMoment0 = 0;
-  counts->nullMoment1 = 0;
-  counts->nullMoment2 = 0;
+}
+
+Seq_event_pair_counts* new_seq_event_pair_counts_minimal_prior (Seq_event_pair_model* model) {
+  Seq_event_pair_counts* counts;
+  int state;
+
+  counts = new_seq_event_pair_counts (model);
+  reset_seq_event_null_counts (counts);
+  reset_seq_event_pair_counts (counts);
+
+  for (state = 0; state < counts->states; ++state) {
+    counts->nMatchEmitYes[state] += 1.;
+    counts->nMatchEmitNo[state] += 1.;
+    counts->matchMoment0[state] += 1.;
+    counts->matchMoment1[state] += 1.;
+    counts->matchMoment2[state] += 1.;
+  }
+  counts->nStartEmitYes += 1.;
+  counts->nStartEmitNo += 1.;
+  counts->nBeginDeleteYes += 1.;
+  counts->nBeginDeleteNo += 1.;
+  counts->nExtendDeleteYes += 1.;
+  counts->nExtendDeleteNo += 1.;
+  counts->nNullEmitYes += 1.;
+  counts->nNullEmitNo += 1.;
+  /* counts->nullMoment0 is untouched */
+  counts->nullMoment1 += 1.;
+  counts->nullMoment2 += 1.;
+
+  return counts;
 }
 
 void inc_seq_event_pair_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_event_array* events) {
@@ -561,7 +594,7 @@ void inc_seq_event_null_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_
     counts->nullMoment1 += event->sumticks_cur;
     counts->nullMoment2 += event->sumticks_cur_sq;
   }
-  counts->nNullEmitYes += n_events;
+  counts->nNullEmitYes += events->n_events;
   counts->nNullEmitNo += 1.;
 }
 
@@ -584,42 +617,104 @@ long double accum_count (long double back_src,
     *moment2 += weight * event->sumticks_cur_sq;
     weight *= event->ticks;
   }
-  if (count1)
-    *count1 += weight;
+  *count1 += weight;
   if (count2)
     *count2 += weight;
   return log_sum_exp (back_src, trans + back_dest);
 }
 
 void optimize_seq_event_null_model_for_counts (Seq_event_pair_model* model, Seq_event_pair_counts* counts, Seq_event_pair_counts* prior) {
+  Seq_event_pair_counts* dummy_prior;
+
+  if (prior == NULL) {
+    dummy_prior = new_seq_event_pair_counts (model);
+    reset_seq_event_pair_counts (dummy_prior);
+    prior = dummy_prior;
+  } else
+    dummy_prior = NULL;
+
   model->pNullEmit = (counts->nNullEmitYes + prior->nNullEmitYes) / (counts->nNullEmitYes + prior->nNullEmitYes + counts->nNullEmitNo + prior->nNullEmitNo);
   model->nullMean = (counts->nullMoment1 + prior->nullMoment1) / (counts->nullMoment0 + prior->nullMoment0);
   model->nullPrecision = 1. / (model->nullMean * model->nullMean - (counts->nullMoment2 + prior->nullMoment2) / (counts->nullMoment0 + prior->nullMoment0));
+
+  if (dummy_prior != NULL)
+    delete_seq_event_pair_counts (dummy_prior);
 }
 
 void optimize_seq_event_pair_model_for_counts (Seq_event_pair_model* model, Seq_event_pair_counts* counts, Seq_event_pair_counts* prior) {
   int state;
+  Seq_event_pair_counts* dummy_prior;
+
+  if (prior == NULL) {
+    dummy_prior = new_seq_event_pair_counts (model);
+    reset_seq_event_pair_counts (dummy_prior);
+    prior = dummy_prior;
+  } else
+    dummy_prior = NULL;
+
   for (state = 0; state < model->states; ++state) {
     model->pMatchEmit[state] = (counts->nMatchEmitYes[state] + prior->nMatchEmitYes[state]) / (counts->nMatchEmitYes[state] + prior->nMatchEmitYes[state] + counts->nMatchEmitNo[state] + prior->nMatchEmitNo[state]);
     model->matchMean[state] = (counts->matchMoment1[state] + prior->matchMoment1[state]) / (counts->matchMoment0[state] + prior->matchMoment0[state]);
     model->matchPrecision[state] = 1. / (model->matchMean[state] * model->matchMean[state] - (counts->matchMoment2[state] + prior->matchMoment2[state]) / (counts->matchMoment0[state] + prior->matchMoment0[state]));
   }
-  model->pBeginDelete = (counts->nBeginDeleteYes[state] + prior->nBeginDeleteYes[state]) / (counts->nBeginDeleteYes[state] + prior->nBeginDeleteYes[state] + counts->nBeginDeleteNo[state] + prior->nBeginDeleteNo[state]);
-  model->pExtendDelete = (counts->nExtendDeleteYes[state] + prior->nExtendDeleteYes[state]) / (counts->nExtendDeleteYes[state] + prior->nExtendDeleteYes[state] + counts->nExtendDeleteNo[state] + prior->nExtendDeleteNo[state]);
+  model->pBeginDelete = (counts->nBeginDeleteYes + prior->nBeginDeleteYes) / (counts->nBeginDeleteYes + prior->nBeginDeleteYes + counts->nBeginDeleteNo + prior->nBeginDeleteNo);
+  model->pExtendDelete = (counts->nExtendDeleteYes + prior->nExtendDeleteYes) / (counts->nExtendDeleteYes + prior->nExtendDeleteYes + counts->nExtendDeleteNo + prior->nExtendDeleteNo);
   model->pStartEmit = (counts->nStartEmitYes + prior->nStartEmitYes) / (counts->nStartEmitYes + prior->nStartEmitYes + counts->nStartEmitNo + prior->nStartEmitNo);
+
+  if (dummy_prior != NULL)
+    delete_seq_event_pair_counts (dummy_prior);
 }
 
-void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seq, Vector* event_arrays) {
-  int iter;
+long double inc_seq_event_pair_counts_via_fb (Seq_event_pair_model* model, Seq_event_pair_counts* counts, int seqlen, char *seq, Fast5_event_array* events) {
+  Seq_event_pair_fb_matrix* matrix;
+  long double fwdEnd, nullModel;
+  matrix = new_seq_event_pair_fb_matrix (model, seqlen, seq, events);
+  fill_seq_event_pair_fb_matrix_and_inc_counts (matrix, counts);
+  fwdEnd = matrix->fwdEnd;
+  nullModel = matrix->data->nullModel;
+  delete_seq_event_pair_fb_matrix (matrix);
+  return fwdEnd - nullModel;
+}
+
+void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs, Vector* event_arrays) {
+  int iter, n_seq;
   long double loglike, prev_loglike;
+  void **events_iter;
+  Fast5_event_array *events;
+  Seq_event_pair_counts *counts, *prior;
+
+  prior = new_seq_event_pair_counts_minimal_prior (model);
+  counts = new_seq_event_pair_counts (model);
+
+  reset_seq_event_null_counts (counts);
+  reset_seq_event_pair_counts (counts);
+  for (events_iter = event_arrays->begin; events_iter != event_arrays->end; ++events_iter) {
+    events = (Fast5_event_array*) *events_iter;
+    inc_seq_event_null_counts_from_fast5 (counts, events);
+    inc_seq_event_pair_counts_from_fast5 (counts, events);
+  }
+  optimize_seq_event_null_model_for_counts (model, counts, prior);
+  optimize_seq_event_pair_model_for_counts (model, counts, prior);
+
   for (iter = 0; iter < seq_evt_pair_EM_max_iterations; ++iter) {
     loglike = 0.;
-    /* MORE TO GO HERE: loop through event_arrays */
+    reset_seq_event_pair_counts (counts);
+    for (events_iter = event_arrays->begin; events_iter != event_arrays->end; ++events_iter) {
+      events = (Fast5_event_array*) *events_iter;
+      for (n_seq = 0; n_seq < seqs->n; ++n_seq) {
+	loglike += inc_seq_event_pair_counts_via_fb (model, counts, seqs->len[n_seq], seqs->seq[n_seq], events);
+      }
+    }
+    optimize_seq_event_pair_model_for_counts (model, counts, prior);
+
     if (iter > 0 && prev_loglike != 0. && abs(prev_loglike) != INFINITY
 	&& abs((loglike-prev_loglike)/prev_loglike) < seq_evt_pair_EM_min_fractional_loglike_increment)
       break;
     prev_loglike = loglike;
   }
+
+  delete_seq_event_pair_counts (counts);
+  delete_seq_event_pair_counts (prior);
 }
 
 Seq_event_pair_alignment* new_seq_event_pair_alignment (Fast5_event_array *events, char *seq, int seqlen) {

@@ -86,20 +86,25 @@ typedef struct Seq_event_pair_counts {
 Seq_event_pair_counts* new_seq_event_pair_counts (Seq_event_pair_model* model);
 void delete_seq_event_pair_counts (Seq_event_pair_counts* counts);
 
-void reset_seq_event_pair_counts (Seq_event_pair_counts* counts);
-void inc_seq_event_pair_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_event_array* events);  /* NB does not touch delete counts */
+Seq_event_pair_counts* new_seq_event_pair_counts_minimal_prior (Seq_event_pair_model* model);  /* Laplace +1's */
 
+void reset_seq_event_null_counts (Seq_event_pair_counts* counts);
+void reset_seq_event_pair_counts (Seq_event_pair_counts* counts);
+
+void inc_seq_event_pair_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_event_array* events);  /* NB does not touch delete counts */
 void inc_seq_event_null_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_event_array* events);
+
 void optimize_seq_event_null_model_for_counts (Seq_event_pair_model* model, Seq_event_pair_counts* counts, Seq_event_pair_counts* prior);
+void optimize_seq_event_pair_model_for_counts (Seq_event_pair_model* model, Seq_event_pair_counts* counts, Seq_event_pair_counts* prior);
 
 /* Single Baum-Welch iteration */
 
 void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* matrix, Seq_event_pair_counts* counts);
-void optimize_seq_event_pair_model_for_counts (Seq_event_pair_model* model, Seq_event_pair_counts* counts, Seq_event_pair_counts* prior);
+long double inc_seq_event_pair_counts_via_fb (Seq_event_pair_model* model, Seq_event_pair_counts* counts, int seqlen, char *seq, Fast5_event_array* events);  /* wraps creation & destruction of FB matrix, returns log-likelihood ratio (forward/null) */
 
 /* Full Baum-Welch wrapper */
 
-void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seq, Vector* event_arrays);
+void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs, Vector* event_arrays);
 
 /* Alignment */
 
