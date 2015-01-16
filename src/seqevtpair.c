@@ -71,14 +71,18 @@ char token2base (int tok) {
 void encode_state_identifier (int state, int order, char* state_id) {
   int k;
   for (k = 0; k < order; ++k, state /= 4)
-    state_id[order - k - 1] = token2base (state % 4);
+    state_id[order - k - 1] = token2base (state < 0 ? -1 : (state % 4));
   state_id[order] = '\0';
 }
 
 int decode_state_identifier (int order, char* state_id) {
-  int k, token, p;
-  for (token = 0, p = 1, k = 0; k < order; ++k, p *= 4)
-    token += p * base2token (state_id[order - k - 1]);
+  int k, token, chartok, mul;
+  for (token = 0, mul = 1, k = 0; k < order; ++k, mul *= 4) {
+    chartok = base2token (state_id[order - k - 1]);
+    if (chartok < 0)
+      return -1;
+    token += mul * chartok;
+  }
   return token;
 }
 
@@ -245,10 +249,12 @@ void precalc_seq_event_pair_data (Seq_event_pair_data* data) {
 
   for (seqpos = order; seqpos <= seqlen; ++seqpos) {
     state = data->state[seqpos];
-    data->matchEmitYes[seqpos] = log (model->pMatchEmit[state]);
-    data->matchEmitNo[seqpos] = log (1. - model->pMatchEmit[state]);
-    mean = model->matchMean[state];
-    precision = model->matchPrecision[state];
+
+    data->matchEmitYes[seqpos] = state < 0 ? data->nullEmitYes : log (model->pMatchEmit[state]);
+    data->matchEmitNo[seqpos] = state < 0 ? data->nullEmitNo : log (1. - model->pMatchEmit[state]);
+
+    mean = state < 0 ? model->nullMean : model->matchMean[state];
+    precision = state < 0 ? model->nullPrecision : model->matchPrecision[state];
     logPrecision = log (precision);
 
     data->matchEmitDensity[Seq_event_pair_index(seqpos,0)] = -INFINITY;
@@ -508,7 +514,8 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 			   data->matchEmitNo[seqpos],
 			   0.,
 			   matrix,
-			   &counts->nMatchEmitNo[state], NULL,
+			   state < 0 ? NULL : &counts->nMatchEmitNo[state],
+			   NULL,
 			   NULL, NULL, NULL, NULL);   /* Match -> End (input) */
       } else {  /* n_event < n_events */
 	mat = accum_count (-INFINITY,
@@ -517,11 +524,12 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 			   + data->matchEmitDensity[outputIdx],
 			   matrix->backMatch[outputIdx],
 			   matrix,
-			   &counts->nMatchEmitYes[state], NULL,
+			   state < 0 ? NULL : &counts->nMatchEmitYes[state],
+			   NULL,
 			   event,
-			   &counts->matchMoment0[state],
-			   &counts->matchMoment1[state],
-			   &counts->matchMoment2[state]);  /* Match -> Match (output) */
+			   state < 0 ? NULL : &counts->matchMoment0[state],
+			   state < 0 ? NULL : &counts->matchMoment1[state],
+			   state < 0 ? NULL : &counts->matchMoment2[state]);  /* Match -> Match (output) */
       }
 
       if (seqpos == seqlen) {
@@ -540,7 +548,7 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 			   data->matchEmitNo[seqpos] + data->beginDeleteYes,
 			   matrix->backDelete[inputIdx],
 			   matrix,
-			   &counts->nMatchEmitNo[state],
+			   state < 0 ? NULL : &counts->nMatchEmitNo[state],
 			   &counts->nBeginDeleteYes,
 			   NULL, NULL, NULL, NULL);  /* Match -> Delete (input) */
 	mat = accum_count (mat,
@@ -548,7 +556,7 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 			   data->matchEmitNo[seqpos] + data->beginDeleteNo,
 			   matrix->backMatch[inputIdx],
 			   matrix,
-			   &counts->nMatchEmitNo[state],
+			   state < 0 ? NULL : &counts->nMatchEmitNo[state],
 			   &counts->nBeginDeleteNo,
 			   NULL, NULL, NULL, NULL);  /* Match -> Match (input) */
       }
@@ -617,7 +625,8 @@ long double accum_count (long double back_src,
     *moment2 += weight * event->sumticks_cur_sq;
     weight *= event->ticks;
   }
-  *count1 += weight;
+  if (count1)
+    *count1 += weight;
   if (count2)
     *count2 += weight;
   return log_sum_exp (back_src, trans + back_dest);
