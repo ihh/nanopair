@@ -14,6 +14,9 @@ Vector* init_fast5_event_array_vector (int argc, char** argv) {
 }
 
 int main (int argc, char** argv) {
+  Vector* event_arrays;
+  Kseq_container* seqs;
+  Seq_event_pair_model* params;
   if (argc <= 1)
     print_help();
   else if (strcmp (argv[1], "train") == 0) {
