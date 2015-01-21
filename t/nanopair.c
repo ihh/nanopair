@@ -26,6 +26,7 @@ int main (int argc, char** argv) {
   } else {
     printf ("Unrecognized command\n\n");
     print_help();
+    return EXIT_FAILURE;
   }
   return EXIT_SUCCESS;
 }
