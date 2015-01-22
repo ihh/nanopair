@@ -33,7 +33,10 @@ void VectorPrint (Vector* vec);  /* debug */
 #define VectorFront(VEC) (*(VEC)->begin)
 #define VectorBack(VEC) (*((VEC)->end - 1))
 
-/* void versions of copy, print & delete */
+/* Vector of pointers */
+#define newNullVector() newVector(NullCopyFunction,NullDestroyFunction,NullPrintFunction)
+
+/* void wrappers for copy, print & delete */
 void* VectorDeepCopyVoid(void*);
 void VectorPrintVoid(void*);
 void VectorDeleteVoid(void*);

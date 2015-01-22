@@ -80,4 +80,7 @@ void *SafeCalloc(size_t count, size_t size);
 int decToSignedInt (const char *);
 unsigned int hexToUnsignedInt (const char *);
 
+/* function to read file into a string */
+char* readFileAsString (const char *);  /* must be freed by caller */
+
 #endif /* UTIL_INCLUDED */

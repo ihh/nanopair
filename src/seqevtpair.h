@@ -91,6 +91,8 @@ Seq_event_pair_counts* new_seq_event_pair_counts_minimal_prior (Seq_event_pair_m
 void reset_seq_event_null_counts (Seq_event_pair_counts* counts);
 void reset_seq_event_pair_counts (Seq_event_pair_counts* counts);
 
+void add_weighted_seq_event_pair_counts (Seq_event_pair_counts* counts, Seq_event_pair_counts* inc, long double weight);
+
 void inc_seq_event_pair_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_event_array* events);  /* NB does not touch delete counts */
 void inc_seq_event_null_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_event_array* events);
 
@@ -115,12 +117,13 @@ typedef struct Seq_event_pair_alignment {
   /* end_seqpos = index of last aligned character + 1
      thus, number of aligned bases = end_seqpos - start_seqpos */
   int seqlen, start_seqpos, end_seqpos, start_n_event;
+  long double log_likelihood_ratio;
 } Seq_event_pair_alignment;
 
 Seq_event_pair_alignment* new_seq_event_pair_alignment (Fast5_event_array *events, char *seq, int seqlen);
 void delete_seq_event_pair_alignment (Seq_event_pair_alignment* align);
 
-void write_seq_event_pair_alignment_as_gff_cigar (Seq_event_pair_alignment* align, FILE* out);
+void write_seq_event_pair_alignment_as_gff_cigar (Seq_event_pair_alignment* align, int strand, FILE* out);
 
 /* Viterbi matrix */
 
@@ -136,5 +139,9 @@ void delete_seq_event_pair_viterbi_matrix (Seq_event_pair_viterbi_matrix* matrix
 
 void fill_seq_event_pair_viterbi_matrix (Seq_event_pair_viterbi_matrix* matrix);
 Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event_pair_viterbi_matrix* matrix);
+
+/* wrappers */
+
+void print_seq_evt_pair_alignments_as_gff_cigar (Seq_event_pair_model* model, int seqlen, char *seq, char *seqname, Fast5_event_array* events, FILE *out, double log_odds_ratio_threshold);
 
 #endif /* SEQEVTPAIR_INCLUDED */
