@@ -65,7 +65,7 @@ ptdump:
 
 nanopair: bin/nanopair submodule
 
-submodule: ${TEST_FAST5} ${TEST_FASTA}
+submodule: ${TEST_FAST5}
 
 ${TEST_FAST5} ${TEST_FASTA}:
 	git submodule init
