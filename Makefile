@@ -63,7 +63,13 @@ dump:
 ptdump:
 	poretools events $(TEST_FAST5) | less
 
-nanopair: bin/nanopair
+nanopair: bin/nanopair submodule
+
+submodule: ${TEST_FAST5} ${TEST_FASTA}
+
+${TEST_FAST5} ${TEST_FASTA}:
+	git submodule init
+	git submodule update
 
 test: bin/dump_fast5events
 	bin/dump_fast5events $(TEST_FAST5)
