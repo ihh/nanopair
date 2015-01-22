@@ -1,0 +1,3 @@
+[submodule "nanopore-data"]
+	path = nanopore-data
+	url = /Users/yam/latex/nanopair/nanopore-data
