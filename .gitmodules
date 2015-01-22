@@ -1,0 +1,3 @@
+[submodule "nanopair-data"]
+	path = nanopair-data
+	url = git://github.com/ihh/nanopair-data.git
