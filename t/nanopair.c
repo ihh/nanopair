@@ -5,7 +5,7 @@
 const char* help_message = 
   "Usage:\n"
   "nanopair train <FASTA file> <Fast5 file> [<more Fast5 files...>]   > paramfile.xml\n"
-  "nanopair align -params <paramfile> <FASTA file> <Fast5file> [<more fast5 files...>]  > hits.gff\n";
+  "nanopair align -params <paramfile> <FASTA file> <Fast5file> [<more Fast5 files...>]  > hits.gff\n";
 
 #define MODEL_ORDER 5
 
