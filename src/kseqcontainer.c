@@ -17,7 +17,7 @@ int tokenize (char c, const char* alphabet) {
 Kseq_container* init_kseq_container (const char* filename) {
   gzFile fp;
   kseq_t *seq;
-  int l, i, pos, len;
+  int l, i, c, pos, len;
 
   StringVector *names, *seqs;
   Kseq_container* ksc;
@@ -53,7 +53,7 @@ Kseq_container* init_kseq_container (const char* filename) {
     ksc->len[i] = len;
 
     for (pos = 0; pos < len; ++pos)
-      ++ksc->freq[ksc->seq[i][pos]];
+      ++ksc->freq[(int) ksc->seq[i][pos]];
   }
 
   deleteStringVector(names);
@@ -98,7 +98,7 @@ char* new_revcomp_seq (char* dna_seq, int len) {
   rev = SafeMalloc ((len + 1) * sizeof(char));
   for (i = 0; i < len; ++i) {
     tok = tokenize (dna_seq[i], dna_alphabet);
-    rev[len - 1 - i] = tok < 0 ? "N" : dna_alphabet[4 - tok];
+    rev[len - 1 - i] = tok < 0 ? 'N' : dna_alphabet[4 - tok];
   }
   return rev;
 }

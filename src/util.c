@@ -6,7 +6,7 @@
 #include <math.h>
 #include "util.h"
 
-void Warn(char* warning, ...) {
+void Warn(const char* warning, ...) {
   va_list argptr;
   va_start (argptr, warning);
   vfprintf(stderr,warning,argptr);
@@ -14,7 +14,7 @@ void Warn(char* warning, ...) {
   va_end (argptr);
 }
 
-void Abort(char* error, ...) {
+void Abort(const char* error, ...) {
   va_list argptr;
   va_start (argptr, error);
   printf("Abort: ");
@@ -24,7 +24,7 @@ void Abort(char* error, ...) {
   exit(-1);
 }
 
-void Assert(int assertion, char* error, ...) {
+void Assert(int assertion, const char* error, ...) {
   va_list argptr;
   if(!assertion) {
     va_start (argptr, error);

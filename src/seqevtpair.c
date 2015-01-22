@@ -703,7 +703,7 @@ long double inc_seq_event_pair_counts_via_fb (Seq_event_pair_model* model, Seq_e
 }
 
 void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs, Vector* event_arrays) {
-  int iter, n_seq, **seqrev_len;
+  int iter, n_seq, *seqrev_len;
   long double loglike, prev_loglike, *seq_loglike, ev_loglike;
   char **rev, **seqrev;
   void **events_iter;
@@ -729,7 +729,7 @@ void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs
   seq_counts = SafeMalloc (2 * seqs->n * sizeof(Seq_event_pair_counts*));
 
   for (n_seq = 0; n_seq < 2 * seqs->n; ++n_seq)
-    seq_counts[n] = new_seq_event_pair_counts (model);
+    seq_counts[n_seq] = new_seq_event_pair_counts (model);
 
   reset_seq_event_null_counts (counts);
   reset_seq_event_pair_counts (counts);
@@ -768,7 +768,7 @@ void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs
   SafeFree (rev);
 
   for (n_seq = 0; n_seq < 2 * seqs->n; ++n_seq)
-    delete_seq_event_pair_counts (seq_counts[n]);
+    delete_seq_event_pair_counts (seq_counts[n_seq]);
   SafeFree (seq_counts);
   SafeFree (seq_loglike);
   SafeFree (seqrev);
@@ -802,7 +802,7 @@ void write_seq_event_pair_alignment_as_gff_cigar (Seq_event_pair_alignment* alig
   StringVector *cigar;
   char buf[30];
 
-  fprintf (out, "%s\t%s\t%s\t%d\t%d\t%g\t%s\t.\t%s=",
+  fprintf (out, "%s\t%s\t%s\t%d\t%d\t%Lg\t%s\t.\t%s=",
 	   align->seqname, gff3_source, gff3_feature,
 	   strand > 0 ? (align->start_seqpos + 1) : (align->seqlen - align->start_seqpos),
 	   strand > 0 ? align->end_seqpos : (align->seqlen + 1 - align->end_seqpos),
@@ -810,7 +810,7 @@ void write_seq_event_pair_alignment_as_gff_cigar (Seq_event_pair_alignment* alig
 	   strand > 0 ? "+" : "-",
 	   gff3_gap_attribute);
 
-  cigar = newStringVector;
+  cigar = newStringVector();
   if (align->start_n_event > 0) {
     sprintf (buf, "I%d ", align->start_n_event);
     StringVectorPushBack (cigar, buf);
@@ -835,14 +835,15 @@ void write_seq_event_pair_alignment_as_gff_cigar (Seq_event_pair_alignment* alig
   }
 
   if (strand > 0)
-    for (n = 0; n < VectorSize(cigar); ++n)
-      fprintf (out, VectorGet(cigar,n));
+    for (n = 0; n < (int) VectorSize(cigar); ++n)
+      fprintf (out, "%s", VectorGet(cigar,n));
   else
-    for (n = VectorSize(cigar) - 1; n >= 0; --n)
-      fprintf (out, VectorGet(cigar,n));
+    for (n = ((int) VectorSize(cigar)) - 1; n >= 0; --n)
+      fprintf (out, "%s", VectorGet(cigar,n));
+
   fprintf (out, "\n");
 
-  VectorDelete (cigar);
+  deleteVector (cigar);
 }
 
 Seq_event_pair_viterbi_matrix* new_seq_event_pair_viterbi_matrix (Seq_event_pair_model* model, int seqlen, char *seq, Fast5_event_array* events) {
@@ -1100,6 +1101,7 @@ void print_seq_evt_pair_alignments_as_gff_cigar (Seq_event_pair_model* model, in
   Seq_event_pair_viterbi_matrix* matrix;
   Seq_event_pair_alignment* align;
   char *rev;
+  int strand;
 
   rev = new_revcomp_seq (seq, seqlen);
 

@@ -56,7 +56,7 @@ int main (int argc, char** argv) {
 
     /* output model */
     xml_params = convert_seq_event_pair_model_to_xml_string (params);
-    fprintf (stdout, xml_params);
+    fprintf (stdout, "%s", (char*) xml_params);
 
     /* free memory */
     SafeFree (xml_params);
@@ -72,10 +72,10 @@ int main (int argc, char** argv) {
     /* read parameters */
     if (strcmp (argv[2], "-params") != 0)
       return help_failure ("For alignment, please specify parameters using -params");
-    xml_params = readFileAsString (argv[3]);
+    xml_params = (xmlChar*) readFileAsString (argv[3]);
     if (xml_params == NULL)
       return help_failure ("Parameter file not found");
-    params = new_seq_event_pair_model_from_xml_string (xml_params);
+    params = new_seq_event_pair_model_from_xml_string ((char*) xml_params);
     SafeFree (xml_params);
 
     /* read sequences */
@@ -87,7 +87,7 @@ int main (int argc, char** argv) {
 
     /* loop through sequences, FAST5 files */
     for (i = 0; i < seqs->n; ++i)
-      for (j = 0; j < VectorSize(event_arrays); ++j)
+      for (j = 0; j < (int) VectorSize(event_arrays); ++j)
 	print_seq_evt_pair_alignments_as_gff_cigar (params, seqs->len[i], seqs->seq[i], seqs->name[i], (Fast5_event_array*) VectorGet(event_arrays,j), stdout, 0.);
 
     /* free memory */

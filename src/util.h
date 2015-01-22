@@ -61,9 +61,9 @@ long double max_func (long double x, long double y);
 long double min_func (long double x, long double y);
 
 /* errors, warnings, assertions */
-void Abort(char* error, ...);
-void Assert(int assertion, char* error, ...);
-void Warn(char* warning, ...);
+void Abort(const char* error, ...);
+void Assert(int assertion, const char* error, ...);
+void Warn(const char* warning, ...);
 
 /* alloc functions */
 void *SafeMalloc(size_t size);

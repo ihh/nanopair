@@ -30,8 +30,8 @@ latex.zip: $(TEXFILES)
 .SECONDARY:
 
 
-#HDF5 = /usr/local
-HDF5 = /usr/local/hdf5
+HDF5 = /usr/local
+#HDF5 = /usr/local/hdf5
 comma := ,
 
 TEST5 = ../../nanopore/loman/LomanLabz_PC_E.coli_MG1655_ONI_3058_1_ch101_file20_strand.fast5
@@ -59,6 +59,8 @@ dump:
 
 ptdump:
 	poretools events $(TEST5) | less
+
+nanopair: bin/nanopair
 
 test: bin/dump_fast5events
 	bin/dump_fast5events $(TEST5)
