@@ -122,14 +122,6 @@ Fast5_event_array* read_fast5_event_array (const char* filename, double tick_len
 	  hssize_t events_npoints = H5Sget_simple_extent_npoints( events_space_id );
 	  size_t event_size = H5Tget_size( events_type_id );
 
-	  /*
-	    fprintf(stderr,"member indices: %d %d %d %d %d %d %d\n", mean_idx, stdv_idx, length_idx, model_state_idx, move_idx, mp_model_state_idx, raw_idx);
-	    fprintf(stderr,"member offsets: %lu %lu %lu %lu %lu %lu %lu\n", iter.mean_offset, iter.stdv_offset, iter.length_offset, iter.model_state_offset, iter.move_offset, iter.mp_model_state_offset, iter.raw_offset);
-
-	    fprintf(stderr,"model_order is %d\n",iter.model_order);
-	    fprintf(stderr,"dataset has %lld points, event takes %lu bytes\n",events_npoints,event_size);
-	  */
-
 	  /* read into memory buffer */
 	  void *buf = SafeMalloc (events_npoints * event_size);
 	  H5Dread( events_id, events_type_id, H5S_ALL, H5S_ALL, H5P_DEFAULT, buf );
