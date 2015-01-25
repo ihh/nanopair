@@ -65,11 +65,11 @@ ptdump:
 
 nanopair: bin/nanopair submodule
 
-submodule: ${TEST_FAST5}
+submodule: $(TEST_FAST5)
 
 ${TEST_FAST5} ${TEST_FASTA}:
 	git submodule init
 	git submodule update
 
-test: bin/dump_fast5events
+test: bin/dump_fast5events $(TEST_FAST5)
 	bin/dump_fast5events $(TEST_FAST5)

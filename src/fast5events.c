@@ -1,6 +1,9 @@
 #include "fast5events.h"
 #include "util.h"
 
+/* path we check for events data */
+const char* events_path = "/Analyses/Basecall_2D_000/BaseCalled_template/Events";
+
 /* Fast5_event_array_iterator
    Used to populate a Fast5_event_array */
 typedef struct Fast5_event_array_iterator {
@@ -55,9 +58,6 @@ void delete_fast5_event_array (Fast5_event_array* ev) {
 
 Fast5_event_array* read_fast5_event_array (const char* filename, double tick_length)
 {
-  /* path we check for events data */
-  const char* path = "/Analyses/Basecall_2D_000/BaseCalled_template/Events";
-
   /* file handle */
   hid_t file_id;
 
@@ -83,13 +83,13 @@ Fast5_event_array* read_fast5_event_array (const char* filename, double tick_len
     }
 
   /* see if path exists */
-  if (H5LTpath_valid ( file_id, path, 1))
+  if (H5LTpath_valid ( file_id, events_path, 1))
     {
       /* get dataset */
-      hid_t events_id = H5Oopen(file_id, path, H5P_DEFAULT);
+      hid_t events_id = H5Oopen(file_id, events_path, H5P_DEFAULT);
       if ( events_id < 0 )
 	{
-	  fprintf(stderr,"failed to open dataset %s\n",path);
+	  fprintf(stderr,"failed to open dataset %s\n",events_path);
 	}
       else
 	{
@@ -142,7 +142,7 @@ Fast5_event_array* read_fast5_event_array (const char* filename, double tick_len
 	}
     }
   else
-    fprintf(stderr,"path %s not valid\n",path);
+    fprintf(stderr,"path %s not valid\n",events_path);
 
   /* close root group */
   H5Gclose(root_id);
