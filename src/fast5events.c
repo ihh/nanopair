@@ -89,7 +89,7 @@ void delete_fast5_event_array (Fast5_event_array* ev) {
     SafeFreeOrNull (ev->event[n].model_state);
     SafeFreeOrNull (ev->event[n].mp_model_state);
   }
-  SafeFree (ev->event);
+  SafeFreeOrNull (ev->event);
   SafeFree (ev);
 };
 
