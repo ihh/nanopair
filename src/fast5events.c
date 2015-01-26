@@ -151,7 +151,7 @@ Fast5_event_array* read_fast5_event_array (const char* filename, double tick_len
 	  iter.mp_model_state_offset = H5Tget_member_offset( events_type_id, mp_model_state_idx );
 	  iter.raw_offset = H5Tget_member_offset( events_type_id, raw_idx );
 
-	  /* HACK: detect variable-length strings */
+	  /* HACK: detect variable-length strings, flag using a model_order of -1 */
 	  strtype = H5Tget_member_type( events_type_id, model_state_idx );
 	  iter.model_order = H5Tis_variable_str(strtype) ? -1 : (int) H5Tget_size (strtype);
 
