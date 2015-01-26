@@ -35,11 +35,28 @@ herr_t populate_event_array (void *elem, hid_t type_id, unsigned ndim,
   ev->mean = *((double*) (elem + iter->mean_offset));
   ev->stdv = *((double*) (elem + iter->stdv_offset));
   ev->length = *((double*) (elem + iter->length_offset));
-  for (int n = 0; n < iter->model_order; ++n) {
-    ev->model_state[n] = *((char*) (elem + iter->model_state_offset + n));
-    ev->mp_model_state[n] = *((char*) (elem + iter->mp_model_state_offset + n));
+
+  /* HACK: allow for variable-length state names */
+  if (iter->model_order < 0) {
+    char *model_state = *(char**)(elem + iter->model_state_offset);
+    int model_state_len = strlen (model_state);
+    ev->model_state = SafeMalloc ((model_state_len + 1) * sizeof (char));
+    for (int n = 0; n <= model_state_len; ++n)
+      ev->model_state[n] = model_state[n];
+
+    char *mp_model_state = *(char**)(elem + iter->mp_model_state_offset);
+    int mp_model_state_len = strlen (mp_model_state);
+    ev->mp_model_state = SafeMalloc ((mp_model_state_len + 1) * sizeof (char));
+    for (int n = 0; n <= mp_model_state_len; ++n)
+      ev->mp_model_state[n] = mp_model_state[n];
+  } else {  /* fixed-length state names */
+    for (int n = 0; n < iter->model_order; ++n) {
+      ev->model_state[n] = *((char*) (elem + iter->model_state_offset + n));
+      ev->mp_model_state[n] = *((char*) (elem + iter->mp_model_state_offset + n));
+    }
+    ev->model_state[iter->model_order] = ev->mp_model_state[iter->model_order] = '\0';
   }
-  ev->model_state[iter->model_order] = ev->mp_model_state[iter->model_order] = '\0';
+
   ev->move = *((long*) (elem + iter->move_offset));
   ev->raw = *((long*) (elem + iter->raw_offset));
   ev->ticks = ev->length / iter->event_array->tick_length;
@@ -52,10 +69,17 @@ Fast5_event_array* alloc_fast5_event_array (int model_order, int n_events, doubl
   Fast5_event_array* ev = SafeMalloc (sizeof (Fast5_event_array));
   ev->n_events = n_events;
   ev->event = SafeMalloc (n_events * sizeof (Fast5_event));
-  for (int n = 0; n < n_events; ++n) {
-    ev->event[n].model_state = SafeMalloc ((model_order + 1) * sizeof (char));
-    ev->event[n].mp_model_state = SafeMalloc ((model_order + 1) * sizeof (char));
-  }
+
+  /* HACK: if state name strings are variable length in HDF5 file, postpone allocation of state names */
+  for (int n = 0; n < n_events; ++n)
+    if (model_order < 0) {
+      ev->event[n].model_state = NULL;
+      ev->event[n].mp_model_state = NULL;
+    } else {
+      ev->event[n].model_state = SafeMalloc ((model_order + 1) * sizeof (char));
+      ev->event[n].mp_model_state = SafeMalloc ((model_order + 1) * sizeof (char));
+    }
+
   ev->tick_length = tick_length;
   return ev;
 };
@@ -71,8 +95,7 @@ void delete_fast5_event_array (Fast5_event_array* ev) {
 
 Fast5_event_array* read_fast5_event_array (const char* filename, double tick_length)
 {
-  /* file handle */
-  hid_t file_id;
+  hid_t file_id, strtype;
 
   /* event_array */
   Fast5_event_array* event_array = NULL;
@@ -128,7 +151,9 @@ Fast5_event_array* read_fast5_event_array (const char* filename, double tick_len
 	  iter.mp_model_state_offset = H5Tget_member_offset( events_type_id, mp_model_state_idx );
 	  iter.raw_offset = H5Tget_member_offset( events_type_id, raw_idx );
 
-	  iter.model_order =  (int) H5Tget_size (H5Tget_member_type( events_type_id, model_state_idx ));
+	  /* HACK: detect variable-length strings */
+	  strtype = H5Tget_member_type( events_type_id, model_state_idx );
+	  iter.model_order = H5Tis_variable_str(strtype) ? -1 : (int) H5Tget_size (strtype);
 
 	  /* get dimensions */
 	  hid_t events_space_id = H5Dget_space( events_id );
@@ -167,97 +192,110 @@ Fast5_event_array* read_fast5_event_array (const char* filename, double tick_len
 }
 
 void write_fast5_event_array (Fast5_event_array* events, const char* filename) {
-    hid_t       file, filetype, memtype, strtype, space, dset;
-    herr_t      status;
-    hsize_t     dims[1], strtype_size, dbl_size, int_size;
-    int         model_order;
+  hid_t   file, filetype, memtype, strtype, space, dset, loc;
+  herr_t  status;
+  hsize_t dims[1], strtype_size, dbl_size, int_size, filetype_size;
+  char    *obj_name;
+  int     i, j;
 
-    if (events->n_events == 0) {
+  if (events->n_events == 0) {
 
-      Warn ("No events; cannot determine model order, not writing %s", filename);
+    Warn ("No events; cannot determine model order, not writing %s", filename);
 
-    } else {
+  } else {
 
-      model_order = strlen (events->event[0].model_state);
+    /*
+     * Create a new file using the default properties.
+     */
+    file = H5Fcreate (filename, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
 
-      /*
-       * Create a new file using the default properties.
-       */
-      file = H5Fcreate (filename, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    /*
+     * Create variable-length string datatype.
+     */
+    strtype = H5Tcopy (H5T_C_S1);
+    status = H5Tset_size (strtype, H5T_VARIABLE);
 
-      /*
-       * Create fixed-length string datatype.
-       */
-      strtype = H5Tcreate (H5T_STRING, model_order);
-      status = H5Tset_cset (strtype, H5T_CSET_ASCII);
-      status = H5Tset_strpad (strtype, H5T_STR_NULLPAD);
+    /*
+     * Create the compound datatype for memory.
+     */
+    memtype = H5Tcreate (H5T_COMPOUND, sizeof (Fast5_event));
+    status = H5Tinsert (memtype, FAST5_EVENT_MEAN,
+			HOFFSET (Fast5_event, mean),
+			H5T_NATIVE_DOUBLE);
+    status = H5Tinsert (memtype, FAST5_EVENT_STDV,
+			HOFFSET (Fast5_event, stdv),
+			H5T_NATIVE_DOUBLE);
+    status = H5Tinsert (memtype, FAST5_EVENT_LENGTH,
+			HOFFSET (Fast5_event, length),
+			H5T_NATIVE_DOUBLE);
+    status = H5Tinsert (memtype, FAST5_EVENT_MODEL_STATE,
+			HOFFSET (Fast5_event, model_state),
+			strtype);
+    status = H5Tinsert (memtype, FAST5_EVENT_MOVE,
+			HOFFSET (Fast5_event, move),
+			H5T_NATIVE_INT);
+    status = H5Tinsert (memtype, FAST5_EVENT_MP_STATE,
+			HOFFSET (Fast5_event, mp_model_state),
+			strtype);
+    status = H5Tinsert (memtype, FAST5_EVENT_RAW_INDEX,
+			HOFFSET (Fast5_event, raw),
+			H5T_NATIVE_INT);
 
-      /*
-       * Create the compound datatype for memory.
-       */
-      memtype = H5Tcreate (H5T_COMPOUND, sizeof (Fast5_event));
-      status = H5Tinsert (memtype, FAST5_EVENT_MEAN,
-			  HOFFSET (Fast5_event, mean),
-			  H5T_NATIVE_DOUBLE);
-      status = H5Tinsert (memtype, FAST5_EVENT_STDV,
-			  HOFFSET (Fast5_event, stdv),
-			  H5T_NATIVE_DOUBLE);
-      status = H5Tinsert (memtype, FAST5_EVENT_LENGTH,
-			  HOFFSET (Fast5_event, length),
-			  H5T_NATIVE_DOUBLE);
-      status = H5Tinsert (memtype, FAST5_EVENT_MODEL_STATE,
-			  HOFFSET (Fast5_event, model_state),
-			  strtype);
-      status = H5Tinsert (memtype, FAST5_EVENT_MOVE,
-			  HOFFSET (Fast5_event, move),
-			  H5T_NATIVE_INT);
-      status = H5Tinsert (memtype, FAST5_EVENT_MP_STATE,
-			  HOFFSET (Fast5_event, mp_model_state),
-			  strtype);
-      status = H5Tinsert (memtype, FAST5_EVENT_RAW_INDEX,
-			  HOFFSET (Fast5_event, raw),
-			  H5T_NATIVE_INT);
+    /*
+     * Create the compound datatype for the file.  Because the standard
+     * types we are using for the file may have different sizes than
+     * the corresponding native types, we must manually calculate the
+     * offset of each member.
+     */
+    strtype_size = H5Tget_size (strtype);
+    dbl_size = H5Tget_size (H5T_IEEE_F64LE);
+    int_size = H5Tget_size (H5T_IEEE_F64LE);
+    filetype_size = 3*dbl_size + 2*strtype_size + 2*int_size;
 
-      /*
-       * Create the compound datatype for the file.  Because the standard
-       * types we are using for the file may have different sizes than
-       * the corresponding native types, we must manually calculate the
-       * offset of each member.
-       */
-      strtype_size = H5Tget_size (strtype);
-      dbl_size = H5Tget_size (H5T_IEEE_F64LE);
-      int_size = H5Tget_size (H5T_IEEE_F64LE);
+    filetype = H5Tcreate (H5T_COMPOUND, filetype_size);
+    status = H5Tinsert (filetype, FAST5_EVENT_MEAN, 0, H5T_IEEE_F64LE);
+    status = H5Tinsert (filetype, FAST5_EVENT_STDV, dbl_size, H5T_IEEE_F64LE);
+    status = H5Tinsert (filetype, FAST5_EVENT_LENGTH, 2*dbl_size, H5T_IEEE_F64LE);
+    status = H5Tinsert (filetype, FAST5_EVENT_MODEL_STATE, 3*dbl_size, strtype);
+    status = H5Tinsert (filetype, FAST5_EVENT_MOVE, 3*dbl_size + strtype_size, H5T_STD_I64LE);
+    status = H5Tinsert (filetype, FAST5_EVENT_MP_STATE, 3*dbl_size + strtype_size + int_size, strtype);
+    status = H5Tinsert (filetype, FAST5_EVENT_RAW_INDEX, 3*dbl_size + 2*strtype_size + int_size, H5T_STD_I64LE);
 
-      filetype = H5Tcreate (H5T_COMPOUND, 3*dbl_size + 2*strtype_size + 2*int_size);
-      status = H5Tinsert (filetype, FAST5_EVENT_MEAN, 0, H5T_IEEE_F64LE);
-      status = H5Tinsert (filetype, FAST5_EVENT_STDV, dbl_size, H5T_IEEE_F64LE);
-      status = H5Tinsert (filetype, FAST5_EVENT_LENGTH, 2*dbl_size, H5T_IEEE_F64LE);
-      status = H5Tinsert (filetype, FAST5_EVENT_MODEL_STATE, 3*dbl_size, strtype);
-      status = H5Tinsert (filetype, FAST5_EVENT_MOVE, 3*dbl_size + strtype_size, H5T_STD_I64LE);
-      status = H5Tinsert (filetype, FAST5_EVENT_MP_STATE, 3*dbl_size + strtype_size + int_size, strtype);
-      status = H5Tinsert (filetype, FAST5_EVENT_RAW_INDEX, 3*dbl_size + 2*strtype_size + int_size, H5T_STD_I64LE);
+    /*
+     * Create dataspace.  Setting maximum size to NULL sets the maximum
+     * size to be the current size.
+     */
+    dims[0] = events->n_events;
+    space = H5Screate_simple (1, dims, NULL);
 
-      /*
-       * Create dataspace.  Setting maximum size to NULL sets the maximum
-       * size to be the current size.
-       */
-      dims[0] = events->n_events;
-      space = H5Screate_simple (1, dims, NULL);
-
-      /*
-       * Create the dataset and write the compound data to it.
-       */
-      dset = H5Dcreate (file, events_path, filetype, space, H5P_DEFAULT, H5P_DEFAULT,
-			H5P_DEFAULT);
-      status = H5Dwrite (dset, memtype, H5S_ALL, H5S_ALL, H5P_DEFAULT, events->event);
-
-      /*
-       * Close and release resources.
-       */
-      status = H5Dclose (dset);
-      status = H5Sclose (space);
-      status = H5Tclose (filetype);
-      status = H5Fclose (file);
+    /* Create the necessary groups to ensure the path to the dataset exists */
+    obj_name = SafeMalloc ((strlen(events_path) + 1) * sizeof(char));
+    for (loc = file, i = j = 0; events_path[i] != '\0'; ++i) {
+      if (events_path[i] == '/') {
+	obj_name[j] = '\0';
+	if (j > 0)
+	  loc = H5Gcreate (loc, obj_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	j = 0;
+      } else
+	obj_name[j++] = events_path[i];
     }
-}
+    obj_name[j] = '\0';
 
+    /*
+     * Create the dataset and write the compound data to it.
+     */
+    dset = H5Dcreate (loc, obj_name, filetype, space, H5P_DEFAULT, H5P_DEFAULT,
+		      H5P_DEFAULT);
+    status = H5Dwrite (dset, memtype, H5S_ALL, H5S_ALL, H5P_DEFAULT, events->event);
+
+    /*
+     * Close and release resources.
+     */
+    status = H5Dclose (dset);
+    status = H5Sclose (space);
+    status = H5Tclose (filetype);
+    status = H5Fclose (file);
+
+    SafeFree (obj_name);
+  }
+}
