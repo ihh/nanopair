@@ -73,3 +73,6 @@ ${TEST_FAST5} ${TEST_FASTA}:
 
 test: bin/dump_fast5events $(TEST_FAST5)
 	bin/dump_fast5events $(TEST_FAST5)
+
+copytest: bin/copy_fast5events $(TEST_FAST5)
+	bin/copy_fast5events $(TEST_FAST5) copy.fast5
