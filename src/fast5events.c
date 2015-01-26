@@ -86,8 +86,8 @@ Fast5_event_array* alloc_fast5_event_array (int model_order, int n_events, doubl
 
 void delete_fast5_event_array (Fast5_event_array* ev) {
   for (int n = 0; n < ev->n_events; ++n) {
-    SafeFree (ev->event[n].model_state);
-    SafeFree (ev->event[n].mp_model_state);
+    SafeFreeOrNull (ev->event[n].model_state);
+    SafeFreeOrNull (ev->event[n].mp_model_state);
   }
   SafeFree (ev->event);
   SafeFree (ev);
