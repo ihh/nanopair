@@ -1,6 +1,8 @@
 #ifndef KSEQCONTAINER_INCLUDED
 #define KSEQCONTAINER_INCLUDED
 
+#include <stdio.h>
+
 #include "../kseq/kseq.h"
 
 extern const char* dna_alphabet;

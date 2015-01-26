@@ -18,6 +18,7 @@
 */
 
 #include <locale.h>
+#include <stdio.h>
 
 #include "../src/fast5events.h"
 #include "../src/util.h"

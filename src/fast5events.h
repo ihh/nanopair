@@ -1,9 +1,6 @@
 #ifndef FAST5EVENTS_INCLUDED
 #define FAST5EVENTS_INCLUDED
 
-#include <hdf5.h>
-#include <hdf5_hl.h>
-
 #include "vector.h"
 
 /* Default tick length.
@@ -36,5 +33,6 @@ Fast5_event_array* alloc_fast5_event_array (int model_order, int n_events, doubl
 void delete_fast5_event_array (Fast5_event_array* ev);
 
 Fast5_event_array* read_fast5_event_array (const char* filename, double tick_length);
+void write_fast5_event_array (Fast5_event_array* events, const char* filename);
 
 #endif /* FAST5EVENTS_INCLUDED */
