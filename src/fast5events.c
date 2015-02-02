@@ -96,7 +96,7 @@ void delete_fast5_event_array (Fast5_event_array* ev) {
 
 Fast5_event_array* read_fast5_event_array (const char* filename, double tick_length)
 {
-  hid_t file_id, strtype;
+  hid_t file_id, strtype_id;
 
   /* event_array */
   Fast5_event_array* event_array = NULL;
@@ -153,8 +153,8 @@ Fast5_event_array* read_fast5_event_array (const char* filename, double tick_len
 	  iter.raw_offset = H5Tget_member_offset( events_type_id, raw_idx );
 
 	  /* HACK: detect variable-length strings, flag using a model_order of -1 */
-	  strtype = H5Tget_member_type( events_type_id, model_state_idx );
-	  iter.model_order = H5Tis_variable_str(strtype) ? -1 : (int) H5Tget_size (strtype);
+	  strtype_id = H5Tget_member_type( events_type_id, model_state_idx );
+	  iter.model_order = H5Tis_variable_str(strtype_id) ? -1 : (int) H5Tget_size (strtype_id);
 
 	  /* get dimensions */
 	  hid_t events_space_id = H5Dget_space( events_id );
@@ -175,6 +175,7 @@ Fast5_event_array* read_fast5_event_array (const char* filename, double tick_len
 	  SafeFree (buf);
 
 	  /* close objects */
+	  H5Tclose(strtype_id);
 	  H5Sclose(events_space_id);
 	  H5Tclose(events_type_id);
 	  H5Dclose(events_id);
@@ -183,10 +184,8 @@ Fast5_event_array* read_fast5_event_array (const char* filename, double tick_len
   else
     fprintf(stderr,"path %s not valid\n",events_path);
 
-  /* close root group */
+  /* close HDF5 resources */
   H5Gclose(root_id);
-
-  /* close file */
   H5Fclose(file_id);
 
   return event_array;
