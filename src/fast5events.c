@@ -103,7 +103,7 @@ Fast5_event_array* read_fast5_event_array (const char* filename, double tick_len
 
   /* open file with default properties */
   file_id = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
-        
+
   /* check if opening file was succeful */
   if ( file_id < 0 )
     {

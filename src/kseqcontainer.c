@@ -22,10 +22,13 @@ Kseq_container* init_kseq_container (const char* filename) {
   StringVector *names, *seqs;
   Kseq_container* ksc;
 
+  fp = gzopen(filename, "r");
+  if (fp == Z_NULL)
+    return NULL;
+
   names = newStringVector();
   seqs = newStringVector();
 
-  fp = gzopen(filename, "r");
   seq = kseq_init(fp);
   while ((l = kseq_read(seq)) >= 0) {
     StringVectorPushBack(names,seq->name.s);
