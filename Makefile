@@ -38,6 +38,7 @@ endif
 
 TEST_FAST5 = nanopair-data/LomanLabz_PC_E.coli_MG1655_ONI_3058_1_ch101_file20_strand.fast5
 TEST_FASTA = nanopair-data/U00096.2.fas
+TINY_FAST5 = nanopair-data/tiny.fast5
 
 ifdef HDF5
 CPPFLAGS += -I${HDF5}/include -W -Wall -Wno-unused-function -Wno-unused-parameter -std=c99
@@ -76,3 +77,8 @@ test: bin/dump_fast5events $(TEST_FAST5)
 
 copytest: bin/copy_fast5events $(TEST_FAST5)
 	bin/copy_fast5events $(TEST_FAST5) copy.fast5
+
+tinytest: $(TINY_FAST5)
+
+$(TINY_FAST5): bin/tinyfast5
+	bin/tinyfast5 $@

@@ -248,6 +248,10 @@ void precalc_seq_event_pair_data (Seq_event_pair_data* data) {
   }
 
   for (seqpos = order; seqpos <= seqlen; ++seqpos) {
+
+    if (seqpos % 1000000 == 0)
+      fprintf (stderr, "Precalculating likelihoods at sequence position %d\n", seqpos);
+
     state = data->state[seqpos];
 
     data->matchEmitYes[seqpos] = state < 0 ? data->nullEmitYes : log (model->pMatchEmit[state]);
@@ -280,6 +284,8 @@ Seq_event_pair_fb_matrix* new_seq_event_pair_fb_matrix (Seq_event_pair_model* mo
 
   n_events = mx->data->events->n_events;
   matrix_cells = mx->data->matrix_cells;
+
+  fprintf (stderr, "Allocating %d*%d Forward-Backward matrix\n", n_events, matrix_cells);
 
   mx->fwdStart = SafeMalloc ((n_events + 1) * sizeof(long double));
   mx->backStart = SafeMalloc ((n_events + 1) * sizeof(long double));
@@ -473,8 +479,10 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 
   matrix->fwdEnd = -INFINITY;
 
-  for (seqpos = order; seqpos <= seqlen; ++seqpos) {
-    for (n_event = 0; n_event <= n_events; ++n_event) {
+  for (n_event = 0; n_event <= n_events; ++n_event) {
+    fprintf (stderr, "Filling forward matrix, event %d\n", n_event + 1);
+
+    for (seqpos = order; seqpos <= seqlen; ++seqpos) {
       idx = Seq_event_pair_index(seqpos,n_event);
       inputIdx = Seq_event_pair_index(seqpos-1,n_event);
       outputIdx = Seq_event_pair_index(seqpos,n_event-1);
@@ -514,6 +522,8 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 
   /* fill backward & accumulate counts */
   for (n_event = n_events; n_event >= 0; --n_event) {
+    fprintf (stderr, "Filling backward matrix, event %d\n", n_event + 1);
+
     event = n_event < n_events ? &data->events->event[n_event] : NULL;
 
     matrix->backStart[n_event] = -INFINITY;
@@ -543,7 +553,7 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 			   matrix,
 			   state < 0 ? NULL : &counts->nMatchEmitYes[state],
 			   NULL,
-			   event,
+			   state < 0 ? NULL : event,
 			   state < 0 ? NULL : &counts->matchMoment0[state],
 			   state < 0 ? NULL : &counts->matchMoment1[state],
 			   state < 0 ? NULL : &counts->matchMoment2[state]);  /* Match -> Match (output) */
@@ -756,6 +766,8 @@ void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs
 	add_weighted_seq_event_pair_counts (counts, seq_counts[n_seq], exp (seq_loglike[n_seq] - ev_loglike));
     }
     optimize_seq_event_pair_model_for_counts (model, counts, prior);
+
+    fprintf (stderr, "Baum-Welch iteration %d: log-likelihood %Lg\n", iter + 1, loglike);
 
     if (iter > 0 && prev_loglike != 0. && abs(prev_loglike) != INFINITY
 	&& abs((loglike-prev_loglike)/prev_loglike) < seq_evt_pair_EM_min_fractional_loglike_increment)
