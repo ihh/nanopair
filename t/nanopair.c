@@ -4,14 +4,14 @@
 
 const char* help_message = 
   "Usage:\n"
-  "nanopair train <FASTA file> <Fast5 file> [<more Fast5 files...>]   > paramfile.xml\n"
-  "nanopair align -params <paramfile> <FASTA file> <Fast5file> [<more Fast5 files...>]  > hits.gff\n";
+  " nanopair train ref.fasta run.fast5 [more.fast5 ...]   > paramfile.xml\n"
+  " nanopair align -params paramfile.xml ref.fasta run.fast5 [more.fast5 ...]  > hits.gff\n";
 
 #define MODEL_ORDER 5
 
 int help_failure (char* warning) {
   if (warning)
-    Warn ("%s\n\n", warning);
+    Warn ("%s\n", warning);
   Warn (help_message);
   return EXIT_FAILURE;
 }
