@@ -39,13 +39,13 @@ herr_t populate_event_array (void *elem, hid_t type_id, unsigned ndim,
   /* HACK: allow for variable-length state names */
   if (iter->model_order < 0) {
     char *model_state = *(char**)(elem + iter->model_state_offset);
-    int model_state_len = strlen (model_state);
+    int model_state_len = (int) strlen (model_state);
     ev->model_state = SafeMalloc ((model_state_len + 1) * sizeof (char));
     for (int n = 0; n <= model_state_len; ++n)
       ev->model_state[n] = model_state[n];
 
     char *mp_model_state = *(char**)(elem + iter->mp_model_state_offset);
-    int mp_model_state_len = strlen (mp_model_state);
+    int mp_model_state_len = (int) strlen (mp_model_state);
     ev->mp_model_state = SafeMalloc ((mp_model_state_len + 1) * sizeof (char));
     for (int n = 0; n <= mp_model_state_len; ++n)
       ev->mp_model_state[n] = mp_model_state[n];
@@ -166,7 +166,7 @@ Fast5_event_array* read_fast5_event_array (const char* filename, double tick_len
 	  H5Dread( events_id, events_type_id, H5S_ALL, H5S_ALL, H5P_DEFAULT, buf );
 
 	  /* convert */
-	  event_array = alloc_fast5_event_array (iter.model_order, events_npoints, tick_length);
+	  event_array = alloc_fast5_event_array (iter.model_order, (int) events_npoints, tick_length);
 	  iter.event_array = event_array;
 	  iter.event_array_index = 0;
 	  H5Diterate( buf, events_type_id, events_space_id, populate_event_array, &iter );

@@ -387,7 +387,8 @@ Seq_event_pair_counts* new_seq_event_pair_counts_minimal_prior (Seq_event_pair_m
 }
 
 void inc_seq_event_pair_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_event_array* events) {
-  int n_event, moves, new_moves, state;
+  int n_event, state;
+  long moves, new_moves;
   Fast5_event *event;
   moves = 0;
   for (n_event = 0; n_event < events->n_events; ++n_event) {
@@ -751,6 +752,7 @@ void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs
   optimize_seq_event_null_model_for_counts (model, counts, prior);
   optimize_seq_event_pair_model_for_counts (model, counts, prior);
 
+  prev_loglike = 0.;
   for (iter = 0; iter < seq_evt_pair_EM_max_iterations; ++iter) {
     loglike = 0.;
     reset_seq_event_pair_counts (counts);
@@ -979,6 +981,9 @@ Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event
 
   zero = 0;
 
+  start_seqpos = seqlen;
+  start_n_event = n_events;
+  
   /* traceback from End state */
   end_seqpos = -1;
   loglike = -INFINITY;
@@ -1101,7 +1106,7 @@ Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event
   align->end_seqpos = end_seqpos;
   align->start_n_event = start_n_event;
   align->events_at_pos = SafeMalloc (VectorSize(events_emitted) * sizeof(int));
-  for (n = VectorSize(events_emitted) - 1, k = 0; n >= 0; --n, ++k)
+  for (n = ((int) VectorSize(events_emitted)) - 1, k = 0; n >= 0; --n, ++k)
     align->events_at_pos[k] = *((int*) VectorGet (events_emitted, n));
 
   deleteVector (events_emitted);

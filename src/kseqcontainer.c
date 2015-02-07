@@ -10,7 +10,7 @@ const char* dna_alphabet = "ACGT";
 
 int tokenize (char c, const char* alphabet) {
   int tok;
-  tok = strchr (alphabet, toupper(c)) - alphabet;
+  tok = (int) (strchr (alphabet, toupper(c)) - alphabet);
   return tok >= (int) strlen(alphabet) ? -1 : tok;
 }
 
@@ -38,7 +38,7 @@ Kseq_container* init_kseq_container (const char* filename) {
   gzclose(fp);
 
   ksc = SafeMalloc (sizeof (Kseq_container));
-  ksc->n = StringVectorSize(names);
+  ksc->n = (int) StringVectorSize(names);
   ksc->name = SafeMalloc (ksc->n * sizeof(char*));
   ksc->len = SafeMalloc (ksc->n * sizeof(int));
   ksc->seq = SafeMalloc (ksc->n * sizeof(char*));
@@ -52,7 +52,7 @@ Kseq_container* init_kseq_container (const char* filename) {
     ksc->seq[i] = seqs->begin[i];
     names->begin[i] = seqs->begin[i] = NULL;
 
-    len = strlen (ksc->seq[i]);
+    len = (int) strlen (ksc->seq[i]);
     ksc->len[i] = len;
 
     for (pos = 0; pos < len; ++pos)
