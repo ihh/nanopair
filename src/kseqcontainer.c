@@ -17,7 +17,7 @@ int tokenize (char c, const char* alphabet) {
 Kseq_container* init_kseq_container (const char* filename) {
   gzFile fp;
   kseq_t *seq;
-  int l, i, c, pos, len;
+  int l, i, len;
 
   StringVector *names, *seqs;
   Kseq_container* ksc;
@@ -43,9 +43,6 @@ Kseq_container* init_kseq_container (const char* filename) {
   ksc->len = SafeMalloc (ksc->n * sizeof(int));
   ksc->seq = SafeMalloc (ksc->n * sizeof(char*));
 
-  for (c = 0; c < 256; ++c)
-    ksc->freq[c] = 0;
-
   for (i = 0; i < ksc->n; ++i) {
     /* avoid an unnecessary copy by pilfering the StringVector elements & setting them to NULL */
     ksc->name[i] = names->begin[i];
@@ -54,9 +51,6 @@ Kseq_container* init_kseq_container (const char* filename) {
 
     len = (int) strlen (ksc->seq[i]);
     ksc->len[i] = len;
-
-    for (pos = 0; pos < len; ++pos)
-      ++ksc->freq[(int) ksc->seq[i][pos]];
   }
 
   deleteStringVector(names);
@@ -66,17 +60,25 @@ Kseq_container* init_kseq_container (const char* filename) {
 }
 
 int validate_kseq_container (Kseq_container* ksc, const char *alphabet, FILE *err) {
-  int c, count, badchars;
+  int c, i, pos, count, badchars;
+  int freq[256];
+
+  for (c = 0; c < 256; ++c)
+    freq[c] = 0;
+
+  for (i = 0; i < ksc->n; ++i)
+    for (pos = 0; pos < ksc->len[i]; ++pos)
+      ++freq[(int) ksc->seq[i][pos]];
 
   for (badchars = c = 0; c < 256; ++c)
-    if (ksc->freq[c] && tokenize (c, alphabet) < 0)
-      badchars += ksc->freq[c];
+    if (freq[c] && tokenize (c, alphabet) < 0)
+      badchars += freq[c];
 
   if (badchars && err != NULL) {
     fprintf (err, "Warning: sequence file contains bad characters");
     for (count = c = 0; c < 256; ++c)
-      if (ksc->freq[c] && tokenize (c, alphabet) < 0)
-	fprintf (err, "%s %c (%d)", count++ ? "" : ",", c, ksc->freq[c]);
+      if (freq[c] && tokenize (c, alphabet) < 0)
+	fprintf (err, "%s %c (%d)", count++ ? "" : ",", c, freq[c]);
     fprintf (err, "\n");
   }
 

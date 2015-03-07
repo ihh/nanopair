@@ -80,5 +80,11 @@ copytest: bin/copy_fast5events $(TEST_FAST5)
 
 tinytest: $(TINY_FAST5)
 
+tinybug: bin/nanopair
+	bin/nanopair train data/tiny.fasta data/tiny.fast5
+
+rep-tinybug: bin/train-tinyfast5
+	bin/train-tinyfast5
+
 $(TINY_FAST5): bin/tinyfast5
 	bin/tinyfast5 $@

@@ -14,7 +14,6 @@ typedef struct Kseq_container {
   char **name;
   int *len;
   char **seq;
-  int freq[256];   /* char frequencies */
 } Kseq_container;
 
 Kseq_container* init_kseq_container (const char* filename);
