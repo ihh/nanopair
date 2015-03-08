@@ -745,6 +745,28 @@ long double inc_seq_event_pair_counts_via_fb (Seq_event_pair_model* model, Seq_e
   return fwdEnd - nullModel;
 }
 
+void optimize_seq_event_model_for_events (Seq_event_pair_model* model, Vector* event_arrays) {
+  Seq_event_pair_counts *counts, *prior;
+  void **events_iter;
+  Fast5_event_array *events;
+
+  prior = new_seq_event_pair_counts_minimal_prior (model);
+  counts = new_seq_event_pair_counts (model);
+
+  reset_seq_event_null_counts (counts);
+  reset_seq_event_pair_counts (counts);
+  for (events_iter = event_arrays->begin; events_iter != event_arrays->end; ++events_iter) {
+    events = (Fast5_event_array*) *events_iter;
+    inc_seq_event_null_counts_from_fast5 (counts, events);
+    inc_seq_event_pair_counts_from_fast5 (counts, events);
+  }
+  optimize_seq_event_null_model_for_counts (model, counts, prior);
+  optimize_seq_event_pair_model_for_counts (model, counts, prior);
+
+  delete_seq_event_pair_counts (counts);
+  delete_seq_event_pair_counts (prior);
+}
+
 void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs, Vector* event_arrays) {
   int iter, n_seq, *seqrev_len;
   long double loglike, prev_loglike, *seq_loglike, ev_loglike;
@@ -773,16 +795,6 @@ void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs
 
   for (n_seq = 0; n_seq < 2 * seqs->n; ++n_seq)
     seq_counts[n_seq] = new_seq_event_pair_counts (model);
-
-  reset_seq_event_null_counts (counts);
-  reset_seq_event_pair_counts (counts);
-  for (events_iter = event_arrays->begin; events_iter != event_arrays->end; ++events_iter) {
-    events = (Fast5_event_array*) *events_iter;
-    inc_seq_event_null_counts_from_fast5 (counts, events);
-    inc_seq_event_pair_counts_from_fast5 (counts, events);
-  }
-  optimize_seq_event_null_model_for_counts (model, counts, prior);
-  optimize_seq_event_pair_model_for_counts (model, counts, prior);
 
   prev_loglike = 0.;
   for (iter = 0; iter < seq_evt_pair_EM_max_iterations; ++iter) {

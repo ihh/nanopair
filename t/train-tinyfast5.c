@@ -51,8 +51,11 @@ int main (int argc, char** argv) {
 
   /* main program goes here */
 
-  /* do Baum-Welch */
+  /* initialize model */
   params = new_seq_event_pair_model (MODEL_ORDER);
+  optimize_seq_event_model_for_events (params, event_arrays);
+
+  /* do Baum-Welch */
   fit_seq_event_pair_model (params, seqs, event_arrays);
 
   /* output model */

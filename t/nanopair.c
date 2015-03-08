@@ -71,8 +71,11 @@ int main (int argc, char** argv) {
     if (event_arrays == NULL)
       return help_failure ("Couldn't open FAST5 file");
 
-    /* do Baum-Welch */
+    /* initialize model */
     params = new_seq_event_pair_model (MODEL_ORDER);
+    optimize_seq_event_model_for_events (params, event_arrays);   /* for now, initialize automatically from basecalled sequence; later, will split this out into "nanopair count" vs "nanopair init" (latter copies model params from single FAST5 file) */
+
+    /* do Baum-Welch */
     fit_seq_event_pair_model (params, seqs, event_arrays);
 
     /* output model */
