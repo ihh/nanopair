@@ -745,7 +745,7 @@ void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs
     seqrev_len[2*n_seq] = seqrev_len[2*n_seq+1] = seqs->len[n_seq];
   }
 
-  seq_loglike = SafeMalloc (2 * seqs->n * sizeof(double));
+  seq_loglike = SafeMalloc (2 * seqs->n * sizeof(long double));
   seq_counts = SafeMalloc (2 * seqs->n * sizeof(Seq_event_pair_counts*));
 
   for (n_seq = 0; n_seq < 2 * seqs->n; ++n_seq)
