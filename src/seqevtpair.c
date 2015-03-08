@@ -168,6 +168,8 @@ Seq_event_pair_data* new_seq_event_pair_data (Seq_event_pair_model* model, int s
   int n_events, seqpos;
   unsigned long matrix_cells;
 
+  Assert (seqlen >= model->order, "Sequence length is %d, which is less than model order (%d)", seqlen, model->order);
+
   data = SafeMalloc (sizeof (Seq_event_pair_data));
   data->model = model;
   data->seqlen = seqlen;
@@ -176,8 +178,8 @@ Seq_event_pair_data* new_seq_event_pair_data (Seq_event_pair_model* model, int s
 
   n_events = events->n_events;
 
-  matrix_cells = (n_events + 1) * MAX(1,seqlen - model->order + 1);
-  Warn ("Allocating DP matrix with %lu cells\n", matrix_cells);
+  matrix_cells = ((unsigned long) (n_events + 1)) * (unsigned long) (seqlen - model->order + 1);
+  Warn ("Allocating DP scratch space with %d*%d = %lu cells", n_events + 1, seqlen - model->order + 1, matrix_cells);
 
   data->matrix_cells = matrix_cells;
 
@@ -283,7 +285,8 @@ void precalc_seq_event_pair_data (Seq_event_pair_data* data) {
 
 Seq_event_pair_fb_matrix* new_seq_event_pair_fb_matrix (Seq_event_pair_model* model, int seqlen, char *seq, Fast5_event_array* events) {
   Seq_event_pair_fb_matrix* mx;
-  int n_events, matrix_cells;
+  int n_events;
+  unsigned long matrix_cells;
 
   mx = SafeMalloc (sizeof (Seq_event_pair_fb_matrix));
   mx->data = new_seq_event_pair_data (model, seqlen, seq, events);
@@ -292,7 +295,7 @@ Seq_event_pair_fb_matrix* new_seq_event_pair_fb_matrix (Seq_event_pair_model* mo
   matrix_cells = mx->data->matrix_cells;
 
 #ifdef SEQEVTPAIR_DEBUG
-  fprintf (stderr, "Allocating %d*%d Forward-Backward matrix\n", n_events, matrix_cells);
+  fprintf (stderr, "Allocating Forward-Backward matrix of size %d*%d (approx.)\n", n_events, seqlen);
 #endif /* SEQEVTPAIR_DEBUG */
 
   mx->fwdStart = SafeMalloc ((n_events + 1) * sizeof(long double));
@@ -869,7 +872,8 @@ void write_seq_event_pair_alignment_as_gff_cigar (Seq_event_pair_alignment* alig
 
 Seq_event_pair_viterbi_matrix* new_seq_event_pair_viterbi_matrix (Seq_event_pair_model* model, int seqlen, char *seq, Fast5_event_array* events) {
   Seq_event_pair_viterbi_matrix* mx;
-  int n_events, matrix_cells;
+  int n_events;
+  unsigned long matrix_cells;
 
   mx = SafeMalloc (sizeof (Seq_event_pair_viterbi_matrix));
   mx->data = new_seq_event_pair_data (model, seqlen, seq, events);

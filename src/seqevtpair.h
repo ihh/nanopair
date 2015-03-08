@@ -52,7 +52,7 @@ void delete_seq_event_pair_data (Seq_event_pair_data* matrix);
 void precalc_seq_event_pair_data (Seq_event_pair_data* data);
 
 /* Seq_event_pair_index macro assumes seqlen & order are the same as in Seq_event_pair_fb_data */
-#define Unsafe_seq_event_pair_index(seqpos,n_event) (n_event*(seqlen-order+1) + seqpos - order)
+#define Unsafe_seq_event_pair_index(seqpos,n_event) (((unsigned long)n_event) * ((unsigned long)(seqlen-order+1)) + (unsigned long)(seqpos - order))
 #ifdef SEQEVTPAIR_DEBUG
 #define Seq_event_pair_index(seqpos,n_event) ((n_event < 0 || n_event > n_events || seqpos < 0 || seqpos > seqlen) ? (Abort("Index (%d,%d) out of bounds for dimensions (%d,%d)",seqpos,n_event,seqlen,n_events), 0) : Unsafe_seq_event_pair_index(seqpos,n_event))
 #else /* SEQEVTPAIR_DEBUG */
