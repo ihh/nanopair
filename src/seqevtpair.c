@@ -8,6 +8,9 @@
 #include "kseqcontainer.h"
 #include "logsumexp.h"
 
+#define SEQEVTPAIR_PRECALC_WARN_PERIOD 1000000
+#define SEQEVTPAIR_DP_WARN_PERIOD 500
+
 static const double log_sqrt2pi = 1.83787706640935;
 
 static const char* unknown_seqname = "UnknownSequence";
@@ -256,8 +259,8 @@ void precalc_seq_event_pair_data (Seq_event_pair_data* data) {
   for (seqpos = order; seqpos <= seqlen; ++seqpos) {
 
 #ifdef SEQEVTPAIR_DEBUG
-    if (seqpos % 1000000 == 0)
-      fprintf (stderr, "Precalculating likelihoods at sequence position %d\n", seqpos);
+    if (seqpos % SEQEVTPAIR_PRECALC_WARN_PERIOD == 0)
+      Warn ("Precalculating likelihoods at sequence position %d", seqpos);
 #endif /* SEQEVTPAIR_DEBUG */
 
     state = data->state[seqpos];
@@ -295,7 +298,7 @@ Seq_event_pair_fb_matrix* new_seq_event_pair_fb_matrix (Seq_event_pair_model* mo
   matrix_cells = mx->data->matrix_cells;
 
 #ifdef SEQEVTPAIR_DEBUG
-  fprintf (stderr, "Allocating Forward-Backward matrix of size %d*%d (approx.)\n", n_events, seqlen);
+  Warn ("Allocating Forward-Backward matrix of size %d*%d (approx.)", n_events, seqlen);
 #endif /* SEQEVTPAIR_DEBUG */
 
   mx->fwdStart = SafeMalloc ((n_events + 1) * sizeof(long double));
@@ -485,7 +488,8 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 
   for (n_event = 0; n_event <= n_events; ++n_event) {
 #ifdef SEQEVTPAIR_DEBUG
-    fprintf (stderr, "Filling forward matrix, event %d\n", n_event + 1);
+    if (n_event % SEQEVTPAIR_DP_WARN_PERIOD == 0)
+      Warn ("Filling forward matrix, event %d", n_event + 1);
 #endif /* SEQEVTPAIR_DEBUG */
 
     for (seqpos = order; seqpos <= seqlen; ++seqpos) {
@@ -529,7 +533,8 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
   /* fill backward & accumulate counts */
   for (n_event = n_events; n_event >= 0; --n_event) {
 #ifdef SEQEVTPAIR_DEBUG
-    fprintf (stderr, "Filling backward matrix, event %d\n", n_event + 1);
+    if (n_event % SEQEVTPAIR_DP_WARN_PERIOD == 0)
+      Warn ("Filling backward matrix, event %d", n_event + 1);
 #endif /* SEQEVTPAIR_DEBUG */
 
     event = n_event < n_events ? &data->events->event[n_event] : NULL;
@@ -778,7 +783,7 @@ void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs
     optimize_seq_event_pair_model_for_counts (model, counts, prior);
 
 #ifdef SEQEVTPAIR_DEBUG
-    fprintf (stderr, "Baum-Welch iteration %d: log-likelihood %Lg\n", iter + 1, loglike);
+    Warn ("Baum-Welch iteration %d: log-likelihood %Lg", iter + 1, loglike);
 #endif /* SEQEVTPAIR_DEBUG */
 
     if (iter > 0 && prev_loglike != 0. && abs(prev_loglike) != INFINITY

@@ -88,3 +88,6 @@ rep-tinybug: bin/train-tinyfast5
 
 $(TINY_FAST5): bin/tinyfast5
 	bin/tinyfast5 $@
+
+smalltrain: bin/nanopair submodule
+	bin/nanopair train nanopair-data/ch101_file20_strand.fasta nanopair-data/LomanLabz_PC_E.coli_MG1655_ONI_3058_1_ch101_file20_strand.fast5
