@@ -175,7 +175,9 @@ Seq_event_pair_data* new_seq_event_pair_data (Seq_event_pair_model* model, int s
 
   n_events = events->n_events;
 
-  matrix_cells = (n_events + 1) * (seqlen - model->order + 1);
+  matrix_cells = (n_events + 1) * MIN(1,seqlen - model->order + 1);
+  Warn ("Allocating DP matrix with %d cells\n", matrix_cells);
+
   data->matrix_cells = matrix_cells;
 
   data->nullEmitDensity = SafeMalloc ((n_events + 1) * sizeof(long double));
