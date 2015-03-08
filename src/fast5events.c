@@ -4,6 +4,7 @@
 
 #include "fast5events.h"
 #include "util.h"
+#include "stringmap.h"
 
 /* path we check for events data */
 const char* events_path = "/Analyses/Basecall_2D_000/BaseCalled_template/Events";
@@ -67,6 +68,7 @@ herr_t populate_event_array (void *elem, hid_t type_id, unsigned ndim,
 
 Fast5_event_array* alloc_fast5_event_array (int model_order, int n_events, double tick_length) {
   Fast5_event_array* ev = SafeMalloc (sizeof (Fast5_event_array));
+  ev->name = NULL;
   ev->n_events = n_events;
   ev->event = SafeMalloc (n_events * sizeof (Fast5_event));
 
@@ -91,6 +93,7 @@ void delete_fast5_event_array (Fast5_event_array* ev) {
       SafeFreeOrNull (ev->event[n].mp_model_state);
     }
   SafeFreeOrNull (ev->event);
+  SafeFreeOrNull (ev->name);
   SafeFree (ev);
 };
 
@@ -187,6 +190,10 @@ Fast5_event_array* read_fast5_event_array (const char* filename, double tick_len
   /* close HDF5 resources */
   H5Gclose(root_id);
   H5Fclose(file_id);
+
+  /* set filename, and return */
+  SafeFreeOrNull (event_array->name);
+  event_array->name = StringCopy ((void*) filename);
 
   return event_array;
 }

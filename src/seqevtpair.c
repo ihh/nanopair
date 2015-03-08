@@ -776,6 +776,9 @@ void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs
 	reset_seq_event_pair_counts (seq_counts[n_seq]);
 	seq_loglike[n_seq] = inc_seq_event_pair_counts_via_fb (model, seq_counts[n_seq], seqrev_len[n_seq], seqrev[n_seq], events);
 	ev_loglike = log_sum_exp (ev_loglike, seq_loglike[n_seq]);
+#ifdef SEQEVTPAIR_DEBUG
+	Warn ("FAST5 file \"%s\", sequence \"%s\" (%s strand): log-likelihood = %Lg", events->name == NULL ? "<none>" : events->name, seqs->name[n_seq/2], (n_seq % 2) ? "reverse" : "forward", seq_loglike[n_seq]);
+#endif /* SEQEVTPAIR_DEBUG */
       }
       for (n_seq = 0; n_seq < 2 * seqs->n; ++n_seq)
 	add_weighted_seq_event_pair_counts (counts, seq_counts[n_seq], exp (seq_loglike[n_seq] - ev_loglike));

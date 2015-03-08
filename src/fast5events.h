@@ -24,6 +24,7 @@ typedef struct Fast5_event {
 
 /* fast5_event_array */
 typedef struct Fast5_event_array {
+  char* name;
   Fast5_event* event;
   int n_events;
   double tick_length;
