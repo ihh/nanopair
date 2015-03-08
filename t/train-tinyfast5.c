@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 #include "../src/seqevtpair.h"
+#include "../src/logsumexp.h"
 
 #define N_EVENTS 2
 #define MODEL_ORDER 5
@@ -20,6 +21,7 @@ int main (int argc, char** argv) {
   xmlChar *xml_params;
 
   setlocale(LC_ALL, "C");
+  init_log_sum_exp_lookup();
 
   /* create Fast5_event_array */
   events = alloc_fast5_event_array (-1, N_EVENTS, DefaultFast5TickLength);

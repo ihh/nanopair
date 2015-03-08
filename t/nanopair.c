@@ -2,6 +2,7 @@
 #include <stdarg.h>
 
 #include "../src/seqevtpair.h"
+#include "../src/logsumexp.h"
 
 const char* help_message = 
   "Usage:\n"
@@ -47,6 +48,8 @@ int main (int argc, char** argv) {
   Kseq_container *seqs;
   Seq_event_pair_model *params;
   xmlChar *xml_params;
+
+  init_log_sum_exp_lookup();
 
   if (argc < 2)
     return help_failure ("Please specify a command");

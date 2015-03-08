@@ -6,6 +6,7 @@
 #include "xmlutil.h"
 #include "xmlkeywords.h"
 #include "kseqcontainer.h"
+#include "logsumexp.h"
 
 static const double log_sqrt2pi = 1.83787706640935;
 
@@ -445,14 +446,6 @@ double log_gaussian_density (double x, double mean, double precision, double log
 double log_event_density (Fast5_event* event, double mean, double precision, double log_precision) {
   return event->ticks * (log_precision/2. - log_sqrt2pi - precision*mean*mean/2)
     - precision*(event->sumticks_cur_sq/2. - event->sumticks_cur*mean);
-}
-
-long double log_sum_exp (long double a, long double b) {
-  double min, max, diff;
-  if (a < b) { min = a; max = b; }
-  else { min = b; max = a; }
-  diff = max - min;
-  return max + log (1. + exp(-diff));
 }
 
 void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* matrix, Seq_event_pair_counts* counts) {

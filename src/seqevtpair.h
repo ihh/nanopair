@@ -76,8 +76,6 @@ void delete_seq_event_pair_fb_matrix (Seq_event_pair_fb_matrix* matrix);
 double log_gaussian_density (double x, double mean, double precision, double log_precision);
 double log_event_density (Fast5_event* event, double mean, double precision, double log_precision);
 
-long double log_sum_exp (long double a, long double b);  /* returns log(exp(a) + exp(b)) */
-
 /* Expected counts */
 
 typedef struct Seq_event_pair_counts {
