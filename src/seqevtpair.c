@@ -2,17 +2,31 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include <hdf5.h>
+#include <hdf5_hl.h>
+
 #include "seqevtpair.h"
 #include "xmlutil.h"
 #include "xmlkeywords.h"
 #include "kseqcontainer.h"
 #include "logsumexp.h"
 
+/* logging stuff */
 #define SEQEVTPAIR_PRECALC_WARN_PERIOD 1000000
 #define SEQEVTPAIR_DP_WARN_PERIOD 500
 
+/* log(sqrt(2*pi)) */
 static const double log_sqrt2pi = 1.83787706640935;
 
+/* path we check for model data in HDF5 file */
+const char* model_path = "/Analyses/Basecall_2D_000/BaseCalled_template/Model";
+
+/* names of various member fields in HDF5 file */
+#define FAST5_MODEL_KMER "kmer"
+#define FAST5_MODEL_LEVEL_MEAN "level_mean"
+#define FAST5_MODEL_LEVEL_STDV "level_stdv"
+
+/* default names */
 static const char* unknown_seqname = "UnknownSequence";
 static const char* gff3_source = "nanopair";
 static const char* gff3_feature = "Match";
@@ -44,8 +58,28 @@ long double accum_count (long double back_src,
 			 long double *moment1,
 			 long double *moment2);
 
+/* helper for finding index of max item in a list */
 void update_max (long double *current_max, int* current_max_idx, long double candidate_max, int candidate_max_idx);
 
+/* Metrichor_state_iterator
+   Used to populate the emission parameters of a Seq_event_pair_model from a Metrichor model description in a FAST5 file */
+typedef struct Metrichor_state_iterator {
+  Seq_event_pair_model *model;
+  size_t kmer_offset, level_mean_offset, level_sd_offset;
+} Metrichor_state_iterator;
+
+herr_t populate_seq_event_model_emit_params (void *elem, hid_t type_id, unsigned ndim, 
+					     const hsize_t *point, void *operator_data)
+{
+  Metrichor_state_iterator *iter = (Metrichor_state_iterator*) operator_data;
+  int state = decode_state_identifier (iter->model->order, (char*) elem + iter->kmer_offset);
+  iter->model->matchMean[state] = *((double*) (elem + iter->level_mean_offset));
+  double sd = *((double*) (elem + iter->level_sd_offset));
+  iter->model->matchPrecision[state] = 1 / (sd * sd);
+  return 0;
+}
+
+/* main function bodies */
 Seq_event_pair_model* new_seq_event_pair_model (int order) {
   Seq_event_pair_model *model;
   model = SafeMalloc (sizeof (Seq_event_pair_model));
@@ -765,6 +799,87 @@ void optimize_seq_event_model_for_events (Seq_event_pair_model* model, Vector* e
 
   delete_seq_event_pair_counts (counts);
   delete_seq_event_pair_counts (prior);
+}
+
+void copy_seq_event_model_params_from_fast5 (Seq_event_pair_model* model, const char* filename) {
+  hid_t file_id, strtype_id;
+
+  /* open file with default properties */
+  file_id = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
+
+  /* check if opening file was succeful */
+  if ( file_id < 0 )
+    {
+      Warn("Failed to open/init input file %s", filename);
+      return;
+    }
+
+  /* get root group */
+  hid_t root_id = H5Gopen(file_id, "/", H5P_DEFAULT);
+  if (root_id < 0)
+    {
+      Warn("failed to open root group");
+      return;
+    }
+
+  /* see if path exists */
+  if (H5LTpath_valid ( file_id, model_path, 1))
+    {
+      /* get dataset */
+      hid_t model_id = H5Oopen(file_id, model_path, H5P_DEFAULT);
+      if ( model_id < 0 )
+	{
+	  Warn("failed to open dataset %s",model_path);
+	}
+      else
+	{
+	  /* get information about fields in model */
+	  hid_t model_type_id = H5Dget_type( model_id );
+
+	  Metrichor_state_iterator iter;
+
+	  int kmer_idx = H5Tget_member_index( model_type_id, FAST5_MODEL_KMER );
+	  int level_mean_idx = H5Tget_member_index( model_type_id, FAST5_MODEL_LEVEL_MEAN );
+	  int level_sd_idx = H5Tget_member_index( model_type_id, FAST5_MODEL_LEVEL_STDV );
+
+	  iter.kmer_offset = H5Tget_member_offset( model_type_id, kmer_idx );
+	  iter.level_mean_offset = H5Tget_member_offset( model_type_id, level_mean_idx );
+	  iter.level_sd_offset = H5Tget_member_offset( model_type_id, level_sd_idx );
+
+	  /* check that the kmer strings are the same length as our model order */
+	  strtype_id = H5Tget_member_type( model_type_id, kmer_idx );
+	  int kmer_len = H5Tget_size (strtype_id);
+	  Assert (model->order == kmer_len, "Length of kmers in file '%s' (%d) does not match model order supplied to %s (%d)", filename, kmer_len, __FUNCTION__, model->order);
+
+	  /* get dimensions */
+	  hid_t model_space_id = H5Dget_space( model_id );
+	  hssize_t model_npoints = H5Sget_simple_extent_npoints( model_space_id );
+	  size_t state_size = H5Tget_size( model_type_id );
+
+	  /* read into memory buffer */
+	  void *buf = SafeMalloc (model_npoints * state_size);
+	  H5Dread( model_id, model_type_id, H5S_ALL, H5S_ALL, H5P_DEFAULT, buf );
+
+	  /* convert */
+	  iter.model = model;
+	  H5Diterate( buf, model_type_id, model_space_id, populate_seq_event_model_emit_params, &iter );
+
+	  /* free buffer */
+	  SafeFree (buf);
+
+	  /* close objects */
+	  H5Tclose(strtype_id);
+	  H5Sclose(model_space_id);
+	  H5Tclose(model_type_id);
+	  H5Dclose(model_id);
+	}
+    }
+  else
+    Warn("path %s not valid",model_path);
+
+  /* close HDF5 resources */
+  H5Gclose(root_id);
+  H5Fclose(file_id);
 }
 
 void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs, Vector* event_arrays) {

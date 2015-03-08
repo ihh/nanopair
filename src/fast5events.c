@@ -6,10 +6,10 @@
 #include "util.h"
 #include "stringmap.h"
 
-/* path we check for events data */
+/* path we check for events data in HDF5 file */
 const char* events_path = "/Analyses/Basecall_2D_000/BaseCalled_template/Events";
 
-/* names of various member fields */
+/* names of various member fields in HDF5 file */
 #define FAST5_EVENT_MEAN "mean"
 #define FAST5_EVENT_STDV "stdv"
 #define FAST5_EVENT_LENGTH "length"
@@ -38,6 +38,7 @@ herr_t populate_event_array (void *elem, hid_t type_id, unsigned ndim,
   ev->length = *((double*) (elem + iter->length_offset));
 
   /* HACK: allow for variable-length state names */
+  /* the disgusting excuse for this hack is found in the code for read_fast5_event_array */
   if (iter->model_order < 0) {
     char *model_state = *(char**)(elem + iter->model_state_offset);
     int model_state_len = (int) strlen (model_state);
@@ -79,6 +80,7 @@ Fast5_event_array* alloc_fast5_event_array (int model_order, int n_events, doubl
   ev->event = SafeMalloc (n_events * sizeof (Fast5_event));
 
   /* HACK: if state name strings are variable length in HDF5 file, postpone allocation of state names */
+  /* the disgusting excuse for this hack is found in the code for read_fast5_event_array */
   for (int n = 0; n < n_events; ++n)
     if (model_order < 0) {
       ev->event[n].model_state = NULL;
@@ -116,7 +118,7 @@ Fast5_event_array* read_fast5_event_array (const char* filename, double tick_len
   /* check if opening file was succeful */
   if ( file_id < 0 )
     {
-      fprintf(stderr,"Failed to open/init input file %s\n", filename);
+      Warn("Failed to open/init input file %s", filename);
       return NULL;
     }
 
@@ -124,7 +126,7 @@ Fast5_event_array* read_fast5_event_array (const char* filename, double tick_len
   hid_t root_id = H5Gopen(file_id, "/", H5P_DEFAULT);
   if (root_id < 0)
     {
-      fprintf(stderr,"failed to open root group\n");
+      Warn("failed to open root group");
       return NULL;
     }
 
@@ -135,7 +137,7 @@ Fast5_event_array* read_fast5_event_array (const char* filename, double tick_len
       hid_t events_id = H5Oopen(file_id, events_path, H5P_DEFAULT);
       if ( events_id < 0 )
 	{
-	  fprintf(stderr,"failed to open dataset %s\n",events_path);
+	  Warn("failed to open dataset %s",events_path);
 	}
       else
 	{
@@ -162,6 +164,12 @@ Fast5_event_array* read_fast5_event_array (const char* filename, double tick_len
 	  iter.raw_offset = H5Tget_member_offset( events_type_id, raw_idx );
 
 	  /* HACK: detect variable-length strings, flag using a model_order of -1 */
+	  /* Explanation of this disgustingness:
+	     The only thing we need the model order for, in this file, is to store the Metrichor HMM state names
+	     (which are k-mers, where k is the model order).
+	     In the Metrichor-generated FAST5 files, the state name is a fixed-length string, so we can guess at the top level.
+	     In the files we generate ourselves, it's a variable-length string for reasons of HDF5 API hassle.
+	     See, i told you it was disgusting. */
 	  strtype_id = H5Tget_member_type( events_type_id, model_state_idx );
 	  iter.model_order = H5Tis_variable_str(strtype_id) ? -1 : (int) H5Tget_size (strtype_id);
 
@@ -191,7 +199,7 @@ Fast5_event_array* read_fast5_event_array (const char* filename, double tick_len
 	}
     }
   else
-    fprintf(stderr,"path %s not valid\n",events_path);
+    Warn("path %s not valid",events_path);
 
   /* close HDF5 resources */
   H5Gclose(root_id);

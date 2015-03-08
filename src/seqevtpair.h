@@ -113,6 +113,7 @@ void optimize_seq_event_null_model_for_counts (Seq_event_pair_model* model, Seq_
 void optimize_seq_event_pair_model_for_counts (Seq_event_pair_model* model, Seq_event_pair_counts* counts, Seq_event_pair_counts* prior);
 
 void optimize_seq_event_model_for_events (Seq_event_pair_model* model, Vector* event_arrays);
+void copy_seq_event_model_params_from_fast5 (Seq_event_pair_model* model, const char* filename);
 
 /* Single Baum-Welch iteration */
 
