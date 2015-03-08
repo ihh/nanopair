@@ -31,7 +31,8 @@ typedef struct Seq_event_pair_data {
   /* parameters */
   Seq_event_pair_model* model;
   /* data */
-  int seqlen, matrix_cells;
+  int seqlen;
+  unsigned long matrix_cells;
   char *seq;  /* not owned */
   Fast5_event_array* events;  /* not owned */
   int *state;  /* owned */

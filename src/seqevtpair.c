@@ -165,7 +165,8 @@ xmlChar* convert_seq_event_pair_model_to_xml_string (Seq_event_pair_model* model
 
 Seq_event_pair_data* new_seq_event_pair_data (Seq_event_pair_model* model, int seqlen, char *seq, Fast5_event_array* events) {
   Seq_event_pair_data* data;
-  int n_events, matrix_cells, seqpos;
+  int n_events, seqpos;
+  unsigned long matrix_cells;
 
   data = SafeMalloc (sizeof (Seq_event_pair_data));
   data->model = model;
@@ -175,8 +176,8 @@ Seq_event_pair_data* new_seq_event_pair_data (Seq_event_pair_model* model, int s
 
   n_events = events->n_events;
 
-  matrix_cells = (n_events + 1) * MIN(1,seqlen - model->order + 1);
-  Warn ("Allocating DP matrix with %d cells\n", matrix_cells);
+  matrix_cells = (n_events + 1) * MAX(1,seqlen - model->order + 1);
+  Warn ("Allocating DP matrix with %lu cells\n", matrix_cells);
 
   data->matrix_cells = matrix_cells;
 
