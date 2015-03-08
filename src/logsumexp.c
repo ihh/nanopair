@@ -1,5 +1,6 @@
 #include <math.h>
 #include "logsumexp.h"
+#include "util.h"
 
 #define LOG_SUM_EXP_LOOKUP_MAX 10
 #define LOG_SUM_EXP_LOOKUP_PRECISION .0001
@@ -33,8 +34,10 @@ long double log_sum_exp_unary (long double x) {
   long double dx, f0, f1, df;
   if (x >= LOG_SUM_EXP_LOOKUP_MAX || isnan(x) || isinf(x))
     return 0;
-  if (x < 0)
+  if (x < 0) {  /* really dumb approximation for x < 0. Should never be encountered, so issue a warning */
+    Warn ("Called log_sum_exp_unary(x) for negative x = %Lg", x);
     return -x;
+  }
   n = (int) (x / LOG_SUM_EXP_LOOKUP_PRECISION);
   dx = x - (n * LOG_SUM_EXP_LOOKUP_PRECISION);
   f0 = log_sum_exp_lookup[n];
