@@ -53,7 +53,7 @@ SRCFILES = $(wildcard src/*.c)
 
 
 bin:
-	mkdir $@
+	test -e $@ || mkdir $@
 
 bin/%: $(SRCFILES) t/%.c Makefile bin
 	${CC} ${CPPFLAGS} ${CFLAGS} ${LDFLAGS} $(SRCFILES) t/$*.c -o $@ ${LIBS}

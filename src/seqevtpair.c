@@ -249,8 +249,10 @@ void precalc_seq_event_pair_data (Seq_event_pair_data* data) {
 
   for (seqpos = order; seqpos <= seqlen; ++seqpos) {
 
+#ifdef SEQEVTPAIR_DEBUG
     if (seqpos % 1000000 == 0)
       fprintf (stderr, "Precalculating likelihoods at sequence position %d\n", seqpos);
+#endif /* SEQEVTPAIR_DEBUG */
 
     state = data->state[seqpos];
 
@@ -285,7 +287,9 @@ Seq_event_pair_fb_matrix* new_seq_event_pair_fb_matrix (Seq_event_pair_model* mo
   n_events = mx->data->events->n_events;
   matrix_cells = mx->data->matrix_cells;
 
+#ifdef SEQEVTPAIR_DEBUG
   fprintf (stderr, "Allocating %d*%d Forward-Backward matrix\n", n_events, matrix_cells);
+#endif /* SEQEVTPAIR_DEBUG */
 
   mx->fwdStart = SafeMalloc ((n_events + 1) * sizeof(long double));
   mx->backStart = SafeMalloc ((n_events + 1) * sizeof(long double));
@@ -481,16 +485,18 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
   matrix->fwdEnd = -INFINITY;
 
   for (n_event = 0; n_event <= n_events; ++n_event) {
+#ifdef SEQEVTPAIR_DEBUG
     fprintf (stderr, "Filling forward matrix, event %d\n", n_event + 1);
+#endif /* SEQEVTPAIR_DEBUG */
 
     for (seqpos = order; seqpos <= seqlen; ++seqpos) {
       idx = Seq_event_pair_index(seqpos,n_event);
       inputIdx = Seq_event_pair_index(seqpos-1,n_event);
-      outputIdx = Seq_event_pair_index(seqpos,n_event-1);
 
       mat = matrix->fwdStart[n_event] + data->startEmitNo;   /* Start -> Match (input) */
 
       if (n_event > 0) {
+	outputIdx = Seq_event_pair_index(seqpos,n_event-1);
 	event = &data->events->event[n_event - 1];
 	mat = log_sum_exp (mat,
 			   matrix->fwdMatch[outputIdx]
@@ -514,16 +520,18 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 
       matrix->fwdMatch[idx] = mat;
       matrix->fwdDelete[idx] = del;
-    }
 
-    matrix->fwdEnd = log_sum_exp
-      (matrix->fwdEnd,
-       matrix->fwdMatch[Seq_event_pair_index(seqpos,n_events)] + data->matchEmitNo[seqpos]);  /* Match -> End (input) */
+      matrix->fwdEnd = log_sum_exp
+	(matrix->fwdEnd,
+	 matrix->fwdMatch[Seq_event_pair_index(seqpos,n_events)] + data->matchEmitNo[seqpos]);  /* Match -> End (input) */
+    }
   }
 
   /* fill backward & accumulate counts */
   for (n_event = n_events; n_event >= 0; --n_event) {
+#ifdef SEQEVTPAIR_DEBUG
     fprintf (stderr, "Filling backward matrix, event %d\n", n_event + 1);
+#endif /* SEQEVTPAIR_DEBUG */
 
     event = n_event < n_events ? &data->events->event[n_event] : NULL;
 
@@ -531,10 +539,7 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 
     for (seqpos = seqlen; seqpos >= order; --seqpos) {
       state = data->state[seqpos];
-
       idx = Seq_event_pair_index(seqpos,n_event);
-      inputIdx = Seq_event_pair_index(seqpos+1,n_event);
-      outputIdx = Seq_event_pair_index(seqpos,n_event+1);
 
       if (n_event == n_events) {
 	mat = accum_count (-INFINITY,
@@ -546,6 +551,8 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 			   NULL,
 			   NULL, NULL, NULL, NULL);   /* Match -> End (input) */
       } else {  /* n_event < n_events */
+	outputIdx = Seq_event_pair_index(seqpos,n_event+1);
+
 	mat = accum_count (-INFINITY,
 			   matrix->fwdMatch[idx],
 			   data->matchEmitYes[seqpos] * event->ticks
@@ -563,6 +570,8 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
       if (seqpos == seqlen) {
 	del = -INFINITY;
       } else {
+	inputIdx = Seq_event_pair_index(seqpos+1,n_event);
+
 	del = accum_count (-INFINITY,
 			   matrix->fwdDelete[idx],
 			   data->extendDeleteYes,
@@ -769,7 +778,9 @@ void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs
     }
     optimize_seq_event_pair_model_for_counts (model, counts, prior);
 
+#ifdef SEQEVTPAIR_DEBUG
     fprintf (stderr, "Baum-Welch iteration %d: log-likelihood %Lg\n", iter + 1, loglike);
+#endif /* SEQEVTPAIR_DEBUG */
 
     if (iter > 0 && prev_loglike != 0. && abs(prev_loglike) != INFINITY
 	&& abs((loglike-prev_loglike)/prev_loglike) < seq_evt_pair_EM_min_fractional_loglike_increment)
