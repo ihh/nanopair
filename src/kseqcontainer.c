@@ -103,7 +103,7 @@ char* new_revcomp_seq (char* dna_seq, int len) {
   rev = SafeMalloc ((len + 1) * sizeof(char));
   for (i = 0; i < len; ++i) {
     tok = tokenize (dna_seq[i], dna_alphabet);
-    rev[len - 1 - i] = tok < 0 ? 'N' : dna_alphabet[4 - tok];
+    rev[len - 1 - i] = tok < 0 ? 'N' : dna_alphabet[3 - tok];
   }
   return rev;
 }

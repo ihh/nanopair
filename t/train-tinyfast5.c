@@ -19,6 +19,7 @@ int main (int argc, char** argv) {
   Kseq_container *seqs;
   Seq_event_pair_model *params;
   xmlChar *xml_params;
+  int n_event;
 
   setlocale(LC_ALL, "C");
   init_log_sum_exp_lookup();
@@ -27,6 +28,9 @@ int main (int argc, char** argv) {
   events = alloc_fast5_event_array (-1, N_EVENTS, DefaultFast5TickLength);
 
   SafeFree (events->event);
+
+  for (n_event = 0; n_event < N_EVENTS; ++n_event)
+    fast5_event_calc_moments (event + n_event, DefaultFast5TickLength);
   events->event = event;
 
   event_arrays = newVector (NullCopyFunction, delete_fast5_event_array_null, NullPrintFunction);

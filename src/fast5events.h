@@ -22,6 +22,8 @@ typedef struct Fast5_event {
     sumticks_cur_sq;  /* sumticks_cur_sq = ticks * (stdv^2 + mean^2) */
 } Fast5_event;
 
+void fast5_event_calc_moments (Fast5_event *ev, double tick_length);
+
 /* fast5_event_array */
 typedef struct Fast5_event_array {
   char* name;

@@ -60,10 +60,16 @@ herr_t populate_event_array (void *elem, hid_t type_id, unsigned ndim,
 
   ev->move = *((long*) (elem + iter->move_offset));
   ev->raw = *((long*) (elem + iter->raw_offset));
-  ev->ticks = ev->length / iter->event_array->tick_length;
+
+  fast5_event_calc_moments (ev, iter->event_array->tick_length);
+
+  return 0;
+}
+
+void fast5_event_calc_moments (Fast5_event *ev, double tick_length) {
+  ev->ticks = ev->length / tick_length;
   ev->sumticks_cur = ev->ticks * ev->mean;
   ev->sumticks_cur_sq = ev->ticks * (ev->stdv * ev->stdv + ev->mean * ev->mean);
-  return 0;
 }
 
 Fast5_event_array* alloc_fast5_event_array (int model_order, int n_events, double tick_length) {

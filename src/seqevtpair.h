@@ -5,8 +5,11 @@
 #include "kseqcontainer.h"
 #include "xmlparser.h"
 
-/* #define the following to add out-of-bounds guards to DP matrix accessors */
-#define SEQEVTPAIR_DEBUG
+/* #define the following for various levels of debugging info/code
+   (if defined at all) adds out-of-bounds guards to DP matrix accessors, logs progress messages
+    (if defined to >1) dumps DP matrices
+ */
+#define SEQEVTPAIR_DEBUG 2
 
 /* Parameters */
 
@@ -58,6 +61,7 @@ void precalc_seq_event_pair_data (Seq_event_pair_data* data);
 #else /* SEQEVTPAIR_DEBUG */
 #define Seq_event_pair_index(seqpos,n_event) Unsafe_seq_event_pair_index(seqpos,n_event)
 #endif /* SEQEVTPAIR_DEBUG */
+unsigned long seq_event_pair_index_wrapper (Seq_event_pair_data* data, int seqpos, int n_event);
 
 /* Forward-backward matrix */
 
@@ -76,6 +80,8 @@ void delete_seq_event_pair_fb_matrix (Seq_event_pair_fb_matrix* matrix);
 
 double log_gaussian_density (double x, double mean, double precision, double log_precision);
 double log_event_density (Fast5_event* event, double mean, double precision, double log_precision);
+
+void dump_seq_event_pair_matrix (FILE* file, const char* algorithm, Seq_event_pair_data *data, long double *mxStart, long double *mxMatch, long double *mxDelete);
 
 /* Expected counts */
 
