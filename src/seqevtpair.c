@@ -801,8 +801,9 @@ void optimize_seq_event_model_for_events (Seq_event_pair_model* model, Vector* e
   delete_seq_event_pair_counts (prior);
 }
 
-void init_seq_event_model_from_fast5 (Seq_event_pair_model* model, const char* filename) {
+int init_seq_event_model_from_fast5 (Seq_event_pair_model* model, const char* filename) {
   hid_t file_id, strtype_id;
+  int ret = 0;
 
   /* open file with default properties */
   file_id = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
@@ -811,7 +812,7 @@ void init_seq_event_model_from_fast5 (Seq_event_pair_model* model, const char* f
   if ( file_id < 0 )
     {
       Warn("Failed to open/init input file %s", filename);
-      return;
+      return -1;
     }
 
   /* get root group */
@@ -819,7 +820,7 @@ void init_seq_event_model_from_fast5 (Seq_event_pair_model* model, const char* f
   if (root_id < 0)
     {
       Warn("failed to open root group");
-      return;
+      return -1;
     }
 
   /* see if path exists */
@@ -830,6 +831,7 @@ void init_seq_event_model_from_fast5 (Seq_event_pair_model* model, const char* f
       if ( model_id < 0 )
 	{
 	  Warn("failed to open dataset %s",model_path);
+	  ret = -1;
 	}
       else
 	{
@@ -874,8 +876,10 @@ void init_seq_event_model_from_fast5 (Seq_event_pair_model* model, const char* f
 	  H5Dclose(model_id);
 	}
     }
-  else
+  else {
     Warn("path %s not valid",model_path);
+    ret = -1;
+  }
 
   /* close HDF5 resources */
   H5Gclose(root_id);
@@ -897,6 +901,9 @@ void init_seq_event_model_from_fast5 (Seq_event_pair_model* model, const char* f
   model->pBeginDelete = model->pExtendDelete = model->pStartEmit = model->pNullEmit = 0.5;
   for (state = 0; state < model->states; ++state)
     model->pMatchEmit[state] = 0.5;
+
+  /* return */
+  return ret;
 }
 
 void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs, Vector* event_arrays) {

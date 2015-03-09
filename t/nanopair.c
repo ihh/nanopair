@@ -18,7 +18,9 @@ const char* help_message =
   "   aligining one or more FAST5 reads to one or more reference sequences)\n"
   "\n"
   " nanopair align <params.xml> <refs.fasta> <read.fast5> [...]  > hits.gff\n"
-  "  (to align FAST5 reads to reference sequences)\n";
+  "  (to align FAST5 reads to reference sequences)\n"
+  "\n"
+  "In 'align' & 'train' modes, use '-count' or '-seed' in place of params.xml\n";
 
 #define MODEL_ORDER 5
 
@@ -70,6 +72,30 @@ Seq_event_pair_model* init_params (char* filename) {
   return params;
 }
 
+Seq_event_pair_model* seed_params (char* filename) {
+  Seq_event_pair_model* params = new_seq_event_pair_model (MODEL_ORDER);
+  if (init_seq_event_model_from_fast5 (params, filename) != 0) {
+    delete_seq_event_pair_model (params);
+    (void) help_failure ("Could not read parameters from %s", filename);
+    return NULL;
+  }
+  return params;
+}
+
+Seq_event_pair_model* count_params (Vector* event_arrays) {
+  Seq_event_pair_model* params = new_seq_event_pair_model (MODEL_ORDER);
+  optimize_seq_event_model_for_events (params, event_arrays);
+  return params;
+}
+
+Seq_event_pair_model* get_params (char** argv, Vector* event_arrays) {
+  if (strcmp (argv[2], "-count") == 0)
+    return count_params (event_arrays);
+  if (strcmp (argv[2], "-seed") == 0)
+    return seed_params (argv[4]);
+  return init_params (argv[2]);
+}
+
 Kseq_container* init_seqs (char* filename) {
   Kseq_container* seqs = init_kseq_container (filename);
   if (seqs == NULL)
@@ -102,8 +128,9 @@ int main (int argc, char** argv) {
       return help_failure ("For count-seeding, please specify a FAST5 file");
 
     /* initialize model */
-    params = new_seq_event_pair_model (MODEL_ORDER);
-    init_seq_event_model_from_fast5 (params, argv[2]);
+    params = seed_params (argv[2]);
+    if (params == NULL)
+      return EXIT_FAILURE;
 
     /* output model */
     xml_params = convert_seq_event_pair_model_to_xml_string (params);
@@ -130,8 +157,9 @@ int main (int argc, char** argv) {
       return EXIT_FAILURE;
 
     /* initialize model */
-    params = new_seq_event_pair_model (MODEL_ORDER);
-    optimize_seq_event_model_for_events (params, event_arrays);
+    params = count_params (event_arrays);
+    if (params == NULL)
+      return EXIT_FAILURE;
 
     /* output model */
     write_params (params);
@@ -145,9 +173,9 @@ int main (int argc, char** argv) {
     if (argc < 5)
       return help_failure ("For training, please specify parameters, a FASTA reference sequence and at least one FAST5 file");
 
-    /* read parameters */
-    params = init_params (argv[2]);
-    if (params == NULL)
+    /* read FAST5 files */
+    event_arrays = init_fast5_event_array_vector (argc - 4, argv + 4);
+    if (event_arrays == NULL)
       return EXIT_FAILURE;
 
     /* read sequences */
@@ -155,9 +183,9 @@ int main (int argc, char** argv) {
     if (seqs == NULL)
       return EXIT_FAILURE;
 
-    /* read FAST5 files */
-    event_arrays = init_fast5_event_array_vector (argc - 4, argv + 4);
-    if (event_arrays == NULL)
+    /* read parameters */
+    params = get_params (argv, event_arrays);
+    if (params == NULL)
       return EXIT_FAILURE;
 
     /* do Baum-Welch */
@@ -176,9 +204,9 @@ int main (int argc, char** argv) {
     if (argc < 5)
       return help_failure ("For alignment, please specify parameters, a FASTA reference sequence and at least one FAST5 read file");
 
-    /* read parameters */
-    params = init_params (argv[2]);
-    if (params == NULL)
+    /* read FAST5 files */
+    event_arrays = init_fast5_event_array_vector (argc - 4, argv + 4);
+    if (event_arrays == NULL)
       return EXIT_FAILURE;
 
     /* read sequences */
@@ -186,9 +214,9 @@ int main (int argc, char** argv) {
     if (seqs == NULL)
       return EXIT_FAILURE;
 
-    /* read FAST5 files */
-    event_arrays = init_fast5_event_array_vector (argc - 4, argv + 4);
-    if (event_arrays == NULL)
+    /* read parameters */
+    params = get_params (argv, event_arrays);
+    if (params == NULL)
       return EXIT_FAILURE;
 
     /* loop through sequences, FAST5 files */

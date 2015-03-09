@@ -84,8 +84,7 @@ copytest: bin/copy_fast5events $(TEST_FAST5)
 tinytest: $(TINY_FAST5)
 
 tinybug: bin/nanopair
-	bin/nanopair count $(TINY_FAST5) >$@.xml
-	bin/nanopair train $@.xml $(TINY_FASTA) $(TINY_FAST5)
+	bin/nanopair train -count $(TINY_FASTA) $(TINY_FAST5)
 
 rep-tinybug: bin/train-tinyfast5
 	bin/train-tinyfast5
@@ -94,5 +93,4 @@ $(TINY_FAST5): bin/tinyfast5
 	bin/tinyfast5 $@
 
 smalltrain: bin/nanopair submodule
-	bin/nanopair seed $(TEST_FAST5) >$@.xml
-	bin/nanopair train $@.xml $(SHORT_FASTA) $(TEST_FAST5) >$@.trained.xml
+	bin/nanopair train -seed $(SHORT_FASTA) $(TEST_FAST5)
