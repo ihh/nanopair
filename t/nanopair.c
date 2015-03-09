@@ -6,10 +6,19 @@
 
 const char* help_message = 
   "Usage:\n"
+  "\n"
   " nanopair seed <read.fast5>  > params.xml\n"
+  "  (to parameterize a model from the HMM in a FAST5 file)\n"
+  "\n"
   " nanopair count <read.fast5> [<read2.fast5> ...]  > params.xml\n"
-  " nanopair train <params.xml> <refs.fasta> <read.fast5> [<read2.fast5> ...]  > newparams.xml\n"
-  " nanopair align <params.xml> <refs.fasta> <read.fast5> [<read2.fast5> ...]  > hits.gff\n";
+  "  (to parameterize a model from the basecalled event data in a FAST5 file)\n"
+  "\n"
+  " nanopair train <params.xml> <refs.fasta> <read.fast5> [...]  > newparams.xml\n"
+  "  (to re-parameterize a model via the Expectation Maximization algorithm,\n"
+  "   aligining one or more FAST5 reads to one or more reference sequences)\n"
+  "\n"
+  " nanopair align <params.xml> <refs.fasta> <read.fast5> [...]  > hits.gff\n"
+  "  (to align FAST5 reads to reference sequences)\n";
 
 #define MODEL_ORDER 5
 
@@ -85,7 +94,7 @@ int main (int argc, char** argv) {
   init_log_sum_exp_lookup();
 
   if (argc < 2)
-    return help_failure ("Please specify a command");
+    return help_failure ("Please specify a command.");
 
   else if (strcmp (argv[1], "seed") == 0) {
     /* SEED: initialize emit parameters from model in a FAST5 read file */
@@ -94,7 +103,7 @@ int main (int argc, char** argv) {
 
     /* initialize model */
     params = new_seq_event_pair_model (MODEL_ORDER);
-    copy_seq_event_model_params_from_fast5 (params, argv[2]);
+    init_seq_event_model_from_fast5 (params, argv[2]);
 
     /* output model */
     xml_params = convert_seq_event_pair_model_to_xml_string (params);

@@ -37,8 +37,11 @@ HDF5 = /usr/local
 endif
 
 TEST_FAST5 = nanopair-data/LomanLabz_PC_E.coli_MG1655_ONI_3058_1_ch101_file20_strand.fast5
+TINY_FAST5 = data/tiny.fast5
+
 TEST_FASTA = nanopair-data/U00096.2.fas
-TINY_FAST5 = nanopair-data/tiny.fast5
+SHORT_FASTA = nanopair-data/ch101_file20_strand.fasta
+TINY_FASTA = data/tiny.fasta
 
 ifdef HDF5
 CPPFLAGS += -I${HDF5}/include -W -Wall -Wno-unused-function -Wno-unused-parameter -std=c99
@@ -81,7 +84,8 @@ copytest: bin/copy_fast5events $(TEST_FAST5)
 tinytest: $(TINY_FAST5)
 
 tinybug: bin/nanopair
-	bin/nanopair train data/tiny.fasta data/tiny.fast5
+	bin/nanopair count $(TINY_FAST5) >$@.xml
+	bin/nanopair train $@.xml $(TINY_FASTA) $(TINY_FAST5)
 
 rep-tinybug: bin/train-tinyfast5
 	bin/train-tinyfast5
@@ -90,4 +94,5 @@ $(TINY_FAST5): bin/tinyfast5
 	bin/tinyfast5 $@
 
 smalltrain: bin/nanopair submodule
-	bin/nanopair train nanopair-data/ch101_file20_strand.fasta nanopair-data/LomanLabz_PC_E.coli_MG1655_ONI_3058_1_ch101_file20_strand.fast5
+	bin/nanopair seed $(TEST_FAST5) >$@.xml
+	bin/nanopair train $@.xml $(SHORT_FASTA) $(TEST_FAST5) >$@.trained.xml
