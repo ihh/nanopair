@@ -6,8 +6,10 @@
 
 const char* help_message = 
   "Usage:\n"
-  " nanopair train <ref.fasta> <run.fast5> [<more.fast5> ...]   > paramfile.xml\n"
-  " nanopair align -params <params.xml> <ref.fasta> <run.fast5> [<more.fast5> ...]  > hits.gff\n";
+  " nanopair seed <read.fast5>  > params.xml\n"
+  " nanopair count <read.fast5> [<read2.fast5> ...]  > params.xml\n"
+  " nanopair train <params.xml> <refs.fasta> <read.fast5> [<read2.fast5> ...]  > newparams.xml\n"
+  " nanopair align <params.xml> <refs.fasta> <read.fast5> [<read2.fast5> ...]  > hits.gff\n";
 
 #define MODEL_ORDER 5
 
@@ -35,11 +37,42 @@ Vector* init_fast5_event_array_vector (int argc, char** argv) {
     events = read_fast5_event_array (*argv, DefaultFast5TickLength);
     if (events == NULL) {
       deleteVector (vec);  /* automatically calls delete_fast5_event_array */
+      (void) help_failure ("Couldn't open FAST5 file %s", *argv);
       return NULL;
     }
     VectorPushBack (vec, events);
   }
+  if (VectorSize(vec) == 0) {
+    deleteVector (vec);
+    (void) help_failure ("Couldn't open any FAST5 files");
+    return NULL;
+  }
   return vec;
+}
+
+Seq_event_pair_model* init_params (char* filename) {
+  xmlChar* xml_params = (xmlChar*) readFileAsString (filename);
+  if (xml_params == NULL) {
+    (void) help_failure ("Parameter file %s not found", filename);
+    return NULL;
+  }
+  Seq_event_pair_model* params = new_seq_event_pair_model_from_xml_string ((char*) xml_params);
+  SafeFree (xml_params);
+  return params;
+}
+
+Kseq_container* init_seqs (char* filename) {
+  Kseq_container* seqs = init_kseq_container (filename);
+  if (seqs == NULL)
+    (void) help_failure ("Couldn't open FASTA file %s", filename);
+  validate_kseq_container (seqs, dna_alphabet, stderr);
+  return seqs;
+}
+
+void write_params (Seq_event_pair_model *params) {
+  xmlChar *xml_params = convert_seq_event_pair_model_to_xml_string (params);
+  fprintf (stdout, "%s", (char*) xml_params);
+  SafeFree (xml_params);
 }
 
 int main (int argc, char** argv) {
@@ -54,65 +87,100 @@ int main (int argc, char** argv) {
   if (argc < 2)
     return help_failure ("Please specify a command");
 
-  else if (strcmp (argv[1], "train") == 0) {
-    /* TRAINING */
-    if (argc < 4)
-      return help_failure ("For training, please specify a FASTA reference sequence and at least one FAST5 file");
-
-    /* read sequences */
-    seqs = init_kseq_container (argv[2]);
-    if (seqs == NULL)
-      return help_failure ("Couldn't open FASTA file %s", argv[2]);
-
-    validate_kseq_container (seqs, dna_alphabet, stderr);
-
-    /* read FAST5 files */
-    event_arrays = init_fast5_event_array_vector (argc - 3, argv + 3);
-    if (event_arrays == NULL)
-      return help_failure ("Couldn't open FAST5 file");
+  else if (strcmp (argv[1], "seed") == 0) {
+    /* SEED: initialize emit parameters from model in a FAST5 read file */
+    if (argc != 3)
+      return help_failure ("For count-seeding, please specify a FAST5 file");
 
     /* initialize model */
     params = new_seq_event_pair_model (MODEL_ORDER);
-    optimize_seq_event_model_for_events (params, event_arrays);   /* for now, initialize automatically from basecalled sequence; later, will split this out into "nanopair count" vs "nanopair init" (latter copies model params from single FAST5 file) */
-
-    /* do Baum-Welch */
-    fit_seq_event_pair_model (params, seqs, event_arrays);
+    copy_seq_event_model_params_from_fast5 (params, argv[2]);
 
     /* output model */
     xml_params = convert_seq_event_pair_model_to_xml_string (params);
     fprintf (stdout, "%s", (char*) xml_params);
 
+    /* MORE SHOULD GO HERE: we need to set
+       pBeginDelete, pExtendDelete,
+       pStartEmit,
+       pNullEmit, nullMean, nullPrecision
+    */
+
     /* free memory */
     SafeFree (xml_params);
+    delete_seq_event_pair_model (params);
+
+  } else if (strcmp (argv[1], "count") == 0) {
+    /* COUNT: initialize parameters from base-called reads */
+    if (argc < 3)
+      return help_failure ("For count-seeding, please specify at least one FAST5 file");
+
+    /* read FAST5 files */
+    event_arrays = init_fast5_event_array_vector (argc - 2, argv + 2);
+    if (event_arrays == NULL)
+      return EXIT_FAILURE;
+
+    /* initialize model */
+    params = new_seq_event_pair_model (MODEL_ORDER);
+    optimize_seq_event_model_for_events (params, event_arrays);
+
+    /* output model */
+    write_params (params);
+
+    /* free memory */
+    delete_seq_event_pair_model (params);
+    deleteVector (event_arrays);  /* automatically calls delete_fast5_event_array */
+
+  } else if (strcmp (argv[1], "train") == 0) {
+    /* TRAINING */
+    if (argc < 5)
+      return help_failure ("For training, please specify parameters, a FASTA reference sequence and at least one FAST5 file");
+
+    /* read parameters */
+    params = init_params (argv[2]);
+    if (params == NULL)
+      return EXIT_FAILURE;
+
+    /* read sequences */
+    seqs = init_seqs (argv[3]);
+    if (seqs == NULL)
+      return EXIT_FAILURE;
+
+    /* read FAST5 files */
+    event_arrays = init_fast5_event_array_vector (argc - 4, argv + 4);
+    if (event_arrays == NULL)
+      return EXIT_FAILURE;
+
+    /* do Baum-Welch */
+    fit_seq_event_pair_model (params, seqs, event_arrays);
+
+    /* output model */
+    write_params (params);
+
+    /* free memory */
     delete_seq_event_pair_model (params);
     free_kseq_container (seqs);
     deleteVector (event_arrays);  /* automatically calls delete_fast5_event_array */
 
   } else if (strcmp (argv[1], "align") == 0) {
     /* ALIGNMENT */
-    if (argc < 6)
-      return help_failure ("For alignment, please specify parameters, a FASTA reference sequence and at least one FAST5 file");
+    if (argc < 5)
+      return help_failure ("For alignment, please specify parameters, a FASTA reference sequence and at least one FAST5 read file");
 
     /* read parameters */
-    if (strcmp (argv[2], "-params") != 0)
-      return help_failure ("For alignment, please specify parameters using -params");
-    xml_params = (xmlChar*) readFileAsString (argv[3]);
-    if (xml_params == NULL)
-      return help_failure ("Parameter file %s not found", argv[3]);
-    params = new_seq_event_pair_model_from_xml_string ((char*) xml_params);
-    SafeFree (xml_params);
+    params = init_params (argv[2]);
+    if (params == NULL)
+      return EXIT_FAILURE;
 
     /* read sequences */
-    seqs = init_kseq_container (argv[4]);
+    seqs = init_seqs (argv[3]);
     if (seqs == NULL)
-      return help_failure ("Couldn't open FASTA file %s", argv[2]);
-
-    validate_kseq_container (seqs, dna_alphabet, stderr);
+      return EXIT_FAILURE;
 
     /* read FAST5 files */
-    event_arrays = init_fast5_event_array_vector (argc - 5, argv + 5);
+    event_arrays = init_fast5_event_array_vector (argc - 4, argv + 4);
     if (event_arrays == NULL)
-      return help_failure ("Couldn't open FAST5 file");
+      return EXIT_FAILURE;
 
     /* loop through sequences, FAST5 files */
     for (i = 0; i < seqs->n; ++i)
