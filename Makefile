@@ -84,7 +84,7 @@ copytest: bin/copy_fast5events $(TEST_FAST5)
 tinytest: $(TINY_FAST5)
 
 tinybug: bin/nanopair
-	bin/nanopair train -count $(TINY_FASTA) $(TINY_FAST5)
+	bin/nanopair train -eventseed $(TINY_FASTA) $(TINY_FAST5)
 
 rep-tinybug: bin/train-tinyfast5
 	bin/train-tinyfast5

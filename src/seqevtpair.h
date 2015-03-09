@@ -94,19 +94,22 @@ typedef struct Seq_event_pair_counts {
   int order, states;
   long double *matchMoment0, *matchMoment1, *matchMoment2;
   long double nullMoment0, nullMoment1, nullMoment2;
+  long double loglike;
 } Seq_event_pair_counts;
 
 Seq_event_pair_counts* new_seq_event_pair_counts (Seq_event_pair_model* model);
 void delete_seq_event_pair_counts (Seq_event_pair_counts* counts);
+
+xmlChar* convert_seq_event_pair_counts_to_xml_string (Seq_event_pair_counts* counts);
 
 Seq_event_pair_counts* new_seq_event_pair_counts_minimal_prior (Seq_event_pair_model* model);  /* Laplace +1's */
 
 void reset_seq_event_null_counts (Seq_event_pair_counts* counts);
 void reset_seq_event_pair_counts (Seq_event_pair_counts* counts);
 
-void add_weighted_seq_event_pair_counts (Seq_event_pair_counts* counts, Seq_event_pair_counts* inc, long double weight);
+void add_weighted_seq_event_pair_counts (Seq_event_pair_counts* counts, Seq_event_pair_counts** inc, int n_inc);  /* weights each set of counts in inc[] proportionally to its log-likelihood */
 
-void inc_seq_event_pair_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_event_array* events);  /* NB does not touch delete counts */
+void inc_seq_event_pair_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_event_array* events);  /* NB does not touch delete counts or loglike */
 void inc_seq_event_null_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_event_array* events);
 
 void optimize_seq_event_null_model_for_counts (Seq_event_pair_model* model, Seq_event_pair_counts* counts, Seq_event_pair_counts* prior);
@@ -118,7 +121,8 @@ int init_seq_event_model_from_fast5 (Seq_event_pair_model* model, const char* fi
 /* Single Baum-Welch iteration */
 
 void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* matrix, Seq_event_pair_counts* counts);
-long double inc_seq_event_pair_counts_via_fb (Seq_event_pair_model* model, Seq_event_pair_counts* counts, int seqlen, char *seq, Fast5_event_array* events);  /* wraps creation & destruction of FB matrix, returns log-likelihood ratio (forward/null) */
+void inc_seq_event_pair_counts_via_fb (Seq_event_pair_model* model, Seq_event_pair_counts* counts, int seqlen, char *seq, Fast5_event_array* events);  /* wraps creation & destruction of FB matrix */
+Seq_event_pair_counts* get_seq_event_pair_counts (Seq_event_pair_model* model, Kseq_container* seqs, Vector* event_arrays);  /* wraps iteration over sequences and reads */
 
 /* Full Baum-Welch wrapper */
 

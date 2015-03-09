@@ -15,4 +15,11 @@
 #define XMLNP_START     "start"
 #define XMLNP_NULLMODEL "null"
 
+#define XMLNP_COUNTS    "counts"
+#define XMLNP_YES       "yes"
+#define XMLNP_NO        "no"
+#define XMLNP_M0        "n"
+#define XMLNP_M1        "sum"
+#define XMLNP_M2        "sumsq"
+
 #endif /* XMLKEYWORDS_INCLUDED */

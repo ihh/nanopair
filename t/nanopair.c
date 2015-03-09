@@ -5,22 +5,27 @@
 #include "../src/logsumexp.h"
 
 const char* help_message = 
-  "Usage:\n"
+  "Usage: nanopair <command> <args...>\n"
   "\n"
   " nanopair seed <read.fast5>  > params.xml\n"
   "  (to parameterize a model from the HMM in a FAST5 file)\n"
   "\n"
-  " nanopair count <read.fast5> [<read2.fast5> ...]  > params.xml\n"
+  " nanopair eventseed <read.fast5> [<read2.fast5> ...]  > params.xml\n"
   "  (to parameterize a model from the basecalled event data in a FAST5 file)\n"
   "\n"
+  " nanopair count <params.xml> <refs.fasta> <read.fast5> [...]  > counts.xml\n"
+  "  (to calculate expected counts under the posterior distribution,\n"
+  "   as summary statistics or for distributed EM updates)\n"
+  "\n"
   " nanopair train <params.xml> <refs.fasta> <read.fast5> [...]  > newparams.xml\n"
-  "  (to re-parameterize a model via the Expectation Maximization algorithm,\n"
-  "   aligining one or more FAST5 reads to one or more reference sequences)\n"
+  "  (to re-parameterize a model via the Baum-Welch/EM algorithm,\n"
+  "   aligning one or more FAST5 reads to one or more reference sequences)\n"
   "\n"
   " nanopair align <params.xml> <refs.fasta> <read.fast5> [...]  > hits.gff\n"
-  "  (to align FAST5 reads to reference sequences)\n"
+  "  (to align FAST5 reads to reference sequences via the Viterbi algorithm)\n"
   "\n"
-  "In 'align' & 'train' modes, use '-count' or '-seed' in place of params.xml\n";
+  "For 'align', 'train' & 'count' commands:\n"
+  "Can use '-eventseed' or '-seed' in place of <params.xml>.\n";
 
 #define MODEL_ORDER 5
 
@@ -82,15 +87,15 @@ Seq_event_pair_model* seed_params (char* filename) {
   return params;
 }
 
-Seq_event_pair_model* count_params (Vector* event_arrays) {
+Seq_event_pair_model* eventseed_params (Vector* event_arrays) {
   Seq_event_pair_model* params = new_seq_event_pair_model (MODEL_ORDER);
   optimize_seq_event_model_for_events (params, event_arrays);
   return params;
 }
 
 Seq_event_pair_model* get_params (char** argv, Vector* event_arrays) {
-  if (strcmp (argv[2], "-count") == 0)
-    return count_params (event_arrays);
+  if (strcmp (argv[2], "-eventseed") == 0)
+    return eventseed_params (event_arrays);
   if (strcmp (argv[2], "-seed") == 0)
     return seed_params (argv[4]);
   return init_params (argv[2]);
@@ -110,11 +115,18 @@ void write_params (Seq_event_pair_model *params) {
   SafeFree (xml_params);
 }
 
+void write_counts (Seq_event_pair_counts *counts) {
+  xmlChar *xml_counts = convert_seq_event_pair_counts_to_xml_string (counts);
+  fprintf (stdout, "%s", (char*) xml_counts);
+  SafeFree (xml_counts);
+}
+
 int main (int argc, char** argv) {
   int i, j;
   Vector *event_arrays;
   Kseq_container *seqs;
   Seq_event_pair_model *params;
+  Seq_event_pair_counts *counts;
   xmlChar *xml_params;
 
   init_log_sum_exp_lookup();
@@ -125,7 +137,7 @@ int main (int argc, char** argv) {
   else if (strcmp (argv[1], "seed") == 0) {
     /* SEED: initialize emit parameters from model in a FAST5 read file */
     if (argc != 3)
-      return help_failure ("For count-seeding, please specify a FAST5 file");
+      return help_failure ("For seeding, please specify a FAST5 file");
 
     /* initialize model */
     params = seed_params (argv[2]);
@@ -146,10 +158,10 @@ int main (int argc, char** argv) {
     SafeFree (xml_params);
     delete_seq_event_pair_model (params);
 
-  } else if (strcmp (argv[1], "count") == 0) {
-    /* COUNT: initialize parameters from base-called reads */
+  } else if (strcmp (argv[1], "eventseed") == 0) {
+    /* EVENTSEED: initialize parameters from base-called reads */
     if (argc < 3)
-      return help_failure ("For count-seeding, please specify at least one FAST5 file");
+      return help_failure ("For event-based seeding, please specify at least one FAST5 file");
 
     /* read FAST5 files */
     event_arrays = init_fast5_event_array_vector (argc - 2, argv + 2);
@@ -157,7 +169,7 @@ int main (int argc, char** argv) {
       return EXIT_FAILURE;
 
     /* initialize model */
-    params = count_params (event_arrays);
+    params = eventseed_params (event_arrays);
     if (params == NULL)
       return EXIT_FAILURE;
 
@@ -168,8 +180,40 @@ int main (int argc, char** argv) {
     delete_seq_event_pair_model (params);
     deleteVector (event_arrays);  /* automatically calls delete_fast5_event_array */
 
+  } else if (strcmp (argv[1], "count") == 0) {
+    /* COUNT: single E-step of Baum-Welch/EM algorithm */
+    if (argc < 5)
+      return help_failure ("To calculate summary counts please specify parameters, a FASTA reference sequence and at least one FAST5 file");
+
+    /* read FAST5 files */
+    event_arrays = init_fast5_event_array_vector (argc - 4, argv + 4);
+    if (event_arrays == NULL)
+      return EXIT_FAILURE;
+
+    /* read sequences */
+    seqs = init_seqs (argv[3]);
+    if (seqs == NULL)
+      return EXIT_FAILURE;
+
+    /* read parameters */
+    params = get_params (argv, event_arrays);
+    if (params == NULL)
+      return EXIT_FAILURE;
+
+    /* get counts */
+    counts = get_seq_event_pair_counts (params, seqs, event_arrays);
+
+    /* output counts */
+    write_counts (counts);
+
+    /* free memory */
+    delete_seq_event_pair_counts (counts);
+    delete_seq_event_pair_model (params);
+    free_kseq_container (seqs);
+    deleteVector (event_arrays);  /* automatically calls delete_fast5_event_array */
+
   } else if (strcmp (argv[1], "train") == 0) {
-    /* TRAINING */
+    /* TRAIN: Baum-Welch/EM algorithm */
     if (argc < 5)
       return help_failure ("For training, please specify parameters, a FASTA reference sequence and at least one FAST5 file");
 
@@ -200,7 +244,7 @@ int main (int argc, char** argv) {
     deleteVector (event_arrays);  /* automatically calls delete_fast5_event_array */
 
   } else if (strcmp (argv[1], "align") == 0) {
-    /* ALIGNMENT */
+    /* ALIGN: Viterbi algorithm */
     if (argc < 5)
       return help_failure ("For alignment, please specify parameters, a FASTA reference sequence and at least one FAST5 read file");
 

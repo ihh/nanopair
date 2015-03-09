@@ -413,6 +413,7 @@ void reset_seq_event_pair_counts (Seq_event_pair_counts* counts) {
   counts->nBeginDeleteNo = 0;
   counts->nExtendDeleteYes = 0;
   counts->nExtendDeleteNo = 0;
+  counts->loglike = 0;
 }
 
 Seq_event_pair_counts* new_seq_event_pair_counts_minimal_prior (Seq_event_pair_model* model) {
@@ -474,21 +475,29 @@ void inc_seq_event_pair_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_
   counts->nNullEmitNo += 1.;
 }
 
-void add_weighted_seq_event_pair_counts (Seq_event_pair_counts* counts, Seq_event_pair_counts* inc, long double weight) {
-  int state;
-  for (state = 0; state < counts->states; ++state) {
-    counts->nMatchEmitYes[state] += weight * inc->nMatchEmitYes[state];
-    counts->nMatchEmitNo[state] += weight * inc->nMatchEmitNo[state];
-    counts->matchMoment0[state] += weight * inc->matchMoment0[state];
-    counts->matchMoment1[state] += weight * inc->matchMoment1[state];
-    counts->matchMoment2[state] += weight * inc->matchMoment2[state];
+void add_weighted_seq_event_pair_counts (Seq_event_pair_counts* counts, Seq_event_pair_counts** inc, int n_inc) {
+  int state, n;
+  long double loglike_all = -INFINITY;
+  double weight;
+  for (n = 0; n < n_inc; ++n)
+    loglike_all = log_sum_exp (loglike_all, inc[n]->loglike);
+  for (n = 0; n < n_inc; ++n) {
+    weight = exp (inc[n]->loglike - loglike_all);
+    for (state = 0; state < counts->states; ++state) {
+      counts->nMatchEmitYes[state] += weight * inc[n]->nMatchEmitYes[state];
+      counts->nMatchEmitNo[state] += weight * inc[n]->nMatchEmitNo[state];
+      counts->matchMoment0[state] += weight * inc[n]->matchMoment0[state];
+      counts->matchMoment1[state] += weight * inc[n]->matchMoment1[state];
+      counts->matchMoment2[state] += weight * inc[n]->matchMoment2[state];
+    }
+    counts->nStartEmitYes += weight * inc[n]->nStartEmitYes;
+    counts->nStartEmitNo += weight * inc[n]->nStartEmitNo;
+    counts->nBeginDeleteYes += weight * inc[n]->nBeginDeleteYes;
+    counts->nBeginDeleteNo += weight * inc[n]->nBeginDeleteNo;
+    counts->nExtendDeleteYes += weight * inc[n]->nExtendDeleteYes;
+    counts->nExtendDeleteNo += weight * inc[n]->nExtendDeleteNo;
   }
-  counts->nStartEmitYes += weight * inc->nStartEmitYes;
-  counts->nStartEmitNo += weight * inc->nStartEmitNo;
-  counts->nBeginDeleteYes += weight * inc->nBeginDeleteYes;
-  counts->nBeginDeleteNo += weight * inc->nBeginDeleteNo;
-  counts->nExtendDeleteYes += weight * inc->nExtendDeleteYes;
-  counts->nExtendDeleteNo += weight * inc->nExtendDeleteNo;
+  counts->loglike += loglike_all;
 }
 
 double log_gaussian_density (double x, double mean, double precision, double log_precision) {
@@ -768,7 +777,7 @@ void optimize_seq_event_pair_model_for_counts (Seq_event_pair_model* model, Seq_
     delete_seq_event_pair_counts (dummy_prior);
 }
 
-long double inc_seq_event_pair_counts_via_fb (Seq_event_pair_model* model, Seq_event_pair_counts* counts, int seqlen, char *seq, Fast5_event_array* events) {
+void inc_seq_event_pair_counts_via_fb (Seq_event_pair_model* model, Seq_event_pair_counts* counts, int seqlen, char *seq, Fast5_event_array* events) {
   Seq_event_pair_fb_matrix* matrix;
   long double fwdEnd, nullModel;
   matrix = new_seq_event_pair_fb_matrix (model, seqlen, seq, events);
@@ -776,7 +785,7 @@ long double inc_seq_event_pair_counts_via_fb (Seq_event_pair_model* model, Seq_e
   fwdEnd = matrix->fwdEnd;
   nullModel = matrix->data->nullModel;
   delete_seq_event_pair_fb_matrix (matrix);
-  return fwdEnd - nullModel;
+  counts->loglike += fwdEnd - nullModel;
 }
 
 void optimize_seq_event_model_for_events (Seq_event_pair_model* model, Vector* event_arrays) {
@@ -907,15 +916,39 @@ int init_seq_event_model_from_fast5 (Seq_event_pair_model* model, const char* fi
 }
 
 void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs, Vector* event_arrays) {
-  int iter, n_seq, *seqrev_len;
-  long double loglike, prev_loglike, *seq_loglike, ev_loglike;
+  int iter;
+  long double loglike, prev_loglike;
+  Seq_event_pair_counts *counts, *prior;
+
+  prior = new_seq_event_pair_counts_minimal_prior (model);
+
+  prev_loglike = 0.;
+  for (iter = 0; iter < seq_evt_pair_EM_max_iterations; ++iter) {
+    counts = get_seq_event_pair_counts (model, seqs, event_arrays);
+    loglike = counts->loglike;
+
+    optimize_seq_event_pair_model_for_counts (model, counts, prior);
+    delete_seq_event_pair_counts (counts);
+
+#ifdef SEQEVTPAIR_DEBUG
+    Warn ("Baum-Welch iteration %d: log-likelihood %Lg", iter + 1, loglike);
+#endif /* SEQEVTPAIR_DEBUG */
+
+    if (iter > 0 && prev_loglike != 0. && abs(prev_loglike) != INFINITY
+	&& abs((loglike-prev_loglike)/prev_loglike) < seq_evt_pair_EM_min_fractional_loglike_increment)
+      break;
+    prev_loglike = loglike;
+  }
+
+  delete_seq_event_pair_counts (prior);
+}
+
+Seq_event_pair_counts* get_seq_event_pair_counts (Seq_event_pair_model* model, Kseq_container* seqs, Vector* event_arrays) {
+  int n_seq, *seqrev_len;
   char **rev, **seqrev;
   void **events_iter;
   Fast5_event_array *events;
-  Seq_event_pair_counts *counts, **seq_counts, *prior;
-
-  prior = new_seq_event_pair_counts_minimal_prior (model);
-  counts = new_seq_event_pair_counts (model);
+  Seq_event_pair_counts *counts, **seq_counts;
 
   rev = SafeMalloc (seqs->n * sizeof(char*));
   for (n_seq = 0; n_seq < seqs->n; ++n_seq)
@@ -929,40 +962,23 @@ void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs
     seqrev_len[2*n_seq] = seqrev_len[2*n_seq+1] = seqs->len[n_seq];
   }
 
-  seq_loglike = SafeMalloc (2 * seqs->n * sizeof(long double));
-  seq_counts = SafeMalloc (2 * seqs->n * sizeof(Seq_event_pair_counts*));
+  counts = new_seq_event_pair_counts (model);
+  reset_seq_event_pair_counts (counts);
 
+  seq_counts = SafeMalloc (2 * seqs->n * sizeof(Seq_event_pair_counts*));
   for (n_seq = 0; n_seq < 2 * seqs->n; ++n_seq)
     seq_counts[n_seq] = new_seq_event_pair_counts (model);
 
-  prev_loglike = 0.;
-  for (iter = 0; iter < seq_evt_pair_EM_max_iterations; ++iter) {
-    loglike = 0.;
-    reset_seq_event_pair_counts (counts);
-    for (events_iter = event_arrays->begin; events_iter != event_arrays->end; ++events_iter) {
-      events = (Fast5_event_array*) *events_iter;
-      ev_loglike = -INFINITY;
-      for (n_seq = 0; n_seq < 2 * seqs->n; ++n_seq) {
-	reset_seq_event_pair_counts (seq_counts[n_seq]);
-	seq_loglike[n_seq] = inc_seq_event_pair_counts_via_fb (model, seq_counts[n_seq], seqrev_len[n_seq], seqrev[n_seq], events);
-	ev_loglike = log_sum_exp (ev_loglike, seq_loglike[n_seq]);
+  for (events_iter = event_arrays->begin; events_iter != event_arrays->end; ++events_iter) {
+    events = (Fast5_event_array*) *events_iter;
+    for (n_seq = 0; n_seq < 2 * seqs->n; ++n_seq) {
+      reset_seq_event_pair_counts (seq_counts[n_seq]);
+      inc_seq_event_pair_counts_via_fb (model, seq_counts[n_seq], seqrev_len[n_seq], seqrev[n_seq], events);
 #ifdef SEQEVTPAIR_DEBUG
-	Warn ("FAST5 file \"%s\", sequence \"%s\" (%s strand): log-likelihood = %Lg", events->name == NULL ? "<none>" : events->name, seqs->name[n_seq/2], (n_seq % 2) ? "reverse" : "forward", seq_loglike[n_seq]);
+      Warn ("FAST5 file \"%s\", sequence \"%s\" (%s strand): log-likelihood = %Lg", events->name == NULL ? "<none>" : events->name, seqs->name[n_seq/2], (n_seq % 2) ? "reverse" : "forward", seq_counts[n_seq]->loglike);
 #endif /* SEQEVTPAIR_DEBUG */
-      }
-      for (n_seq = 0; n_seq < 2 * seqs->n; ++n_seq)
-	add_weighted_seq_event_pair_counts (counts, seq_counts[n_seq], exp (seq_loglike[n_seq] - ev_loglike));
     }
-    optimize_seq_event_pair_model_for_counts (model, counts, prior);
-
-#ifdef SEQEVTPAIR_DEBUG
-    Warn ("Baum-Welch iteration %d: log-likelihood %Lg", iter + 1, loglike);
-#endif /* SEQEVTPAIR_DEBUG */
-
-    if (iter > 0 && prev_loglike != 0. && abs(prev_loglike) != INFINITY
-	&& abs((loglike-prev_loglike)/prev_loglike) < seq_evt_pair_EM_min_fractional_loglike_increment)
-      break;
-    prev_loglike = loglike;
+    add_weighted_seq_event_pair_counts (counts, seq_counts, 2 * seqs->n);
   }
 
   for (n_seq = 0; n_seq < seqs->n; ++n_seq)
@@ -972,12 +988,10 @@ void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs
   for (n_seq = 0; n_seq < 2 * seqs->n; ++n_seq)
     delete_seq_event_pair_counts (seq_counts[n_seq]);
   SafeFree (seq_counts);
-  SafeFree (seq_loglike);
   SafeFree (seqrev);
   SafeFree (seqrev_len);
 
-  delete_seq_event_pair_counts (counts);
-  delete_seq_event_pair_counts (prior);
+  return counts;
 }
 
 Seq_event_pair_alignment* new_seq_event_pair_alignment (Fast5_event_array *events, char *seq, int seqlen) {
@@ -1361,4 +1375,57 @@ void dump_seq_event_pair_matrix (FILE* file, const char* algorithm, Seq_event_pa
   }
 
   SafeFree (id);
+}
+
+void xmlTextWriterBooleanCount (xmlTextWriterPtr writer, const char* element, double yes, double no) {
+  xmlTextWriterStartElement (writer, (xmlChar*) element);
+  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(YES), "%g", yes);
+  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(NO), "%g", no);
+  xmlTextWriterEndElement (writer);
+}
+
+xmlChar* convert_seq_event_pair_counts_to_xml_string (Seq_event_pair_counts* counts) {
+  xmlTextWriterPtr writer;
+  char* id;
+  int state;
+
+  id = SafeMalloc ((counts->order + 1) * sizeof(char));
+
+  writer = newXmlTextWriter();
+  xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(COUNTS));
+  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(ORDER), "%d", counts->order);
+
+  xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(DELETE));
+  xmlTextWriterBooleanCount (writer, XMLPREFIX(BEGIN), counts->nBeginDeleteYes, counts->nBeginDeleteNo);
+  xmlTextWriterBooleanCount (writer, XMLPREFIX(EXTEND), counts->nExtendDeleteYes, counts->nExtendDeleteNo);
+  xmlTextWriterEndElement (writer);
+
+  xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(STATES));
+  for (state = 0; state < counts->states; ++state) {
+    xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(STATE));
+    encode_state_identifier (state, counts->order, id);
+    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(ID), "%s", id);
+    xmlTextWriterBooleanCount (writer, XMLPREFIX(EMIT), counts->nMatchEmitYes[state], counts->nMatchEmitNo[state]);
+    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(M0), "%g", counts->matchMoment0[state]);
+    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(M1), "%g", counts->matchMoment1[state]);
+    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(M2), "%g", counts->matchMoment2[state]);
+    xmlTextWriterEndElement (writer);
+  }
+  xmlTextWriterEndElement (writer);
+
+  xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(START));
+  xmlTextWriterBooleanCount (writer, XMLPREFIX(EMIT), counts->nStartEmitYes, counts->nStartEmitNo);
+  xmlTextWriterEndElement (writer);
+
+  xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(NULLMODEL));
+  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(M0), "%g", counts->nullMoment0);
+  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(M1), "%g", counts->nullMoment1);
+  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(M2), "%g", counts->nullMoment2);
+  xmlTextWriterEndElement (writer);
+
+  xmlTextWriterEndElement (writer);
+
+  SafeFree (id);
+
+  return deleteXmlTextWriterLeavingText (writer);
 }
