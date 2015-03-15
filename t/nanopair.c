@@ -51,12 +51,8 @@ Vector* init_fast5_event_array_vector (int argc, char** argv) {
   vec = newVector (NullCopyFunction, delete_fast5_event_array_null, NullPrintFunction);
   for (; argc > 0; --argc, ++argv) {
     events = read_fast5_event_array (*argv, DefaultFast5TickLength);
-    if (events == NULL) {
-      deleteVector (vec);  /* automatically calls delete_fast5_event_array */
-      (void) help_failure ("Couldn't open FAST5 file %s", *argv);
-      return NULL;
-    }
-    VectorPushBack (vec, events);
+    if (events != NULL)
+      VectorPushBack (vec, events);
   }
   if (VectorSize(vec) == 0) {
     deleteVector (vec);
