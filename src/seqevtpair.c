@@ -824,7 +824,7 @@ int init_seq_event_model_from_fast5 (Seq_event_pair_model* model, const char* fi
   hid_t root_id = H5Gopen(file_id, "/", H5P_DEFAULT);
   if (root_id < 0)
     {
-      Warn("failed to open root group");
+      Warn("Failed to open root group in file %s",filename);
       return -1;
     }
 
@@ -835,7 +835,7 @@ int init_seq_event_model_from_fast5 (Seq_event_pair_model* model, const char* fi
       hid_t model_id = H5Oopen(file_id, model_path, H5P_DEFAULT);
       if ( model_id < 0 )
 	{
-	  Warn("failed to open dataset %s",model_path);
+	  Warn("Failed to open dataset %s in file %s",model_path,filename);
 	  ret = -1;
 	}
       else
@@ -882,7 +882,7 @@ int init_seq_event_model_from_fast5 (Seq_event_pair_model* model, const char* fi
 	}
     }
   else {
-    Warn("path %s not valid",model_path);
+    Warn("Path %s not valid in file %s",model_path,filename);
     ret = -1;
   }
 

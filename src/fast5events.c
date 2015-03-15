@@ -126,7 +126,7 @@ Fast5_event_array* read_fast5_event_array (const char* filename, double tick_len
   hid_t root_id = H5Gopen(file_id, "/", H5P_DEFAULT);
   if (root_id < 0)
     {
-      Warn("failed to open root group");
+      Warn("Failed to open root group in file %s",filename);
       return NULL;
     }
 
@@ -137,7 +137,7 @@ Fast5_event_array* read_fast5_event_array (const char* filename, double tick_len
       hid_t events_id = H5Oopen(file_id, events_path, H5P_DEFAULT);
       if ( events_id < 0 )
 	{
-	  Warn("failed to open dataset %s",events_path);
+	  Warn("Failed to open dataset %s in file %s",events_path,filename);
 	}
       else
 	{
@@ -199,7 +199,7 @@ Fast5_event_array* read_fast5_event_array (const char* filename, double tick_len
 	}
     }
   else
-    Warn("path %s not valid",events_path);
+    Warn("Path %s not valid in file %s",events_path,filename);
 
   /* close HDF5 resources */
   H5Gclose(root_id);
