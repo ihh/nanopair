@@ -890,22 +890,25 @@ int init_seq_event_model_from_fast5 (Seq_event_pair_model* model, const char* fi
   H5Gclose(root_id);
   H5Fclose(file_id);
 
-  /* parameterize the null model by averaging moments of all the states */
-  double m1 = 0, m2 = 0;
-  int state;
-  for (state = 0; state < model->states; ++state) {
-    m1 += model->matchMean[state];
-    m2 += model->matchMean[state] * model->matchMean[state] + 1 / model->matchPrecision[state];
-  }
-  m1 /= model->states;
-  m2 /= model->states;
-  model->nullMean = m1;
-  model->nullPrecision = 1 / (m2 - m1 * m1);
+  /* if we haven't screwed up yet, do some last-minute parameter fudging */
+  if (ret == 0) {
+    /* parameterize the null model by averaging moments of all the states */
+    double m1 = 0, m2 = 0;
+    int state;
+    for (state = 0; state < model->states; ++state) {
+      m1 += model->matchMean[state];
+      m2 += model->matchMean[state] * model->matchMean[state] + 1 / model->matchPrecision[state];
+    }
+    m1 /= model->states;
+    m2 /= model->states;
+    model->nullMean = m1;
+    model->nullPrecision = 1 / (m2 - m1 * m1);
 
-  /* set all boolean probabilities to 0.5 */
-  model->pBeginDelete = model->pExtendDelete = model->pStartEmit = model->pNullEmit = 0.5;
-  for (state = 0; state < model->states; ++state)
-    model->pMatchEmit[state] = 0.5;
+    /* set all boolean probabilities to 0.5 */
+    model->pBeginDelete = model->pExtendDelete = model->pStartEmit = model->pNullEmit = 0.5;
+    for (state = 0; state < model->states; ++state)
+      model->pMatchEmit[state] = 0.5;
+  }
 
   /* return */
   return ret;

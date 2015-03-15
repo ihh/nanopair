@@ -206,8 +206,10 @@ Fast5_event_array* read_fast5_event_array (const char* filename, double tick_len
   H5Fclose(file_id);
 
   /* set filename, and return */
-  SafeFreeOrNull (event_array->name);
-  event_array->name = StringCopy ((void*) filename);
+  if (event_array) {
+    SafeFreeOrNull (event_array->name);
+    event_array->name = StringCopy ((void*) filename);
+  }
 
   return event_array;
 }
