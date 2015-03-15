@@ -138,10 +138,10 @@ Seq_event_pair_model* new_seq_event_pair_model_from_xml_string (const char* xml)
   statesNode = CHILD(modelNode,STATES);
   for (stateNode = statesNode->children; stateNode; stateNode = stateNode->next)
     if (MATCHES(stateNode,STATE)) {
-      state = decode_state_identifier (model->order, (char*) CHILDSTRING(stateNode,ID));
+      state = decode_state_identifier (model->order, (char*) CHILDSTRING(stateNode,KMER));
       model->pMatchEmit[state] = CHILDFLOAT(stateNode,EMIT);
       model->matchMean[state] = CHILDFLOAT(stateNode,MEAN);
-      model->matchPrecision[state] = CHILDFLOAT(stateNode,PRECISION);
+      model->matchPrecision[state] = 1 / pow (CHILDFLOAT(stateNode,STDV), 2);
     }
 
   startNode = CHILD(modelNode,START);
@@ -150,7 +150,7 @@ Seq_event_pair_model* new_seq_event_pair_model_from_xml_string (const char* xml)
   nullNode = CHILD(modelNode,NULLMODEL);
   model->pNullEmit = CHILDFLOAT(nullNode,EMIT);
   model->nullMean = CHILDFLOAT(nullNode,MEAN);
-  model->nullPrecision = CHILDFLOAT(nullNode,PRECISION);
+  model->nullPrecision = 1 / pow (CHILDFLOAT(nullNode,STDV), 2);
 
   deleteXmlTree (modelNode);
   return model;
@@ -176,10 +176,10 @@ xmlChar* convert_seq_event_pair_model_to_xml_string (Seq_event_pair_model* model
   for (state = 0; state < model->states; ++state) {
     xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(STATE));
     encode_state_identifier (state, model->order, id);
-    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(ID), "%s", id);
+    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(KMER), "%s", id);
     xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(EMIT), "%g", model->pMatchEmit[state]);
     xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(MEAN), "%g", model->matchMean[state]);
-    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(PRECISION), "%g", model->matchPrecision[state]);
+    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(STDV), "%g", 1 / sqrt(model->matchPrecision[state]));
     xmlTextWriterEndElement (writer);
   }
   xmlTextWriterEndElement (writer);
@@ -191,7 +191,7 @@ xmlChar* convert_seq_event_pair_model_to_xml_string (Seq_event_pair_model* model
   xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(NULLMODEL));
   xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(EMIT), "%g", model->pNullEmit);
   xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(MEAN), "%g", model->nullMean);
-  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(PRECISION), "%g", model->nullPrecision);
+  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(STDV), "%g", 1 / sqrt(model->nullPrecision));
   xmlTextWriterEndElement (writer);
 
   xmlTextWriterEndElement (writer);
@@ -1404,7 +1404,7 @@ xmlChar* convert_seq_event_pair_counts_to_xml_string (Seq_event_pair_counts* cou
   for (state = 0; state < counts->states; ++state) {
     xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(STATE));
     encode_state_identifier (state, counts->order, id);
-    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(ID), "%s", id);
+    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(KMER), "%s", id);
     xmlTextWriterBooleanCount (writer, XMLPREFIX(EMIT), counts->nMatchEmitYes[state], counts->nMatchEmitNo[state]);
     xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(M0), "%g", counts->matchMoment0[state]);
     xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(M1), "%g", counts->matchMoment1[state]);
