@@ -428,8 +428,6 @@ Seq_event_pair_counts* new_seq_event_pair_counts_minimal_prior (Seq_event_pair_m
     counts->nMatchEmitYes[state] += 1.;
     counts->nMatchEmitNo[state] += 1.;
     counts->matchMoment0[state] += 1.;
-    counts->matchMoment1[state] += 1.;
-    counts->matchMoment2[state] += 1.;
   }
   counts->nStartEmitYes += 1.;
   counts->nStartEmitNo += 1.;
@@ -440,8 +438,6 @@ Seq_event_pair_counts* new_seq_event_pair_counts_minimal_prior (Seq_event_pair_m
   counts->nNullEmitYes += 1.;
   counts->nNullEmitNo += 1.;
   /* counts->nullMoment0 is untouched */
-  counts->nullMoment1 += 1.;
-  counts->nullMoment2 += 1.;
 
   return counts;
 }
