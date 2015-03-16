@@ -281,12 +281,13 @@ void precalc_seq_event_pair_data (Seq_event_pair_data* data) {
   data->nullEmitDensity[0] = -INFINITY;
   data->nullModel = data->nullEmitNo;
   for (n_event = 0; n_event < n_events; ++n_event) {
-    loglike = log_event_density (&data->events->event[n_event],
+    event = &data->events->event[n_event];
+    loglike = log_event_density (event,
 				 model->nullMean,
 				 model->nullPrecision,
 				 logNullPrecision);
     data->nullEmitDensity[n_event + 1] = loglike;
-    data->nullModel += loglike + data->nullEmitYes;
+    data->nullModel += loglike + data->nullEmitYes * event->ticks;
   }
 
   for (seqpos = 0; seqpos < order; ++seqpos) {
@@ -1021,7 +1022,7 @@ void write_seq_event_pair_alignment_as_gff_cigar (Seq_event_pair_alignment* alig
   fprintf (out, "%s\t%s\t%s\t%d\t%d\t%Lg\t%s\t.\t%s=",
 	   align->seqname, gff3_source, gff3_feature,
 	   strand > 0 ? (align->start_seqpos + 1) : (align->seqlen - align->start_seqpos),
-	   strand > 0 ? align->end_seqpos : (align->seqlen + 1 - align->end_seqpos),
+	   strand > 0 ? (align->end_seqpos + 1) : (align->seqlen - align->end_seqpos),
 	   align->log_likelihood_ratio,
 	   strand > 0 ? "+" : "-",
 	   gff3_gap_attribute);
@@ -1033,7 +1034,7 @@ void write_seq_event_pair_alignment_as_gff_cigar (Seq_event_pair_alignment* alig
   }
 
   deleted = 0;
-  for (n = 0; n < align->end_seqpos - align->start_seqpos; ++n) {
+  for (n = 0; n <= align->end_seqpos - align->start_seqpos; ++n) {
     ++deleted;
     if (align->events_at_pos[n] > 0) {
       sprintf (buf, "D%d ", deleted);
@@ -1273,13 +1274,13 @@ Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event
       break;
 
     case MatchMatchOut:
-      state = Match;  /* which it already is */
+      Assert (state == Match, "oops");
       --n_event;
       ++*((int*) VectorBack (events_emitted));
       break;
 
     case MatchMatchIn:
-      state = Match;  /* which it already is */
+      Assert (state == Match, "oops");
       --seqpos;
       VectorPushBack (events_emitted, IntNew(0));
       break;
@@ -1291,7 +1292,7 @@ Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event
       break;
 
     case DeleteDeleteIn:
-      state = Delete;  /* which it already is */
+      Assert (state == Delete, "oops");
       --seqpos;
       VectorPushBack (events_emitted, IntNew(0));
       break;
