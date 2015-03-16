@@ -1,6 +1,7 @@
 #include <math.h>
 #include <string.h>
 #include <stdbool.h>
+#include <time.h>
 
 #include <hdf5.h>
 #include <hdf5_hl.h>
@@ -219,7 +220,7 @@ Seq_event_pair_data* new_seq_event_pair_data (Seq_event_pair_model* model, int s
   n_events = events->n_events;
 
   matrix_cells = ((unsigned long) (n_events + 1)) * (unsigned long) (seqlen - model->order + 1);
-  Warn ("Allocating DP scratch space with %d*%d = %lu cells", n_events + 1, seqlen - model->order + 1, matrix_cells);
+  Warn ("Allocating DP scratch space with %d*%d = %Lu cells", n_events + 1, seqlen - model->order + 1, matrix_cells);
 
   data->matrix_cells = matrix_cells;
 
@@ -581,7 +582,7 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
   }
 
 #if defined(SEQEVTPAIR_DEBUG) && SEQEVTPAIR_DEBUG > 1
-  dump_seq_event_pair_matrix (stderr, "Forward", data, matrix->fwdStart, matrix->fwdMatch, matrix->fwdDelete);
+  dump_seq_event_pair_matrix_to_file (SEQEVTMATRIX_FILENAME, "Forward", data, matrix->fwdStart, matrix->fwdMatch, matrix->fwdDelete);
 #endif /* SEQEVTPAIR_DEBUG > 1 */
 
   /* fill backward & accumulate counts */
@@ -688,7 +689,7 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
   }
 
 #if defined(SEQEVTPAIR_DEBUG) && SEQEVTPAIR_DEBUG > 1
-  dump_seq_event_pair_matrix (stderr, "Backward", data, matrix->backStart, matrix->backMatch, matrix->backDelete);
+  dump_seq_event_pair_matrix_to_file (SEQEVTMATRIX_FILENAME, "Backward", data, matrix->backStart, matrix->backMatch, matrix->backDelete);
 #endif /* SEQEVTPAIR_DEBUG > 1 */
 }
 
@@ -1126,12 +1127,11 @@ void fill_seq_event_pair_viterbi_matrix (Seq_event_pair_viterbi_matrix* matrix) 
   for (seqpos = order; seqpos <= seqlen; ++seqpos) {
     for (n_event = 0; n_event <= n_events; ++n_event) {
       idx = Seq_event_pair_index(seqpos,n_event);
-      inputIdx = Seq_event_pair_index(seqpos-1,n_event);
-      outputIdx = Seq_event_pair_index(seqpos,n_event-1);
 
       mat = matrix->vitStart[n_event] + data->startEmitNo;   /* Start -> Match (input) */
 
       if (n_event > 0) {
+	outputIdx = Seq_event_pair_index(seqpos,n_event-1);
 	event = &data->events->event[n_event - 1];
 	mat = max_func (mat,
 			matrix->vitMatch[outputIdx]
@@ -1142,6 +1142,7 @@ void fill_seq_event_pair_viterbi_matrix (Seq_event_pair_viterbi_matrix* matrix) 
       if (seqpos == order) {
 	del = -INFINITY;
       } else {  /* seqpos > order */
+	inputIdx = Seq_event_pair_index(seqpos-1,n_event);
 	del = max_func
 	  (matrix->vitMatch[inputIdx] + data->matchEmitNo[seqpos-1] + data->beginDeleteYes,  /* Match -> Delete (input) */
 	   matrix->vitDelete[inputIdx] + data->extendDeleteYes);   /* Delete -> Delete (input) */
@@ -1163,14 +1164,14 @@ void fill_seq_event_pair_viterbi_matrix (Seq_event_pair_viterbi_matrix* matrix) 
   }
 
 #if defined(SEQEVTPAIR_DEBUG) && SEQEVTPAIR_DEBUG > 1
-  dump_seq_event_pair_matrix (stderr, "Viterbi", data, matrix->vitStart, matrix->vitMatch, matrix->vitDelete);
+  dump_seq_event_pair_matrix_to_file (SEQEVTMATRIX_FILENAME, "Viterbi", data, matrix->vitStart, matrix->vitMatch, matrix->vitDelete);
 #endif /* SEQEVTPAIR_DEBUG > 1 */
 }
 
 Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event_pair_viterbi_matrix* matrix) {
   Seq_event_pair_model* model;
   Seq_event_pair_data* data;
-  int seqlen, n_events, order, seqpos, n_event, end_seqpos, start_seqpos, start_n_event, zero, n, k;
+  int seqlen, n_events, order, seqpos, n_event, end_seqpos, start_seqpos, start_n_event, n, k;
   long double loglike;
   unsigned long idx, inputIdx, outputIdx;
   Fast5_event* event;
@@ -1184,8 +1185,6 @@ Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event
   n_events = data->events->n_events;
   model = data->model;
   order = model->order;
-
-  zero = 0;
 
   start_seqpos = seqlen;
   start_n_event = n_events;
@@ -1205,12 +1204,14 @@ Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event
   state = Match;
 
   events_emitted = newVector (IntCopy, IntDelete, IntPrint);
-  VectorPushBack (events_emitted, &zero);
+  VectorPushBack (events_emitted, IntNew(0));
 
   while (state != Start) {
     idx = Seq_event_pair_index(seqpos,n_event);
-    inputIdx = Seq_event_pair_index(seqpos-1,n_event);
-    outputIdx = Seq_event_pair_index(seqpos,n_event-1);
+    if (seqpos > 0)
+      inputIdx = Seq_event_pair_index(seqpos-1,n_event);
+    if (n_event > 0)
+      outputIdx = Seq_event_pair_index(seqpos,n_event-1);
 
     event = n_event > 0 ? &data->events->event[n_event - 1] : NULL;
 
@@ -1280,19 +1281,19 @@ Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event
     case MatchMatchIn:
       state = Match;  /* which it already is */
       --seqpos;
-      VectorPushBack (events_emitted, &zero);
+      VectorPushBack (events_emitted, IntNew(0));
       break;
 
     case MatchDeleteIn:
       state = Match;
       --seqpos;
-      VectorPushBack (events_emitted, &zero);
+      VectorPushBack (events_emitted, IntNew(0));
       break;
 
     case DeleteDeleteIn:
       state = Delete;  /* which it already is */
       --seqpos;
-      VectorPushBack (events_emitted, &zero);
+      VectorPushBack (events_emitted, IntNew(0));
       break;
 
     case DeleteMatch:
@@ -1345,11 +1346,21 @@ void print_seq_evt_pair_alignments_as_gff_cigar (Seq_event_pair_model* model, in
   SafeFree (rev);
 }
 
+void dump_seq_event_pair_matrix_to_file (const char* filename, const char* algorithm, Seq_event_pair_data *data, long double *mxStart, long double *mxMatch, long double *mxDelete) {
+  FILE *file;
+  file = fopen (filename, "a");
+  Assert (file != NULL, "Could not write DP matrix to file %s", filename);
+  dump_seq_event_pair_matrix (file, algorithm, data, mxStart, mxMatch, mxDelete);
+  fclose (file);
+}
+
 void dump_seq_event_pair_matrix (FILE* file, const char* algorithm, Seq_event_pair_data *data, long double *mxStart, long double *mxMatch, long double *mxDelete) {
   int n_event, seqpos, n_events, seqlen, order;
   Fast5_event *event;
   char *id;
   unsigned long idx;
+  time_t rawtime;
+  struct tm *rawtime_tm;
 
   order = data->model->order;
   n_events = data->events->n_events;
@@ -1357,19 +1368,22 @@ void dump_seq_event_pair_matrix (FILE* file, const char* algorithm, Seq_event_pa
 
   id = SafeMalloc ((data->model->order + 1) * sizeof(char));
 
-  fprintf (file, "%s matrix\n", algorithm);
+  time (&rawtime);
+  rawtime_tm = localtime (&rawtime);
+  fprintf (file, "%s matrix (%s)\n", algorithm, asctime(rawtime_tm));
+
   for (seqpos = order; seqpos <= seqlen; ++seqpos) {
     encode_state_identifier (data->state[seqpos], data->model->order, id);
     idx = Seq_event_pair_index(seqpos,0);
-    Warn ("Event %d, seqpos %d (base=%c,state=%s): match %lg, delete %g", 0, seqpos, data->seq[seqpos-1], id, mxMatch[idx], mxDelete[idx]);
+    fprintf (file, "Event %d, seqpos %d (base=%c,state=%s): match %Lg, delete %Lg\n", 0, seqpos, data->seq[seqpos-1], id, mxMatch[idx], mxDelete[idx]);
   }
   for (n_event = 1; n_event <= n_events; ++n_event) {
     event = &data->events->event[n_event - 1];
-    Warn ("Event %d (n=%g,sum=%g,sumsq=%g): start %g", n_event, event->ticks, event->sumticks_cur, event->sumticks_cur_sq, mxStart[n_event]);
+    fprintf (file, "Event %d (n=%g,sum=%g,sumsq=%g): start %Lg\n", n_event, event->ticks, event->sumticks_cur, event->sumticks_cur_sq, mxStart[n_event]);
     for (seqpos = order; seqpos <= seqlen; ++seqpos) {
       encode_state_identifier (data->state[seqpos], data->model->order, id);
       idx = Seq_event_pair_index(seqpos,n_event);
-      Warn ("Event %d (n=%g,sum=%g,sumsq=%g), seqpos %d (base=%c,state=%s): match %lg, delete %g", n_event, event->ticks, event->sumticks_cur, event->sumticks_cur_sq, seqpos, data->seq[seqpos-1], id, mxMatch[idx], mxDelete[idx]);
+      fprintf (file, "Event %d (n=%g,sum=%g,sumsq=%g), seqpos %d (base=%c,state=%s): match %Lg, delete %Lg\n", n_event, event->ticks, event->sumticks_cur, event->sumticks_cur_sq, seqpos, data->seq[seqpos-1], id, mxMatch[idx], mxDelete[idx]);
     }
   }
 

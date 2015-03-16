@@ -5,27 +5,27 @@
 #include "../src/logsumexp.h"
 
 const char* help_message = 
-  "Usage: nanopair <command> <args...>\n"
+  "Usage: nanopair {seed,eventseed,count,train,align} <args>\n"
   "\n"
-  " nanopair seed <read.fast5>  > params.xml\n"
+  " nanopair seed <read.fast5>  >params.xml\n"
   "  (to parameterize a model from the HMM in a FAST5 file)\n"
   "\n"
-  " nanopair eventseed <read.fast5> [<read2.fast5> ...]  > params.xml\n"
+  " nanopair eventseed <read.fast5> [<read2.fast5> ...]  >params.xml\n"
   "  (to parameterize a model from the basecalled event data in a FAST5 file)\n"
   "\n"
-  " nanopair count <params.xml> <refs.fasta> <read.fast5> [...]  > counts.xml\n"
+  " nanopair count <params.xml> <refs.fasta> <read.fast5> [...]  >counts.xml\n"
   "  (to calculate expected counts under the posterior distribution,\n"
   "   as summary statistics or for distributed EM updates)\n"
   "\n"
-  " nanopair train <params.xml> <refs.fasta> <read.fast5> [...]  > newparams.xml\n"
+  " nanopair train <params.xml> <refs.fasta> <read.fast5> [...]  >newparams.xml\n"
   "  (to re-parameterize a model via the Baum-Welch/EM algorithm,\n"
   "   aligning one or more FAST5 reads to one or more reference sequences)\n"
   "\n"
-  " nanopair align <params.xml> <refs.fasta> <read.fast5> [...]  > hits.gff\n"
+  " nanopair align <params.xml> <refs.fasta> <read.fast5> [...]  >hits.gff\n"
   "  (to align FAST5 reads to reference sequences via the Viterbi algorithm)\n"
   "\n"
-  "For 'align', 'train' & 'count' commands:\n"
-  "Can use '-eventseed' or '-seed' in place of <params.xml>.\n";
+  "For 'align', 'train' & 'count' commands, to bypass the appropriate seed step,\n"
+  "use '-eventseed' or '-seed' in place of <params.xml>.\n";
 
 #define MODEL_ORDER 5
 

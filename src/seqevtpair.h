@@ -7,9 +7,10 @@
 
 /* #define the following for various levels of debugging info/code
    (if defined at all) adds out-of-bounds guards to DP matrix accessors, logs progress messages
-    (if defined to >1) dumps DP matrices
+    (if defined to >1) dumps DP matrices to filename SEQEVTMATRIX_FILENAME
  */
 #define SEQEVTPAIR_DEBUG 2
+#define SEQEVTMATRIX_FILENAME "npmatrix"
 
 /* Parameters */
 
@@ -82,6 +83,7 @@ double log_gaussian_density (double x, double mean, double precision, double log
 double log_event_density (Fast5_event* event, double mean, double precision, double log_precision);
 
 void dump_seq_event_pair_matrix (FILE* file, const char* algorithm, Seq_event_pair_data *data, long double *mxStart, long double *mxMatch, long double *mxDelete);
+void dump_seq_event_pair_matrix_to_file (const char* filename, const char* algorithm, Seq_event_pair_data *data, long double *mxStart, long double *mxMatch, long double *mxDelete);
 
 /* Expected counts */
 

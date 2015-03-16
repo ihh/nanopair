@@ -74,29 +74,29 @@ void AbortDestroyFunction(void* junk) { Abort ("Unimplemented destroy function c
 void* AbortCopyFunction(void* junk) { Abort ("Unimplemented copy function called"); return NULL; }
 
 /* Int functions */
-void* IntNew(Int64 a) {
-  Int64 *ptr;
-  ptr = (Int64*) SafeMalloc (sizeof (Int64));
+void* IntNew(int a) {
+  int *ptr;
+  ptr = (int*) SafeMalloc (sizeof (int));
   *ptr = a;
   return (void*) ptr;
 }
 
 void* IntCopy(void* a) {
-  return IntNew (*(Int64*)a);
+  return IntNew (*(int*)a);
 }
 
 void IntDelete(void* a) {
-  SafeFree((Int64*)a);
+  SafeFree((int*)a);
 }
 
 int IntCompare(void* a, void* b) {
-  if( *(Int64*)a > *(Int64*)b) return 1;
-  if( *(Int64*)a < *(Int64*)b) return -1;
+  if( *(int*)a > *(int*)b) return 1;
+  if( *(int*)a < *(int*)b) return -1;
   return 0;
 }
 
 void IntPrint(void* a) {
-  printf("%lli",*(Int64*)a);
+  printf("%d",*(int*)a);
 }
 
 /* Double functions */

@@ -18,15 +18,13 @@ void NullPrintFunction(void*);  /* does nothing */
 void AbortDestroyFunction(void*);
 void* AbortCopyFunction(void*);
 
-/* typedef and container functions for 64-bit signed int's.
+/* container functions for signed int's.
    (It's tempting to think that rather than allocating space,
    one could just use the (void*) pointer to store the int value;
    however, this risks platform-specific errors/warnings,
    due to differences in bytesize/signedness between void* and int.)
 */
-typedef signed long long int Int64;
-
-void* IntNew(Int64 a);
+void* IntNew(int a);
 void* IntCopy(void* a);
 void IntDelete(void* a);
 int IntCompare(void* a, void* b);
