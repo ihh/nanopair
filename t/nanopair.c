@@ -262,7 +262,7 @@ int main (int argc, char** argv) {
     /* loop through sequences, FAST5 files */
     for (i = 0; i < seqs->n; ++i)
       for (j = 0; j < (int) VectorSize(event_arrays); ++j)
-	print_seq_evt_pair_alignments_as_gff_cigar (params, seqs->len[i], seqs->seq[i], seqs->name[i], (Fast5_event_array*) VectorGet(event_arrays,j), stdout, 0.);
+	print_seq_evt_pair_alignments_as_stockholm (params, seqs->len[i], seqs->seq[i], seqs->name[i], (Fast5_event_array*) VectorGet(event_arrays,j), stdout, 0.);
 
     /* free memory */
     delete_seq_event_pair_model (params);

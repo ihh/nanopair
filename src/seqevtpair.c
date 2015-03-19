@@ -1024,8 +1024,8 @@ void write_seq_event_pair_alignment_as_gff_cigar (Seq_event_pair_alignment* alig
 
   fprintf (out, "%s\t%s\t%s\t%d\t%d\t%Lg\t%s\t.\t%s=",
 	   align->seqname, gff3_source, gff3_feature,
-	   strand > 0 ? (align->start_seqpos + 1) : (align->seqlen - align->start_seqpos),
-	   strand > 0 ? (align->end_seqpos + 1) : (align->seqlen - align->end_seqpos),
+	   strand > 0 ? (align->start_seqpos + 1) : (align->seqlen - align->end_seqpos),
+	   strand > 0 ? (align->end_seqpos + 1) : (align->seqlen - align->start_seqpos),
 	   align->log_likelihood_ratio,
 	   strand > 0 ? "+" : "-",
 	   gff3_gap_attribute);
@@ -1064,6 +1064,83 @@ void write_seq_event_pair_alignment_as_gff_cigar (Seq_event_pair_alignment* alig
   fprintf (out, "\n");
 
   deleteVector (cigar);
+}
+
+void append_seqrow_column_to_seqevt_alignment (StringVector *seqrow, char res) {
+  char buf[] = "*";
+  buf[0] = res;
+  StringVectorPushBack (seqrow, buf);
+}
+
+void append_evtrow_column_to_seqevt_alignment (StringVector *seqrow, StringVector *evtrow, Fast5_event *evt) {
+  char buf[] = "*", gap[] = "-";
+  int len, n;
+  if (evt == NULL) {
+    while (StringVectorSize(seqrow) > StringVectorSize(evtrow))
+      StringVectorPushBack (evtrow, gap);
+  } else {
+    len = strlen (evt->model_state);
+    if (evt->move > 0) {
+      for (n = 0; n < evt->move; ++n) {
+	buf[0] = toupper (evt->model_state[len - evt->move + n]);
+	StringVectorPushBack (evtrow, buf);
+      }
+    } else {
+      buf[0] = tolower (evt->model_state[len-1]);
+      StringVectorPushBack (evtrow, buf);
+    }
+    while (StringVectorSize(evtrow) > StringVectorSize(seqrow))
+      StringVectorPushBack (seqrow, gap);
+  }
+}
+
+void write_seq_event_pair_alignment_as_stockholm (Seq_event_pair_alignment* align, int strand, FILE* out) {
+  StringVector *seqrow, *evtrow;
+  int n_event, n, seqpos_offset, name_width;
+  char namefmt[100], *revcomp;
+
+  revcomp = strand > 0 ? NULL : new_revcomp_seq (align->seq, strlen(align->seq));
+
+  seqrow = newStringVector();
+  evtrow = newStringVector();
+
+  n_event = 0;
+  for (n = 0; n < align->start_n_event; ++n)
+    append_evtrow_column_to_seqevt_alignment (seqrow, evtrow, &align->events->event[n_event++]);
+
+  for (seqpos_offset = 0; seqpos_offset <= align->end_seqpos - align->start_seqpos; ++seqpos_offset) {
+    append_seqrow_column_to_seqevt_alignment (seqrow, (strand > 0 ? align->seq : revcomp)[align->start_seqpos + seqpos_offset]);
+    if (align->events_at_pos[seqpos_offset] == 0)
+      append_evtrow_column_to_seqevt_alignment (seqrow, evtrow, NULL);
+    else
+      for (n = 0; n < align->events_at_pos[seqpos_offset]; ++n)
+	append_evtrow_column_to_seqevt_alignment (seqrow, evtrow, &align->events->event[n_event++]);
+  }
+
+  name_width = 1 + MAX (strlen (align->seqname), strlen (align->events->name));
+  sprintf (namefmt, "%%-%ds", name_width);
+
+  fprintf (out, "# STOCKHOLM 1.0\n");
+  fprintf (out, "#=GF SCORE %Lg\n", align->log_likelihood_ratio);
+  fprintf (out, "#=GS %s STRAND %c\n", align->seqname, strand > 0 ? '+' : '-');
+  fprintf (out, "#=GS %s START  %d\n", align->seqname, strand > 0 ? (align->start_seqpos + 1) : (align->seqlen - align->start_seqpos));
+  fprintf (out, "#=GS %s END    %d\n", align->seqname, strand > 0 ? (align->end_seqpos + 1) : (align->seqlen - align->end_seqpos));
+
+  fprintf (out, namefmt, align->seqname);
+  for (n = 0; n < (int) StringVectorSize(seqrow); ++n)
+    fprintf (out, "%s", StringVectorGet(seqrow,n));
+  fprintf (out, "\n");
+
+  fprintf (out, namefmt, align->events->name);
+  for (n = 0; n < (int) StringVectorSize(evtrow); ++n)
+    fprintf (out, "%s", StringVectorGet(evtrow,n));
+  fprintf (out, "\n");
+
+  fprintf (out, "//\n");
+
+  deleteVector (seqrow);
+  deleteVector (evtrow);
+  SafeFreeOrNull (revcomp);
 }
 
 Seq_event_pair_viterbi_matrix* new_seq_event_pair_viterbi_matrix (Seq_event_pair_model* model, int seqlen, char *seq, Fast5_event_array* events) {
@@ -1326,6 +1403,14 @@ Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event
 }
 
 void print_seq_evt_pair_alignments_as_gff_cigar (Seq_event_pair_model* model, int seqlen, char *seq, char *seqname, Fast5_event_array* events, FILE *out, double log_odds_ratio_threshold) {
+  print_seq_evt_pair_alignments_generic (model, seqlen, seq, seqname, events, out, log_odds_ratio_threshold, write_seq_event_pair_alignment_as_gff_cigar);
+}
+
+void print_seq_evt_pair_alignments_as_stockholm (Seq_event_pair_model* model, int seqlen, char *seq, char *seqname, Fast5_event_array* events, FILE *out, double log_odds_ratio_threshold) {
+  print_seq_evt_pair_alignments_generic (model, seqlen, seq, seqname, events, out, log_odds_ratio_threshold, write_seq_event_pair_alignment_as_stockholm);
+}
+  
+void print_seq_evt_pair_alignments_generic (Seq_event_pair_model* model, int seqlen, char *seq, char *seqname, Fast5_event_array* events, FILE *out, double log_odds_ratio_threshold, WriteSeqEventPairAlignmentFunction write_func) {
   Seq_event_pair_viterbi_matrix* matrix;
   Seq_event_pair_alignment* align;
   char *rev;
@@ -1341,7 +1426,7 @@ void print_seq_evt_pair_alignments_as_gff_cigar (Seq_event_pair_model* model, in
     align->seqname = seqname;
 
     if (align->log_likelihood_ratio >= log_odds_ratio_threshold)
-      write_seq_event_pair_alignment_as_gff_cigar (align, strand, out);
+      (*write_func) (align, strand, out);
 
     delete_seq_event_pair_viterbi_matrix (matrix);
     delete_seq_event_pair_alignment (align);

@@ -97,7 +97,7 @@ void free_kseq_container (Kseq_container* ksc) {
   SafeFree(ksc);
 }
 
-char* new_revcomp_seq (char* dna_seq, int len) {
+char* new_revcomp_seq (const char* dna_seq, int len) {
   int i, tok;
   char *rev;
   rev = SafeMalloc ((len + 1) * sizeof(char));

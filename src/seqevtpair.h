@@ -145,7 +145,9 @@ typedef struct Seq_event_pair_alignment {
 Seq_event_pair_alignment* new_seq_event_pair_alignment (Fast5_event_array *events, char *seq, int seqlen);
 void delete_seq_event_pair_alignment (Seq_event_pair_alignment* align);
 
+typedef void (*WriteSeqEventPairAlignmentFunction) (Seq_event_pair_alignment*, int, FILE*);
 void write_seq_event_pair_alignment_as_gff_cigar (Seq_event_pair_alignment* align, int strand, FILE* out);
+void write_seq_event_pair_alignment_as_stockholm (Seq_event_pair_alignment* align, int strand, FILE* out);
 
 /* Viterbi matrix */
 
@@ -165,5 +167,7 @@ Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event
 /* wrappers */
 
 void print_seq_evt_pair_alignments_as_gff_cigar (Seq_event_pair_model* model, int seqlen, char *seq, char *seqname, Fast5_event_array* events, FILE *out, double log_odds_ratio_threshold);
+void print_seq_evt_pair_alignments_as_stockholm (Seq_event_pair_model* model, int seqlen, char *seq, char *seqname, Fast5_event_array* events, FILE *out, double log_odds_ratio_threshold);
+void print_seq_evt_pair_alignments_generic (Seq_event_pair_model* model, int seqlen, char *seq, char *seqname, Fast5_event_array* events, FILE *out, double log_odds_ratio_threshold, WriteSeqEventPairAlignmentFunction write_func);
 
 #endif /* SEQEVTPAIR_INCLUDED */

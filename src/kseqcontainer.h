@@ -21,6 +21,6 @@ void free_kseq_container (Kseq_container* ksc);
 
 int validate_kseq_container (Kseq_container* ksc, const char* alphabet, FILE* err);  /* returns number of bad chars */
 
-char* new_revcomp_seq (char* dna_seq, int len);
+char* new_revcomp_seq (const char* dna_seq, int len);
 
 #endif /* KSEQCONTAINER_INCLUDED */
