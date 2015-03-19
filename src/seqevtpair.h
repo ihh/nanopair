@@ -7,9 +7,9 @@
 
 /* #define the following for various levels of debugging info/code
    (if defined at all) adds out-of-bounds guards to DP matrix accessors, logs progress messages
-    (if defined to >1) dumps DP matrices to filename SEQEVTMATRIX_FILENAME
+   (if defined to 10 or greater) dumps DP matrices to filename SEQEVTMATRIX_FILENAME
  */
-#define SEQEVTPAIR_DEBUG 2
+#define SEQEVTPAIR_DEBUG 1
 #define SEQEVTMATRIX_FILENAME "npmatrix"
 
 /* Parameters */

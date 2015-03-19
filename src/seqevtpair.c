@@ -125,6 +125,9 @@ int decode_state_identifier (int order, char* state_id) {
   return token;
 }
 
+double emitProbToMeanLength (double p) { return p / (1. - p); }
+double meanLengthToEmitProb (double l) { return l / (1. + l); }
+
 Seq_event_pair_model* new_seq_event_pair_model_from_xml_string (const char* xml) {
   xmlNode *modelNode, *statesNode, *stateNode, *deleteNode, *startNode, *nullNode;
   Seq_event_pair_model *model;
@@ -140,16 +143,16 @@ Seq_event_pair_model* new_seq_event_pair_model_from_xml_string (const char* xml)
   for (stateNode = statesNode->children; stateNode; stateNode = stateNode->next)
     if (MATCHES(stateNode,STATE)) {
       state = decode_state_identifier (model->order, (char*) CHILDSTRING(stateNode,KMER));
-      model->pMatchEmit[state] = CHILDFLOAT(stateNode,EMIT);
+      model->pMatchEmit[state] = meanLengthToEmitProb (CHILDFLOAT(stateNode,WAIT));
       model->matchMean[state] = CHILDFLOAT(stateNode,MEAN);
       model->matchPrecision[state] = 1 / pow (CHILDFLOAT(stateNode,STDV), 2);
     }
 
   startNode = CHILD(modelNode,START);
-  model->pStartEmit = CHILDFLOAT(startNode,EMIT);
+  model->pStartEmit = meanLengthToEmitProb (CHILDFLOAT(startNode,WAIT));
 
   nullNode = CHILD(modelNode,NULLMODEL);
-  model->pNullEmit = CHILDFLOAT(nullNode,EMIT);
+  model->pNullEmit = meanLengthToEmitProb (CHILDFLOAT(nullNode,WAIT));
   model->nullMean = CHILDFLOAT(nullNode,MEAN);
   model->nullPrecision = 1 / pow (CHILDFLOAT(nullNode,STDV), 2);
 
@@ -178,7 +181,7 @@ xmlChar* convert_seq_event_pair_model_to_xml_string (Seq_event_pair_model* model
     xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(STATE));
     encode_state_identifier (state, model->order, id);
     xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(KMER), "%s", id);
-    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(EMIT), "%g", model->pMatchEmit[state]);
+    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(WAIT), "%g", emitProbToMeanLength (model->pMatchEmit[state]));
     xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(MEAN), "%g", model->matchMean[state]);
     xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(STDV), "%g", 1 / sqrt(model->matchPrecision[state]));
     xmlTextWriterEndElement (writer);
@@ -186,11 +189,11 @@ xmlChar* convert_seq_event_pair_model_to_xml_string (Seq_event_pair_model* model
   xmlTextWriterEndElement (writer);
 
   xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(START));
-  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(EMIT), "%g", model->pStartEmit);
+  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(WAIT), "%g", emitProbToMeanLength (model->pStartEmit));
   xmlTextWriterEndElement (writer);
 
   xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(NULLMODEL));
-  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(EMIT), "%g", model->pNullEmit);
+  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(WAIT), "%g", emitProbToMeanLength (model->pNullEmit));
   xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(MEAN), "%g", model->nullMean);
   xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(STDV), "%g", 1 / sqrt(model->nullPrecision));
   xmlTextWriterEndElement (writer);
@@ -582,9 +585,9 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
     }
   }
 
-#if defined(SEQEVTPAIR_DEBUG) && SEQEVTPAIR_DEBUG > 1
+#if defined(SEQEVTPAIR_DEBUG) && SEQEVTPAIR_DEBUG >= 10
   dump_seq_event_pair_matrix_to_file (SEQEVTMATRIX_FILENAME, "Forward", data, matrix->fwdStart, matrix->fwdMatch, matrix->fwdDelete);
-#endif /* SEQEVTPAIR_DEBUG > 1 */
+#endif /* SEQEVTPAIR_DEBUG >= 10 */
 
   /* fill backward & accumulate counts */
   for (n_event = n_events; n_event >= 0; --n_event) {
@@ -689,9 +692,9 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 						NULL, NULL, NULL, NULL);  /* Start -> Start (output) */
   }
 
-#if defined(SEQEVTPAIR_DEBUG) && SEQEVTPAIR_DEBUG > 1
+#if defined(SEQEVTPAIR_DEBUG) && SEQEVTPAIR_DEBUG >= 10
   dump_seq_event_pair_matrix_to_file (SEQEVTMATRIX_FILENAME, "Backward", data, matrix->backStart, matrix->backMatch, matrix->backDelete);
-#endif /* SEQEVTPAIR_DEBUG > 1 */
+#endif /* SEQEVTPAIR_DEBUG >= 10 */
 }
 
 void inc_seq_event_null_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_event_array* events) {
@@ -1164,9 +1167,9 @@ void fill_seq_event_pair_viterbi_matrix (Seq_event_pair_viterbi_matrix* matrix) 
        matrix->vitMatch[Seq_event_pair_index(seqpos,n_events)] + data->matchEmitNo[seqpos]);  /* Match -> End (input) */
   }
 
-#if defined(SEQEVTPAIR_DEBUG) && SEQEVTPAIR_DEBUG > 1
+#if defined(SEQEVTPAIR_DEBUG) && SEQEVTPAIR_DEBUG >= 10
   dump_seq_event_pair_matrix_to_file (SEQEVTMATRIX_FILENAME, "Viterbi", data, matrix->vitStart, matrix->vitMatch, matrix->vitDelete);
-#endif /* SEQEVTPAIR_DEBUG > 1 */
+#endif /* SEQEVTPAIR_DEBUG >= 10 */
 }
 
 Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event_pair_viterbi_matrix* matrix) {
@@ -1419,7 +1422,7 @@ xmlChar* convert_seq_event_pair_counts_to_xml_string (Seq_event_pair_counts* cou
     xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(STATE));
     encode_state_identifier (state, counts->order, id);
     xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(KMER), "%s", id);
-    xmlTextWriterBooleanCount (writer, XMLPREFIX(EMIT), counts->nMatchEmitYes[state], counts->nMatchEmitNo[state]);
+    xmlTextWriterBooleanCount (writer, XMLPREFIX(WAIT), counts->nMatchEmitYes[state], counts->nMatchEmitNo[state]);
     xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(M0), "%g", counts->matchMoment0[state]);
     xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(M1), "%g", counts->matchMoment1[state]);
     xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(M2), "%g", counts->matchMoment2[state]);
@@ -1428,7 +1431,7 @@ xmlChar* convert_seq_event_pair_counts_to_xml_string (Seq_event_pair_counts* cou
   xmlTextWriterEndElement (writer);
 
   xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(START));
-  xmlTextWriterBooleanCount (writer, XMLPREFIX(EMIT), counts->nStartEmitYes, counts->nStartEmitNo);
+  xmlTextWriterBooleanCount (writer, XMLPREFIX(WAIT), counts->nStartEmitYes, counts->nStartEmitNo);
   xmlTextWriterEndElement (writer);
 
   xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(NULLMODEL));

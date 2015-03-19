@@ -9,7 +9,7 @@
 #define XMLNP_STATES    "states"
 #define XMLNP_STATE     "state"
 #define XMLNP_KMER      "kmer"
-#define XMLNP_EMIT      "emit"
+#define XMLNP_WAIT      "wait"
 #define XMLNP_MEAN      "mean"
 #define XMLNP_STDV      "stdv"
 #define XMLNP_START     "start"
