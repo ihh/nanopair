@@ -33,11 +33,14 @@ herr_t populate_event_array (void *elem, hid_t type_id, unsigned ndim,
 {
   Fast5_event_array_iterator *iter = (Fast5_event_array_iterator*) operator_data;
 
-  Fast5_event* ev = iter->event_array->event + (iter->event_array_index++);
+  Fast5_event* ev = iter->event_array->event + iter->event_array_index;
   ev->mean = *((double*) (elem + iter->mean_offset));
   ev->start = *((double*) (elem + iter->start_offset));
   ev->stdv = *((double*) (elem + iter->stdv_offset));
   ev->length = *((double*) (elem + iter->length_offset));
+
+  if (iter->event_array_index > 0)
+    ev->start -= iter->event_array->event[0].start;
 
   /* HACK: allow for variable-length state names */
   /* the disgusting excuse for this hack is found in the code for read_fast5_event_array */
@@ -65,6 +68,8 @@ herr_t populate_event_array (void *elem, hid_t type_id, unsigned ndim,
   ev->raw = *((long*) (elem + iter->raw_offset));
 
   fast5_event_calc_moments (ev, iter->event_array->tick_length);
+
+  ++iter->event_array_index;
 
   return 0;
 }
