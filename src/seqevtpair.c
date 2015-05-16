@@ -67,7 +67,6 @@ void update_max (long double *current_max, int* current_max_idx, long double can
 typedef struct Metrichor_state_iterator {
   Seq_event_pair_model *model;
   size_t kmer_offset, level_mean_offset, level_sd_offset;
-  double scale, shift, var;
 } Metrichor_state_iterator;
 
 double read_metrichor_model_attribute (hid_t dataset, const char* attr_name)
@@ -86,8 +85,8 @@ herr_t populate_seq_event_model_emit_params (void *elem, hid_t type_id, unsigned
 {
   Metrichor_state_iterator *iter = (Metrichor_state_iterator*) operator_data;
   int state = decode_state_identifier (iter->model->order, (char*) elem + iter->kmer_offset);
-  iter->model->matchMean[state] = *((double*) (elem + iter->level_mean_offset)) * iter->scale + iter->shift;
-  double sd = *((double*) (elem + iter->level_sd_offset)) * iter->var;
+  iter->model->matchMean[state] = *((double*) (elem + iter->level_mean_offset)) * iter->model->scale + iter->model->shift;
+  double sd = *((double*) (elem + iter->level_sd_offset)) * iter->model->var;
   iter->model->matchPrecision[state] = 1 / (sd * sd);
   return 0;
 }
@@ -147,6 +146,11 @@ Seq_event_pair_model* new_seq_event_pair_model_from_xml_string (const char* xml)
   modelNode = xmlTreeFromString (xml);
   model = new_seq_event_pair_model (CHILDINT(modelNode,ORDER));
 
+  model->drift = CHILDFLOAT(modelNode,DRIFT);
+  model->scale = CHILDFLOAT(modelNode,SCALE);
+  model->shift = CHILDFLOAT(modelNode,SHIFT);
+  model->var = CHILDFLOAT(modelNode,VAR);
+
   deleteNode = CHILD(modelNode,DELETE);
   model->pBeginDelete = CHILDFLOAT(deleteNode,BEGIN);
   model->pExtendDelete = CHILDFLOAT(deleteNode,EXTEND);
@@ -182,6 +186,11 @@ xmlChar* convert_seq_event_pair_model_to_xml_string (Seq_event_pair_model* model
   writer = newXmlTextWriter();
   xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(MODEL));
   xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(ORDER), "%d", model->order);
+
+  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(DRIFT), "%g", model->drift);
+  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(SCALE), "%g", model->scale);
+  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(SHIFT), "%g", model->shift);
+  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(VAR), "%g", model->var);
 
   xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(DELETE));
   xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(BEGIN), "%g", model->pBeginDelete);
@@ -848,7 +857,7 @@ int init_seq_event_model_from_fast5 (Seq_event_pair_model* model, const char* fi
   /* see if path exists */
   if (H5LTpath_valid ( file_id, model_path, 1))
     {
-      /* get dataset */
+      /* get model dataset */
       hid_t model_id = H5Oopen(file_id, model_path, H5P_DEFAULT);
       if ( model_id < 0 )
 	{
@@ -857,13 +866,16 @@ int init_seq_event_model_from_fast5 (Seq_event_pair_model* model, const char* fi
 	}
       else
 	{
+	  /* get model attributes */
+	  model->drift = read_metrichor_model_attribute (model_id, "drift");
+	  model->scale = read_metrichor_model_attribute (model_id, "scale");
+	  model->shift = read_metrichor_model_attribute (model_id, "shift");
+	  model->var = read_metrichor_model_attribute (model_id, "var");
+
 	  /* get information about fields in model */
 	  hid_t model_type_id = H5Dget_type( model_id );
 
 	  Metrichor_state_iterator iter;
-	  iter.scale = read_metrichor_model_attribute (model_id, "scale");
-	  iter.shift = read_metrichor_model_attribute (model_id, "shift");
-	  iter.var = read_metrichor_model_attribute (model_id, "var");
 
 	  int kmer_idx = H5Tget_member_index( model_type_id, FAST5_MODEL_KMER );
 	  int level_mean_idx = H5Tget_member_index( model_type_id, FAST5_MODEL_LEVEL_MEAN );

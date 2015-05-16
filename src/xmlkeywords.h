@@ -2,6 +2,10 @@
 #define XMLKEYWORDS_INCLUDED
 
 #define XMLNP_MODEL     "model"
+#define XMLNP_DRIFT     "drift"
+#define XMLNP_SCALE     "scale"
+#define XMLNP_SHIFT     "shift"
+#define XMLNP_VAR       "var"
 #define XMLNP_ORDER     "order"
 #define XMLNP_DELETE    "delete"
 #define XMLNP_BEGIN     "begin"

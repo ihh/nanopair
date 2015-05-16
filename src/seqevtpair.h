@@ -15,6 +15,7 @@
 /* Parameters */
 
 typedef struct Seq_event_pair_model {
+  double drift, scale, shift, var;
   double *pMatchEmit;
   double pBeginDelete, pExtendDelete;
   int order, states;
