@@ -67,15 +67,27 @@ void update_max (long double *current_max, int* current_max_idx, long double can
 typedef struct Metrichor_state_iterator {
   Seq_event_pair_model *model;
   size_t kmer_offset, level_mean_offset, level_sd_offset;
+  double scale, shift, var;
 } Metrichor_state_iterator;
+
+double read_metrichor_model_attribute (hid_t dataset, const char* attr_name)
+{
+  herr_t ret;
+  hid_t attr;
+  double attr_val;
+  attr = H5Aopen_name(dataset,attr_name);
+  ret = H5Aread(attr, H5T_NATIVE_DOUBLE, &attr_val);
+  ret = H5Aclose(attr);
+  return attr_val;
+}
 
 herr_t populate_seq_event_model_emit_params (void *elem, hid_t type_id, unsigned ndim, 
 					     const hsize_t *point, void *operator_data)
 {
   Metrichor_state_iterator *iter = (Metrichor_state_iterator*) operator_data;
   int state = decode_state_identifier (iter->model->order, (char*) elem + iter->kmer_offset);
-  iter->model->matchMean[state] = *((double*) (elem + iter->level_mean_offset));
-  double sd = *((double*) (elem + iter->level_sd_offset));
+  iter->model->matchMean[state] = *((double*) (elem + iter->level_mean_offset)) * iter->scale + iter->shift;
+  double sd = *((double*) (elem + iter->level_sd_offset)) * iter->var;
   iter->model->matchPrecision[state] = 1 / (sd * sd);
   return 0;
 }
@@ -849,6 +861,9 @@ int init_seq_event_model_from_fast5 (Seq_event_pair_model* model, const char* fi
 	  hid_t model_type_id = H5Dget_type( model_id );
 
 	  Metrichor_state_iterator iter;
+	  iter.scale = read_metrichor_model_attribute (model_id, "scale");
+	  iter.shift = read_metrichor_model_attribute (model_id, "shift");
+	  iter.var = read_metrichor_model_attribute (model_id, "var");
 
 	  int kmer_idx = H5Tget_member_index( model_type_id, FAST5_MODEL_KMER );
 	  int level_mean_idx = H5Tget_member_index( model_type_id, FAST5_MODEL_LEVEL_MEAN );

@@ -16,6 +16,9 @@ void StringDelete(void* a);
 int StringCompare(void* a, void* b);
 void StringPrint(void* a);
 
+/* more string utilities */
+char* StringConcat (const char *a, const char *b);
+
 /* mappings from strings to values - basically wrappers for RBTree functions */
 typedef RBTree StringMap;
 typedef RBNode StringMapNode;

@@ -26,3 +26,10 @@ int StringCompare(void* a, void* b) {
 void StringPrint(void* a) {
   printf("%i",*(int*)a);
 }
+
+char* StringConcat (const char *a, const char *b) {
+  char *s = SafeMalloc ((strlen(a) + strlen(b) + 1) * sizeof(char));
+  sprintf (s, "%s%s", a, b);
+  return s;
+}
+
