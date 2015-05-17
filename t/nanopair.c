@@ -270,7 +270,7 @@ int main (int argc, char** argv) {
     deleteVector (event_arrays);  /* automatically calls delete_fast5_event_array */
 
   } else if (strcmp (argv[1], "squiggle") == 0) {
-    /* SQUIGGLE: draw squiggle plot */
+    /* SQUIGGLE: draw squiggle plot as SVG wrapped in HTML */
     if (argc < 4)
       return help_failure ("For squiggle plots, please specify parameters and a FAST5 read file");
 
@@ -288,11 +288,14 @@ int main (int argc, char** argv) {
       return EXIT_FAILURE;
 
     /* loop through event arrays, print squiggle SVGs */
+    printf ("<html>\n<title>Squiggle plot</title>\n<body>\n");
     for (j = 0; j < (int) VectorSize(event_arrays); ++j) {
-      xmlChar* svg = make_squiggle_svg ((Fast5_event_array*) VectorGet(event_arrays,j), params);
-      printf ("%s", svg);
+      Fast5_event_array* events = (Fast5_event_array*) VectorGet(event_arrays,j);
+      xmlChar* svg = make_squiggle_svg (events, params);
+      printf ("<p>\n%s\n<p>\n%s", events->name, svg);
       SafeFree (svg);
     }
+    printf ("</body>\n</html>\n");
 
     /* free memory */
     delete_seq_event_pair_model (params);

@@ -1652,7 +1652,7 @@ xmlChar* make_squiggle_svg (Fast5_event_array *events, Seq_event_pair_model* mod
 	    levYAttr.next = &levWidthAttr;
 
 	    levWidthAttr.name = (xmlChar*) "width";
-	    sprintf (levWidthText, "%ld", xmax - xmin);
+	    sprintf (levWidthText, "%ld", xmax - xmin + 1);
 	    levWidthAttr.content = (xmlChar*) levWidthText;
 	    levWidthAttr.next = &levHeightAttr;
 
@@ -1735,7 +1735,7 @@ xmlChar* make_squiggle_svg (Fast5_event_array *events, Seq_event_pair_model* mod
 	      textYAttr.next = &textFillAttr;
 
 	      textFillAttr.name = (xmlChar*) "fill";
-	      textFillAttr.content = (xmlChar*) "green";
+	      textFillAttr.content = (xmlChar*) "darkblue";
 	      textFillAttr.next = NULL;
 
 	      xmlTextWriterStartElementWithAttrs (writer, (xmlChar*) "text", &textXAttr);
