@@ -269,6 +269,35 @@ int main (int argc, char** argv) {
     free_kseq_container (seqs);
     deleteVector (event_arrays);  /* automatically calls delete_fast5_event_array */
 
+  } else if (strcmp (argv[1], "squiggle") == 0) {
+    /* SQUIGGLE: draw squiggle plot */
+    if (argc < 4)
+      return help_failure ("For squiggle plots, please specify parameters and a FAST5 read file");
+
+    /* read FAST5 file */
+    event_arrays = init_fast5_event_array_vector (argc - 3, argv + 3);
+    if (event_arrays == NULL)
+      return EXIT_FAILURE;
+
+    /* read parameters */
+    params = (strcmp (argv[2], "-seed") == 0)
+      ? seed_params (argv[3])
+      : init_params (argv[2]);
+      
+    if (params == NULL)
+      return EXIT_FAILURE;
+
+    /* loop through event arrays, print squiggle SVGs */
+    for (j = 0; j < (int) VectorSize(event_arrays); ++j) {
+      xmlChar* svg = make_squiggle_svg ((Fast5_event_array*) VectorGet(event_arrays,j), params);
+      printf ("%s", svg);
+      SafeFree (svg);
+    }
+
+    /* free memory */
+    delete_seq_event_pair_model (params);
+    deleteVector (event_arrays);  /* automatically calls delete_fast5_event_array */
+
   } else if (strcmp (argv[1], "help") == 0) {
     return help_failure (NULL);
 
