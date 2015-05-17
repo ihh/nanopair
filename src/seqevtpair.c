@@ -307,7 +307,7 @@ void precalc_seq_event_pair_data (Seq_event_pair_data* data) {
   for (n_event = 0; n_event < n_events; ++n_event) {
     event = &data->events->event[n_event];
     loglike = log_event_density (event,
-				 model->nullMean,
+				 model->nullMean + model->drift * event->start,
 				 model->nullPrecision,
 				 logNullPrecision);
     data->nullEmitDensity[n_event + 1] = loglike;
@@ -340,7 +340,7 @@ void precalc_seq_event_pair_data (Seq_event_pair_data* data) {
       event = &data->events->event[n_event - 1];
       data->matchEmitDensity[Seq_event_pair_index(seqpos,n_event)]
 	= log_event_density (event,
-			     mean,
+			     mean + model->drift * event->start,
 			     precision,
 			     logPrecision);
     }

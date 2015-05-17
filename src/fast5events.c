@@ -39,9 +39,6 @@ herr_t populate_event_array (void *elem, hid_t type_id, unsigned ndim,
   ev->stdv = *((double*) (elem + iter->stdv_offset));
   ev->length = *((double*) (elem + iter->length_offset));
 
-  if (iter->event_array_index > 0)
-    ev->start -= iter->event_array->event[0].start;
-
   /* HACK: allow for variable-length state names */
   /* the disgusting excuse for this hack is found in the code for read_fast5_event_array */
   if (iter->model_order < 0) {
