@@ -38,7 +38,7 @@ const double seq_evt_pair_EM_max_iterations = 0.0001;
 const double seq_evt_pair_EM_min_fractional_loglike_increment = 0.0001;
 
 /* squiggle plot config */
-const double pixels_per_tick = .2;
+const double pixels_per_tick = .02;
 const double pixels_per_lev = 10;
 
 /* private functions */
@@ -1569,131 +1569,187 @@ xmlChar* make_squiggle_svg (Fast5_event_array *events, Seq_event_pair_model* mod
   xmlTextWriterPtr writer;
   writer = newXmlTextWriter();
 
-  // find viewport: width (total ticks), height (level range)
-  double ticks = 0, min_lev = 0, max_lev = 0;
-  int n_event;
-  for (n_event = 0; n_event < events->n_events; ++n_event) {
-    Fast5_event* event = events->event + n_event;
-    double emin = event->mean - event->stdv, emax = event->mean + event->stdv;
-    ticks += event->ticks;
-    if (n_event == 0 || emin < min_lev)
-      min_lev = emin;
-    if (n_event == 0 || emax > max_lev)
-      max_lev = emax;
-  }
-  long
-    w = (long) (ticks * pixels_per_tick),
-    h = (long) ((max_lev - min_lev) * pixels_per_lev);
+  if (events->n_events > 0) {
+    // find viewport: width (total ticks), height (level range)
+    double ticks = 0, min_lev = 0, max_lev = 0;
+    int n_event;
+    for (n_event = 0; n_event < events->n_events; ++n_event) {
+      Fast5_event* event = events->event + n_event;
+      double emin = event->mean - event->stdv, emax = event->mean + event->stdv;
+      ticks += event->ticks;
+      if (n_event == 0 || emin < min_lev)
+	min_lev = emin;
+      if (n_event == 0 || emax > max_lev)
+	max_lev = emax;
+    }
+    long
+      w = (long) (ticks * pixels_per_tick),
+      h = (long) ((max_lev - min_lev) * pixels_per_lev);
 
-  // <svg>
-  xmlNode viewboxAttr, versionAttr;
-  char viewboxText[100];
+    // <svg>
+    xmlNode widthAttr, heightAttr, viewBoxAttr, versionAttr;
+    char widthText[20], heightText[20], viewBoxText[100];
 
-  viewboxAttr.name = (xmlChar*) "viewBox";
-  sprintf (viewboxText, "0 0 %ld %ld", w, h);
-  viewboxAttr.content = (xmlChar*) viewboxText;
-  viewboxAttr.next = &versionAttr;
+    widthAttr.name = (xmlChar*) "width";
+    sprintf (widthText, "%ld", w);
+    widthAttr.content = (xmlChar*) widthText;
+    widthAttr.next = &heightAttr;
 
-  versionAttr.name = (xmlChar*) "version";
-  versionAttr.content = (xmlChar*) "1.1";
-  versionAttr.next = NULL;
+    heightAttr.name = (xmlChar*) "height";
+    sprintf (heightText, "%ld", h);
+    heightAttr.content = (xmlChar*) heightText;
+    heightAttr.next = &viewBoxAttr;
 
-  xmlTextWriterStartElementWithAttrs (writer, (xmlChar*) "svg", &viewboxAttr);
+    viewBoxAttr.name = (xmlChar*) "viewBox";
+    sprintf (viewBoxText, "0 0 %ld %ld", w, h);
+    viewBoxAttr.content = (xmlChar*) viewBoxText;
+    viewBoxAttr.next = &versionAttr;
 
-  // loop over events, drawing model level in background
-  ticks = 0;
-  for (n_event = 0; n_event < events->n_events; ++n_event) {
-    Fast5_event* event = events->event + n_event;
+    versionAttr.name = (xmlChar*) "version";
+    versionAttr.content = (xmlChar*) "1.1";
+    versionAttr.next = NULL;
 
-    long xmin = (long) (ticks * pixels_per_tick);
-    ticks += event->ticks;
-    long xmax = (long) (ticks * pixels_per_tick);
+    xmlTextWriterStartElementWithAttrs (writer, (xmlChar*) "svg", &widthAttr);
 
-    int state = decode_state_identifier (model->order, event->model_state);
-    double model_mean = model->matchMean[state];
-    double model_stdv = 1 / sqrt (model->matchPrecision[state]);
+    // loop over events, drawing model level in background
+    int pass;
+    for (pass = 0; pass < 3; ++pass) {
+      ticks = 0;
+      for (n_event = 0; n_event < events->n_events; ++n_event) {
+	Fast5_event* event = events->event + n_event;
 
-    double mmin = model_mean - model_stdv, mmax = model_mean + model_stdv;
-    long mymin = (long) ((mmin - min_lev) * pixels_per_lev);
-    long mymax = (long) ((mmax - min_lev) * pixels_per_lev);
+	long xmin = (long) (ticks * pixels_per_tick);
+	ticks += event->ticks;
+	long xmax = (long) (ticks * pixels_per_tick);
 
-    double emin = event->mean - event->stdv, emax = event->mean + event->stdv;
-    long eymin = (long) ((emin - min_lev) * pixels_per_lev);
-    long eymax = (long) ((emax - min_lev) * pixels_per_lev);
+	int state = decode_state_identifier (model->order, event->model_state);
+	double model_mean = model->matchMean[state];
+	double model_stdv = 1 / sqrt (model->matchPrecision[state]);
 
-    // rect for model level
-    xmlNode levXAttr, levYAttr, levWidthAttr, levHeightAttr, levStrokeWidthAttr, levFillAttr;
-    char levXText[20], levYText[20], levWidthText[20], levHeightText[20];
+	double mmin = model_mean - model_stdv, mmax = model_mean + model_stdv;
+	long mymin = (long) ((mmin - min_lev) * pixels_per_lev);
+	long mymax = (long) ((mmax - min_lev) * pixels_per_lev);
 
-    levXAttr.name = (xmlChar*) "x";
-    sprintf (levXText, "%ld", xmin);
-    levXAttr.content = (xmlChar*) levXText;
-    levXAttr.next = &levYAttr;
+	double emin = event->mean - event->stdv, emax = event->mean + event->stdv;
+	long eymin = (long) ((emin - min_lev) * pixels_per_lev);
+	long eymax = (long) ((emax - min_lev) * pixels_per_lev);
 
-    levYAttr.name = (xmlChar*) "y";
-    sprintf (levYText, "%ld", h - mymin);
-    levYAttr.content = (xmlChar*) levYText;
-    levYAttr.next = &levWidthAttr;
+	switch (pass) {
+	case 0:
+	  {
+	    // rect for model level
+	    xmlNode levXAttr, levYAttr, levWidthAttr, levHeightAttr, levStrokeWidthAttr, levFillAttr;
+	    char levXText[20], levYText[20], levWidthText[20], levHeightText[20];
 
-    levWidthAttr.name = (xmlChar*) "width";
-    sprintf (levWidthText, "%ld", xmax - xmin);
-    levWidthAttr.content = (xmlChar*) levWidthText;
-    levWidthAttr.next = &levHeightAttr;
+	    levXAttr.name = (xmlChar*) "x";
+	    sprintf (levXText, "%ld", xmin);
+	    levXAttr.content = (xmlChar*) levXText;
+	    levXAttr.next = &levYAttr;
 
-    levHeightAttr.name = (xmlChar*) "height";
-    sprintf (levHeightText, "%ld", mymax - mymin);
-    levHeightAttr.content = (xmlChar*) levHeightText;
-    levHeightAttr.next = &levStrokeWidthAttr;
+	    levYAttr.name = (xmlChar*) "y";
+	    sprintf (levYText, "%ld", h - mymax);
+	    levYAttr.content = (xmlChar*) levYText;
+	    levYAttr.next = &levWidthAttr;
 
-    levStrokeWidthAttr.name = (xmlChar*) "stroke-width";
-    levStrokeWidthAttr.content = (xmlChar*) "0";
-    levStrokeWidthAttr.next = &levFillAttr;
+	    levWidthAttr.name = (xmlChar*) "width";
+	    sprintf (levWidthText, "%ld", xmax - xmin);
+	    levWidthAttr.content = (xmlChar*) levWidthText;
+	    levWidthAttr.next = &levHeightAttr;
 
-    levFillAttr.name = (xmlChar*) "fill";
-    levFillAttr.content = (xmlChar*) "blue";
-    levFillAttr.next = NULL;
+	    levHeightAttr.name = (xmlChar*) "height";
+	    sprintf (levHeightText, "%ld", mymax - mymin);
+	    levHeightAttr.content = (xmlChar*) levHeightText;
+	    levHeightAttr.next = &levStrokeWidthAttr;
 
-    xmlTextWriterStartElementWithAttrs (writer, (xmlChar*) "rect", &levXAttr);
-    xmlTextWriterEndElement (writer);
+	    levStrokeWidthAttr.name = (xmlChar*) "stroke-width";
+	    levStrokeWidthAttr.content = (xmlChar*) "0";
+	    levStrokeWidthAttr.next = &levFillAttr;
 
-    // rect for event
-    xmlNode evtXAttr, evtYAttr, evtWidthAttr, evtHeightAttr, evtStrokeAttr, evtStrokeWidthAttr, evtFillAttr;
-    char evtXText[20], evtYText[20], evtWidthText[20], evtHeightText[20];
+	    levFillAttr.name = (xmlChar*) "fill";
+	    levFillAttr.content = (xmlChar*) "blue";
+	    levFillAttr.next = NULL;
 
-    evtXAttr.name = (xmlChar*) "x";
-    sprintf (evtXText, "%ld", xmin);
-    evtXAttr.content = (xmlChar*) evtXText;
-    evtXAttr.next = &evtYAttr;
+	    xmlTextWriterStartElementWithAttrs (writer, (xmlChar*) "rect", &levXAttr);
+	    xmlTextWriterEndElement (writer);
+	  }
+	  break;
 
-    evtYAttr.name = (xmlChar*) "y";
-    sprintf (evtYText, "%ld", h - eymin);
-    evtYAttr.content = (xmlChar*) evtYText;
-    evtYAttr.next = &evtWidthAttr;
+	case 1:
+	  {
+	    // rect for event
+	    xmlNode evtXAttr, evtYAttr, evtWidthAttr, evtHeightAttr, evtStrokeAttr, evtStrokeWidthAttr, evtFillAttr;
+	    char evtXText[20], evtYText[20], evtWidthText[20], evtHeightText[20];
 
-    evtWidthAttr.name = (xmlChar*) "width";
-    sprintf (evtWidthText, "%ld", xmax - xmin);
-    evtWidthAttr.content = (xmlChar*) evtWidthText;
-    evtWidthAttr.next = &evtHeightAttr;
+	    evtXAttr.name = (xmlChar*) "x";
+	    sprintf (evtXText, "%ld", xmin);
+	    evtXAttr.content = (xmlChar*) evtXText;
+	    evtXAttr.next = &evtYAttr;
 
-    evtHeightAttr.name = (xmlChar*) "height";
-    sprintf (evtHeightText, "%ld", eymax - eymin);
-    evtHeightAttr.content = (xmlChar*) evtHeightText;
-    evtHeightAttr.next = &evtStrokeAttr;
+	    evtYAttr.name = (xmlChar*) "y";
+	    sprintf (evtYText, "%ld", h - eymax);
+	    evtYAttr.content = (xmlChar*) evtYText;
+	    evtYAttr.next = &evtWidthAttr;
 
-    evtStrokeAttr.name = (xmlChar*) "stroke";
-    evtStrokeAttr.content = (xmlChar*) "black";
-    evtStrokeAttr.next = &evtStrokeWidthAttr;
+	    evtWidthAttr.name = (xmlChar*) "width";
+	    sprintf (evtWidthText, "%ld", xmax - xmin);
+	    evtWidthAttr.content = (xmlChar*) evtWidthText;
+	    evtWidthAttr.next = &evtHeightAttr;
 
-    evtStrokeWidthAttr.name = (xmlChar*) "stroke-width";
-    evtStrokeWidthAttr.content = (xmlChar*) "1";
-    evtStrokeWidthAttr.next = &evtFillAttr;
+	    evtHeightAttr.name = (xmlChar*) "height";
+	    sprintf (evtHeightText, "%ld", eymax - eymin);
+	    evtHeightAttr.content = (xmlChar*) evtHeightText;
+	    evtHeightAttr.next = &evtStrokeAttr;
 
-    evtFillAttr.name = (xmlChar*) "fill";
-    evtFillAttr.content = (xmlChar*) "none";
-    evtFillAttr.next = NULL;
+	    evtStrokeAttr.name = (xmlChar*) "stroke";
+	    evtStrokeAttr.content = (xmlChar*) "black";
+	    evtStrokeAttr.next = &evtStrokeWidthAttr;
 
-    xmlTextWriterStartElementWithAttrs (writer, (xmlChar*) "rect", &evtXAttr);
-    xmlTextWriterEndElement (writer);
+	    evtStrokeWidthAttr.name = (xmlChar*) "stroke-width";
+	    evtStrokeWidthAttr.content = (xmlChar*) "1";
+	    evtStrokeWidthAttr.next = &evtFillAttr;
+
+	    evtFillAttr.name = (xmlChar*) "fill";
+	    evtFillAttr.content = (xmlChar*) "none";
+	    evtFillAttr.next = NULL;
+
+	    xmlTextWriterStartElementWithAttrs (writer, (xmlChar*) "rect", &evtXAttr);
+	    xmlTextWriterEndElement (writer);
+	  }
+	  break;
+
+	case 2:
+	  {
+	    // text for move
+	    if (event->move || n_event == 0) {
+	      xmlNode textXAttr, textYAttr, textFillAttr;
+	      char textXText[20], textYText[20];
+
+	      textXAttr.name = (xmlChar*) "x";
+	      sprintf (textXText, "%ld", xmin);
+	      textXAttr.content = (xmlChar*) textXText;
+	      textXAttr.next = &textYAttr;
+
+	      textYAttr.name = (xmlChar*) "y";
+	      sprintf (textYText, "%ld", h - mymin);
+	      textYAttr.content = (xmlChar*) textYText;
+	      textYAttr.next = &textFillAttr;
+
+	      textFillAttr.name = (xmlChar*) "fill";
+	      textFillAttr.content = (xmlChar*) "green";
+	      textFillAttr.next = NULL;
+
+	      xmlTextWriterStartElementWithAttrs (writer, (xmlChar*) "text", &textXAttr);
+	      xmlTextWriterWriteFormatCDATA (writer, "%s", event->model_state);
+	      xmlTextWriterEndElement (writer);
+	    }
+	  }
+	  break;
+
+	  default:
+	    break;
+	}
+      }
+    }
   }
 
   xmlTextWriterEndElement (writer);
