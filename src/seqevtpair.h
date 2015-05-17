@@ -30,6 +30,9 @@ void delete_seq_event_pair_model (Seq_event_pair_model* model);
 Seq_event_pair_model* new_seq_event_pair_model_from_xml_string (const char* xml);
 xmlChar* convert_seq_event_pair_model_to_xml_string (Seq_event_pair_model* model);
 
+xmlChar* make_squiggle_svg (Fast5_event_array *events, Seq_event_pair_model* model);
+
+
 /* Data + precomputed log-likelihoods for DP */
 
 typedef struct Seq_event_pair_data {

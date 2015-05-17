@@ -1558,3 +1558,12 @@ xmlChar* convert_seq_event_pair_counts_to_xml_string (Seq_event_pair_counts* cou
 
   return deleteXmlTextWriterLeavingText (writer);
 }
+
+xmlChar* make_squiggle_svg (Fast5_event_array *events, Seq_event_pair_model* model) {
+  xmlTextWriterPtr writer;
+  writer = newXmlTextWriter();
+  // find viewport: length (total ticks), height (level range)
+  // loop over events, drawing model level in background
+  return deleteXmlTextWriterLeavingText (writer);
+}
+
