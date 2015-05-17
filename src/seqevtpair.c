@@ -1720,7 +1720,7 @@ xmlChar* make_squiggle_svg (Fast5_event_array *events, Seq_event_pair_model* mod
 	case 2:
 	  {
 	    // text for move
-	    if (event->move || n_event == 0) {
+	    if (event->move > 0 || n_event == 0) {
 	      xmlNode textXAttr, textYAttr, textFillAttr;
 	      char textXText[20], textYText[20];
 
@@ -1735,11 +1735,11 @@ xmlChar* make_squiggle_svg (Fast5_event_array *events, Seq_event_pair_model* mod
 	      textYAttr.next = &textFillAttr;
 
 	      textFillAttr.name = (xmlChar*) "fill";
-	      textFillAttr.content = (xmlChar*) "darkblue";
+	      textFillAttr.content = (xmlChar*) "lightblue";
 	      textFillAttr.next = NULL;
 
 	      xmlTextWriterStartElementWithAttrs (writer, (xmlChar*) "text", &textXAttr);
-	      xmlTextWriterWriteFormatCDATA (writer, "%s", event->model_state);
+	      xmlTextWriterWriteFormatCDATA (writer, "%s", event->model_state + (n_event == 0 ? 0 : (strlen(event->model_state) - event->move)));
 	      xmlTextWriterEndElement (writer);
 	    }
 	  }
