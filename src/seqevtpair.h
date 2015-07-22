@@ -155,9 +155,9 @@ typedef struct Seq_event_pair_alignment {
 Seq_event_pair_alignment* new_seq_event_pair_alignment (Fast5_event_array *events, char *seq, int seqlen);
 void delete_seq_event_pair_alignment (Seq_event_pair_alignment* align);
 
-typedef void (*WriteSeqEventPairAlignmentFunction) (Seq_event_pair_alignment*, int, FILE*);
-void write_seq_event_pair_alignment_as_gff_cigar (Seq_event_pair_alignment* align, int strand, FILE* out);
-void write_seq_event_pair_alignment_as_stockholm (Seq_event_pair_alignment* align, int strand, FILE* out);
+typedef void (*WriteSeqEventPairAlignmentFunction) (Seq_event_pair_alignment*, Seq_event_pair_model*, int, FILE*);
+void write_seq_event_pair_alignment_as_gff_cigar (Seq_event_pair_alignment* align, Seq_event_pair_model* model, int strand, FILE* out);
+void write_seq_event_pair_alignment_as_stockholm (Seq_event_pair_alignment* align, Seq_event_pair_model* model, int strand, FILE* out);
 
 /* Viterbi matrix */
 

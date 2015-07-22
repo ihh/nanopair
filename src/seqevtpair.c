@@ -1033,7 +1033,7 @@ void delete_seq_event_pair_alignment (Seq_event_pair_alignment* align) {
   SafeFree (align);
 }
 
-void write_seq_event_pair_alignment_as_gff_cigar (Seq_event_pair_alignment* align, int strand, FILE* out) {
+void write_seq_event_pair_alignment_as_gff_cigar (Seq_event_pair_alignment* align, Seq_event_pair_model* model, int strand, FILE* out) {
   int n, deleted;
   StringVector *cigar;
   char buf[30];
@@ -1110,10 +1110,10 @@ void append_evtrow_column_to_seqevt_alignment (StringVector *seqrow, StringVecto
   }
 }
 
-void write_seq_event_pair_alignment_as_stockholm (Seq_event_pair_alignment* align, int strand, FILE* out) {
+void write_seq_event_pair_alignment_as_stockholm (Seq_event_pair_alignment* align, Seq_event_pair_model* model, int strand, FILE* out) {
   StringVector *seqrow, *evtrow;
   int n_event, n, seqpos_offset, name_width;
-  char namefmt[100], *revcomp;
+  char namefmt[100], state_id[20], *revcomp;
 
   revcomp = strand > 0 ? NULL : new_revcomp_seq (align->seq, strlen(align->seq));
 
@@ -1151,6 +1151,18 @@ void write_seq_event_pair_alignment_as_stockholm (Seq_event_pair_alignment* alig
   for (n = 0; n < (int) StringVectorSize(evtrow); ++n)
     fprintf (out, "%s", StringVectorGet(evtrow,n));
   fprintf (out, "\n");
+
+  fprintf (out, "#=GF event NumEvent\tEventMean\tEventSD\tModelState\tModelMean\tSeqPos\tSeqState\tStateMean\tStateSD\n");
+  for (n_event = n = 0; n < align->start_n_event; ++n_event, ++n) {
+    fprintf (out, "#=GR event %d\t%g\t%g\t%s\t%g - -\t%g\t%g\n", n_event, align->events->event[n_event].mean, align->events->event[n_event].stdv, align->events->event[n_event].model_state, align->events->event[n_event].model_level, model->nullMean, sqrt(1/model->nullPrecision));
+  }
+  for (seqpos_offset = 0; seqpos_offset <= align->end_seqpos - align->start_seqpos; ++seqpos_offset) {
+    int state = decode_state_identifier (model->order, (char*) (align->seq + align->start_seqpos + seqpos_offset - model->order));
+    encode_state_identifier (state, model->order, state_id);
+    for (n = 0; n < align->events_at_pos[seqpos_offset]; ++n_event, ++n) {
+      fprintf (out, "#=GR event %d\t%g\t%g\t%s\t%g\t%d\t%s\t%g\t%g\n", n_event, align->events->event[n_event].mean, align->events->event[n_event].stdv, align->events->event[n_event].model_state, align->events->event[n_event].model_level, align->start_seqpos + seqpos_offset, state_id, model->matchMean[state], sqrt(1/model->matchPrecision[state]));
+    }
+  }
 
   fprintf (out, "//\n");
 
@@ -1442,7 +1454,7 @@ void print_seq_evt_pair_alignments_generic (Seq_event_pair_model* model, int seq
     align->seqname = seqname;
 
     if (align->log_likelihood_ratio >= log_odds_ratio_threshold)
-      (*write_func) (align, strand, out);
+      (*write_func) (align, model, strand, out);
 
     delete_seq_event_pair_viterbi_matrix (matrix);
     delete_seq_event_pair_alignment (align);
