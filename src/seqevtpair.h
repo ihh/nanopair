@@ -22,6 +22,7 @@ int decode_state_identifier (int order, char* state_id);
 /* Parameters */
 
 typedef struct Seq_event_pair_model {
+  double scale, shift;
   double *pMatchEmit;
   double pBeginDelete, pExtendDelete;
   int order, states;
