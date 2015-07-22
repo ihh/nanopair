@@ -23,7 +23,7 @@ int main(int argc, char * argv[])
   fnOut = argv[2];
 
   /* read, write & destroy event array */
-  Fast5_event_array* event_array = read_fast5_event_array (fnIn, DefaultFast5TickLength);
+  Fast5_event_array* event_array = read_fast5_event_array (fnIn);
   write_fast5_event_array (event_array, fnOut);
   delete_fast5_event_array (event_array);
 	
