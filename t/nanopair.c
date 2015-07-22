@@ -13,6 +13,9 @@ const char* help_message =
   " nanopair eventseed <read.fast5> [<read2.fast5> ...]  >params.xml\n"
   "  (to parameterize a model from the basecalled event data in a FAST5 file)\n"
   "\n"
+  " nanopair normalize <in.fast5> <out.fast5>\n"
+  "  (to normalize events in a FAST5 file)\n"
+  "\n"
   " nanopair count <params.xml> <refs.fasta> <read.fast5> [...]  >counts.xml\n"
   "  (to calculate expected counts under the posterior distribution,\n"
   "   as summary statistics or for distributed EM updates)\n"
@@ -117,6 +120,13 @@ void write_counts (Seq_event_pair_counts *counts) {
   SafeFree (xml_counts);
 }
 
+void normalize_fast5 (const char* fnIn, const char* fnOut) {
+  /* read, write & destroy event array */
+  Fast5_event_array* event_array = read_fast5_event_array (fnIn);
+  write_fast5_event_array (event_array, fnOut);
+  delete_fast5_event_array (event_array);
+}
+
 int main (int argc, char** argv) {
   int i, j;
   Vector *event_arrays;
@@ -175,6 +185,13 @@ int main (int argc, char** argv) {
     /* free memory */
     delete_seq_event_pair_model (params);
     deleteVector (event_arrays);  /* automatically calls delete_fast5_event_array */
+
+  } else if (strcmp (argv[1], "normalize") == 0) {
+    /* NORMALIZE: write out normalized fast5 file */
+    if (argc != 4)
+      return help_failure ("To normalize FAST5, please specify input and output filenames");
+
+    normalize_fast5 (argv[2], argv[3]);
 
   } else if (strcmp (argv[1], "count") == 0) {
     /* COUNT: single E-step of Baum-Welch/EM algorithm */
