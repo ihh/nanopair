@@ -13,9 +13,6 @@ const char* help_message =
   " nanopair eventseed <read.fast5> [<read2.fast5> ...]  >params.xml\n"
   "  (to parameterize a model from the basecalled event data in a FAST5 file)\n"
   "\n"
-  " nanopair showdrift <read.fast5>\n"
-  "  (to show the difference between event current mean & model level)\n"
-  "\n"
   " nanopair count <params.xml> <refs.fasta> <read.fast5> [...]  >counts.xml\n"
   "  (to calculate expected counts under the posterior distribution,\n"
   "   as summary statistics or for distributed EM updates)\n"
@@ -53,7 +50,7 @@ Vector* init_fast5_event_array_vector (int argc, char** argv) {
   Fast5_event_array* events;
   vec = newVector (NullCopyFunction, delete_fast5_event_array_null, NullPrintFunction);
   for (; argc > 0; --argc, ++argv) {
-    events = read_fast5_event_array (*argv, DefaultFast5TickLength);
+    events = read_fast5_event_array (*argv);
     if (events != NULL)
       VectorPushBack (vec, events);
   }
@@ -118,23 +115,6 @@ void write_counts (Seq_event_pair_counts *counts) {
   xmlChar *xml_counts = convert_seq_event_pair_counts_to_xml_string (counts);
   fprintf (stdout, "%s", (char*) xml_counts);
   SafeFree (xml_counts);
-}
-
-void write_drift (const char* filename) {
-  Fast5_event_array* fast5 = read_fast5_event_array (filename, DefaultFast5TickLength);
-  Seq_event_pair_model *params = seed_params ((char*) filename);
-  if (fast5->n_events) {
-    fprintf (stdout, "start uncorrected drift corrected\n");
-    double s0 = fast5->event[0].start;
-    for (int n = 0; n < fast5->n_events; ++n) {
-      Fast5_event* ev = fast5->event + n;
-      double corrected = ev->mean - ev->model_level;
-      double drift = -params->drift * (ev->start - s0);
-      fprintf (stdout, "%g %g %g %g\n", ev->start - s0, corrected + drift, drift, corrected);
-    }
-  }
-  delete_fast5_event_array (fast5);
-  delete_seq_event_pair_model (params);
 }
 
 int main (int argc, char** argv) {
@@ -258,13 +238,6 @@ int main (int argc, char** argv) {
     delete_seq_event_pair_model (params);
     free_kseq_container (seqs);
     deleteVector (event_arrays);  /* automatically calls delete_fast5_event_array */
-
-  } else if (strcmp (argv[1], "showdrift") == 0) {
-    /* EVENTSEED: initialize parameters from base-called reads */
-    if (argc != 3)
-      return help_failure ("To show drift, please specify a FAST5 file");
-
-    write_drift (argv[2]);    
 
   } else if (strcmp (argv[1], "align") == 0) {
     /* ALIGN: Viterbi algorithm */

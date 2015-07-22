@@ -41,6 +41,9 @@ const double seq_evt_pair_EM_min_fractional_loglike_increment = 0.0001;
 const double pixels_per_tick = .02;
 const double pixels_per_lev = 10;
 
+/* normalize a model */
+void normalize_model (Seq_event_pair_model* model);
+
 /* accum_count(back_src,fwd_src,trans,back_dest,matrix,count,event,moment0,moment1,moment2)
    increments *count1 and *count2 by (weight = exp(fwd_src + trans + back_dest - matrix->fwdEnd)) * event->ticks
    also increments (moment0,moment1,moment2) by weight * event->(ticks,sumticks_cur,sumticks_cur_sq)
@@ -85,7 +88,7 @@ herr_t populate_seq_event_model_emit_params (void *elem, hid_t type_id, unsigned
   Metrichor_state_iterator *iter = (Metrichor_state_iterator*) operator_data;
   int state = decode_state_identifier (iter->model->order, (char*) elem + iter->kmer_offset);
   iter->model->matchMean[state] = *((double*) (elem + iter->level_mean_offset));
-  double sd = *((double*) (elem + iter->level_sd_offset)) * iter->model->var;
+  double sd = *((double*) (elem + iter->level_sd_offset));
   iter->model->matchPrecision[state] = 1 / (sd * sd);
   return 0;
 }
@@ -145,11 +148,6 @@ Seq_event_pair_model* new_seq_event_pair_model_from_xml_string (const char* xml)
   modelNode = xmlTreeFromString (xml);
   model = new_seq_event_pair_model (CHILDINT(modelNode,ORDER));
 
-  model->drift = CHILDFLOAT(modelNode,DRIFT);
-  model->scale = CHILDFLOAT(modelNode,SCALE);
-  model->shift = CHILDFLOAT(modelNode,SHIFT);
-  model->var = CHILDFLOAT(modelNode,VAR);
-
   deleteNode = CHILD(modelNode,DELETE);
   model->pBeginDelete = CHILDFLOAT(deleteNode,BEGIN);
   model->pExtendDelete = CHILDFLOAT(deleteNode,EXTEND);
@@ -185,11 +183,6 @@ xmlChar* convert_seq_event_pair_model_to_xml_string (Seq_event_pair_model* model
   writer = newXmlTextWriter();
   xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(MODEL));
   xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(ORDER), "%d", model->order);
-
-  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(DRIFT), "%g", model->drift);
-  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(SCALE), "%g", model->scale);
-  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(SHIFT), "%g", model->shift);
-  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(VAR), "%g", model->var);
 
   xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(DELETE));
   xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(BEGIN), "%g", model->pBeginDelete);
@@ -306,7 +299,7 @@ void precalc_seq_event_pair_data (Seq_event_pair_data* data) {
   for (n_event = 0; n_event < n_events; ++n_event) {
     event = &data->events->event[n_event];
     loglike = log_event_density (event,
-				 model->nullMean * model->scale + model->shift + model->drift * event->start,
+				 model->nullMean,
 				 model->nullPrecision,
 				 logNullPrecision);
     data->nullEmitDensity[n_event + 1] = loglike;
@@ -330,7 +323,7 @@ void precalc_seq_event_pair_data (Seq_event_pair_data* data) {
     data->matchEmitYes[seqpos] = state < 0 ? data->nullEmitYes : log (model->pMatchEmit[state]);
     data->matchEmitNo[seqpos] = state < 0 ? data->nullEmitNo : log (1. - model->pMatchEmit[state]);
 
-    mean = (state < 0 ? model->nullMean : model->matchMean[state]) * model->scale + model->shift;
+    mean = state < 0 ? model->nullMean : model->matchMean[state];
     precision = state < 0 ? model->nullPrecision : model->matchPrecision[state];
     logPrecision = log (precision);
 
@@ -339,7 +332,7 @@ void precalc_seq_event_pair_data (Seq_event_pair_data* data) {
       event = &data->events->event[n_event - 1];
       data->matchEmitDensity[Seq_event_pair_index(seqpos,n_event)]
 	= log_event_density (event,
-			     mean + model->drift * event->start,
+			     mean,
 			     precision,
 			     logPrecision);
     }
@@ -865,12 +858,6 @@ int init_seq_event_model_from_fast5 (Seq_event_pair_model* model, const char* fi
 	}
       else
 	{
-	  /* get model attributes */
-	  model->drift = read_metrichor_model_attribute (model_id, "drift");
-	  model->scale = read_metrichor_model_attribute (model_id, "scale");
-	  model->shift = read_metrichor_model_attribute (model_id, "shift");
-	  model->var = read_metrichor_model_attribute (model_id, "var");
-
 	  /* get information about fields in model */
 	  hid_t model_type_id = H5Dget_type( model_id );
 
@@ -901,6 +888,9 @@ int init_seq_event_model_from_fast5 (Seq_event_pair_model* model, const char* fi
 	  /* convert */
 	  iter.model = model;
 	  H5Diterate( buf, model_type_id, model_space_id, populate_seq_event_model_emit_params, &iter );
+
+	  /* normalize */
+	  normalize_model (model);
 
 	  /* free buffer */
 	  SafeFree (buf);
@@ -1749,3 +1739,19 @@ xmlChar* make_squiggle_svg (Fast5_event_array *events, Seq_event_pair_model* mod
   return deleteXmlTextWriterLeavingText (writer);
 }
 
+void normalize_model (Seq_event_pair_model* model) {
+  double sum = 0, sumsq = 0;
+  for (int n = 0; n < model->states; ++n) {
+    sum += model->matchMean[n];
+    sumsq += model->matchMean[n] * model->matchMean[n];
+  }
+  double mean = sum / (double) model->states;
+  double var = sumsq / (double) model->states - mean*mean;
+  double sd = sqrt(var);
+  for (int n = 0; n < model->states; ++n) {
+    model->matchMean[n] = (model->matchMean[n] - mean) / sd;
+    model->matchPrecision[n] *= var;
+  }
+  model->nullMean = (model->nullMean - mean) / sd;
+  model->nullPrecision *= var;
+}
