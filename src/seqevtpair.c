@@ -41,13 +41,6 @@ const double seq_evt_pair_EM_min_fractional_loglike_increment = 0.0001;
 const double pixels_per_tick = .02;
 const double pixels_per_lev = 10;
 
-/* private functions */
-int base2token (char base);
-char token2base (int token);
-
-void encode_state_identifier (int state, int order, char* state_id);
-int decode_state_identifier (int order, char* state_id);
-
 /* accum_count(back_src,fwd_src,trans,back_dest,matrix,count,event,moment0,moment1,moment2)
    increments *count1 and *count2 by (weight = exp(fwd_src + trans + back_dest - matrix->fwdEnd)) * event->ticks
    also increments (moment0,moment1,moment2) by weight * event->(ticks,sumticks_cur,sumticks_cur_sq)

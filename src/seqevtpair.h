@@ -12,6 +12,13 @@
 #define SEQEVTPAIR_DEBUG 1
 #define SEQEVTMATRIX_FILENAME "npmatrix"
 
+/* state encoding functions */
+int base2token (char base);
+char token2base (int token);
+
+void encode_state_identifier (int state, int order, char* state_id);
+int decode_state_identifier (int order, char* state_id);
+
 /* Parameters */
 
 typedef struct Seq_event_pair_model {

@@ -14,6 +14,7 @@ const char* events_path = "/Analyses/Basecall_2D_000/BaseCalled_template/Events"
 #define FAST5_EVENT_START "start"
 #define FAST5_EVENT_STDV "stdv"
 #define FAST5_EVENT_LENGTH "length"
+#define FAST5_EVENT_MODEL_LEVEL "model_level"
 #define FAST5_EVENT_MODEL_STATE "model_state"
 #define FAST5_EVENT_MOVE "move"
 #define FAST5_EVENT_MP_STATE "mp_state"
@@ -24,7 +25,7 @@ const char* events_path = "/Analyses/Basecall_2D_000/BaseCalled_template/Events"
 typedef struct Fast5_event_array_iterator {
   Fast5_event_array* event_array;
   int event_array_index;
-  size_t mean_offset, start_offset, stdv_offset, length_offset, model_state_offset, move_offset, mp_model_state_offset, raw_offset;
+  size_t mean_offset, start_offset, stdv_offset, length_offset, model_level_offset, model_state_offset, move_offset, mp_model_state_offset, raw_offset;
   int model_order;
 } Fast5_event_array_iterator;
 
@@ -38,6 +39,7 @@ herr_t populate_event_array (void *elem, hid_t type_id, unsigned ndim,
   ev->start = *((double*) (elem + iter->start_offset));
   ev->stdv = *((double*) (elem + iter->stdv_offset));
   ev->length = *((double*) (elem + iter->length_offset));
+  ev->model_level = *((double*) (elem + iter->model_level_offset));
 
   /* HACK: allow for variable-length state names */
   /* the disgusting excuse for this hack is found in the code for read_fast5_event_array */
@@ -155,6 +157,7 @@ Fast5_event_array* read_fast5_event_array (const char* filename, double tick_len
 	  int start_idx = H5Tget_member_index( events_type_id, FAST5_EVENT_START );
 	  int stdv_idx = H5Tget_member_index( events_type_id, FAST5_EVENT_STDV );
 	  int length_idx = H5Tget_member_index( events_type_id, FAST5_EVENT_LENGTH );
+	  int model_level_idx = H5Tget_member_index( events_type_id, FAST5_EVENT_MODEL_LEVEL );
 	  int model_state_idx = H5Tget_member_index( events_type_id, FAST5_EVENT_MODEL_STATE );
 	  int move_idx = H5Tget_member_index( events_type_id, FAST5_EVENT_MOVE );
 	  int mp_model_state_idx = H5Tget_member_index( events_type_id, FAST5_EVENT_MP_STATE );
@@ -164,6 +167,7 @@ Fast5_event_array* read_fast5_event_array (const char* filename, double tick_len
 	  iter.start_offset = H5Tget_member_offset( events_type_id, start_idx );
 	  iter.stdv_offset = H5Tget_member_offset( events_type_id, stdv_idx );
 	  iter.length_offset = H5Tget_member_offset( events_type_id, length_idx );
+	  iter.model_level_offset = H5Tget_member_offset( events_type_id, model_level_idx );
 	  iter.model_state_offset = H5Tget_member_offset( events_type_id, model_state_idx );
 	  iter.move_offset = H5Tget_member_offset( events_type_id, move_idx );
 	  iter.mp_model_state_offset = H5Tget_member_offset( events_type_id, mp_model_state_idx );
