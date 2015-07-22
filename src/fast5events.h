@@ -7,7 +7,7 @@
 typedef struct Fast5_event {
   double mean, start, stdv, length, model_level;
   char *model_state, *mp_model_state;
-  long move, raw;
+  long move;
   /* { mean, stdv, length } converted to zeroth, first & second moments of a series of "ticks" */
   double ticks,       /*           ticks = length / tick_length */
     sumticks_cur,     /*    sumticks_cur = ticks * mean */
