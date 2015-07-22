@@ -91,7 +91,7 @@ herr_t populate_seq_event_model_emit_params (void *elem, hid_t type_id, unsigned
 {
   Metrichor_state_iterator *iter = (Metrichor_state_iterator*) operator_data;
   int state = decode_state_identifier (iter->model->order, (char*) elem + iter->kmer_offset);
-  iter->model->matchMean[state] = *((double*) (elem + iter->level_mean_offset)) * iter->model->scale + iter->model->shift;
+  iter->model->matchMean[state] = *((double*) (elem + iter->level_mean_offset));
   double sd = *((double*) (elem + iter->level_sd_offset)) * iter->model->var;
   iter->model->matchPrecision[state] = 1 / (sd * sd);
   return 0;
@@ -313,7 +313,7 @@ void precalc_seq_event_pair_data (Seq_event_pair_data* data) {
   for (n_event = 0; n_event < n_events; ++n_event) {
     event = &data->events->event[n_event];
     loglike = log_event_density (event,
-				 model->nullMean + model->drift * event->start,
+				 model->nullMean * model->scale + model->shift + model->drift * event->start,
 				 model->nullPrecision,
 				 logNullPrecision);
     data->nullEmitDensity[n_event + 1] = loglike;
@@ -337,7 +337,7 @@ void precalc_seq_event_pair_data (Seq_event_pair_data* data) {
     data->matchEmitYes[seqpos] = state < 0 ? data->nullEmitYes : log (model->pMatchEmit[state]);
     data->matchEmitNo[seqpos] = state < 0 ? data->nullEmitNo : log (1. - model->pMatchEmit[state]);
 
-    mean = state < 0 ? model->nullMean : model->matchMean[state];
+    mean = (state < 0 ? model->nullMean : model->matchMean[state]) * model->scale + model->shift;
     precision = state < 0 ? model->nullPrecision : model->matchPrecision[state];
     logPrecision = log (precision);
 
