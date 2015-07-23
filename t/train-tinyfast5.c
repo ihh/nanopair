@@ -44,7 +44,7 @@ int main (int argc, char** argv) {
   seqs->seq = (char**) SafeCalloc (1, sizeof(char*));
 
   seqs->name[0] = StringCopy ("tiny");
-  seqs->seq[0] = StringCopy ("ACAGCTAGCTAGCTAG");
+  seqs->seq[0] = StringCopy ("ACAGCT");
   seqs->len[0] = strlen (seqs->seq[0]);
 
   validate_kseq_container (seqs, dna_alphabet, stderr);
@@ -54,6 +54,13 @@ int main (int argc, char** argv) {
   /* initialize model */
   params = new_seq_event_pair_model (MODEL_ORDER);
   optimize_seq_event_model_for_events (params, event_arrays);
+
+  /* output initial model */
+  FILE *initParamsFile = fopen ("initparams.xml", "w");
+  xml_params = convert_seq_event_pair_model_to_xml_string (params);
+  fprintf (initParamsFile, "%s", (char*) xml_params);
+  SafeFree (xml_params);
+  fclose (initParamsFile);
 
   /* do Baum-Welch */
   fit_seq_event_pair_model (params, seqs, event_arrays, 0);
