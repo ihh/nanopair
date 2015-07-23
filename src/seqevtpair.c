@@ -1499,7 +1499,7 @@ void dump_seq_event_pair_matrix (FILE* file, const char* algorithm, Seq_event_pa
 
   time (&rawtime);
   rawtime_tm = localtime (&rawtime);
-  fprintf (file, "%s matrix (%s)\n", algorithm, asctime(rawtime_tm));
+  fprintf (file, "%s matrix: %s\n", algorithm, asctime(rawtime_tm));
 
   for (seqpos = order; seqpos <= seqlen; ++seqpos) {
     encode_state_identifier (data->state[seqpos], data->model->order, id);
