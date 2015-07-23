@@ -7,14 +7,6 @@
 #include "util.h"
 #include "stringmap.h"
 
-/* Default tick length.
-   This is a crude hack to allow us to treat variable-length segments as a sequence of discrete current samples ("ticks").
-   In practise it should be the lowest common denominator of the event lengths.
-   The value of 0.0002 is based on the usual sample rate of 5000.
-   If working with raw data files, it should be possible to read the sample rate from the metadata.
- */
-#define DefaultFast5TickLength 0.0002
-
 /* path we check for events data in HDF5 file */
 const char* events_path = "/Analyses/Basecall_2D_000/BaseCalled_template/Events";
 
@@ -27,10 +19,6 @@ const char* events_path = "/Analyses/Basecall_2D_000/BaseCalled_template/Events"
 #define FAST5_EVENT_MODEL_LEVEL "model_level"
 #define FAST5_EVENT_MOVE "move"
 #define FAST5_EVENT_MP_STATE "mp_state"
-
-/* Normalize an event array */
-void normalize_event_array (Fast5_event_array* ev);
-void fast5_event_calc_moments (Fast5_event *ev, double tick_length);
 
 /* Fast5_event_array_iterator
    Used to populate a Fast5_event_array */
@@ -207,7 +195,7 @@ Fast5_event_array* read_fast5_event_array (const char* filename)
 	  H5Diterate( buf, events_type_id, events_space_id, populate_event_array, &iter );
 
 	  /* normalize */
-	  normalize_event_array (event_array);
+	  normalize_fast5_event_array (event_array);
 
 	  /* free buffer */
 	  SafeFree (buf);
@@ -348,7 +336,7 @@ void write_fast5_event_array (Fast5_event_array* events, const char* filename) {
   }
 }
 
-void normalize_event_array (Fast5_event_array* ev) {
+void normalize_fast5_event_array (Fast5_event_array* ev) {
   double ticks = 0, sum = 0, sumsq = 0;
   for (int n = 0; n < ev->n_events; ++n) {
     fast5_event_calc_moments (&ev->event[n], ev->tick_length);

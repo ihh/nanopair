@@ -13,8 +13,8 @@ void delete_fast5_event_array_null (void* ptr) {
 
 int main (int argc, char** argv) {
   Fast5_event_array *events;
-  Fast5_event event[N_EVENTS] = { { .mean = 100, .stdv = 2, .length = .5, .model_state = "AAAAA", .mp_model_state = "AAAAA", .move = 0, .raw = 0 },
-				  { .mean = 102, .stdv = 1, .length = .4, .model_state = "AAAAC", .mp_model_state = "AAAAC", .move = 1, .raw = 100 } };
+  Fast5_event event[N_EVENTS] = { { .mean = 100, .stdv = 2, .length = .5, .model_state = "AAAAA", .mp_model_state = "AAAAA", .move = 0 },
+				  { .mean = 102, .stdv = 1, .length = .4, .model_state = "AAAAC", .mp_model_state = "AAAAC", .move = 1 } };
   Vector* event_arrays;
   Kseq_container *seqs;
   Seq_event_pair_model *params;
@@ -25,7 +25,7 @@ int main (int argc, char** argv) {
   init_log_sum_exp_lookup();
 
   /* create Fast5_event_array */
-  events = alloc_fast5_event_array (-1, N_EVENTS, DefaultFast5TickLength);
+  events = alloc_fast5_event_array (-1, N_EVENTS);
 
   SafeFree (events->event);
 
@@ -56,7 +56,7 @@ int main (int argc, char** argv) {
   optimize_seq_event_model_for_events (params, event_arrays);
 
   /* do Baum-Welch */
-  fit_seq_event_pair_model (params, seqs, event_arrays);
+  fit_seq_event_pair_model (params, seqs, event_arrays, 0);
 
   /* output model */
   xml_params = convert_seq_event_pair_model_to_xml_string (params);

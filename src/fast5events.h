@@ -3,6 +3,14 @@
 
 #include "vector.h"
 
+/* Default tick length.
+   This is a crude hack to allow us to treat variable-length segments as a sequence of discrete current samples ("ticks").
+   In practise it should be the lowest common denominator of the event lengths.
+   The value of 0.0002 is based on the usual sample rate of 5000.
+   If working with raw data files, it should be possible to read the sample rate from the metadata.
+ */
+#define DefaultFast5TickLength 0.0002
+
 /* fast5_event */
 typedef struct Fast5_event {
   double mean, start, stdv, length, model_level;
@@ -27,5 +35,9 @@ void delete_fast5_event_array (Fast5_event_array* ev);
 
 Fast5_event_array* read_fast5_event_array (const char* filename);
 void write_fast5_event_array (Fast5_event_array* events, const char* filename);
+
+/* Normalize an event array */
+void normalize_fast5_event_array (Fast5_event_array* ev);
+void fast5_event_calc_moments (Fast5_event *ev, double tick_length);
 
 #endif /* FAST5EVENTS_INCLUDED */
