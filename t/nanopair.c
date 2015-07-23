@@ -5,32 +5,34 @@
 #include "../src/logsumexp.h"
 
 const char* help_message = 
-  "Usage: nanopair {seed,eventseed,count,train,align} <args>\n"
+  "Usage: nanopair {seed,eventseed,normalize,count,train,align} <args>\n"
   "\n"
-  " nanopair seed <read.fast5>  >params.xml\n"
+  " nanopair seed -fast5 <read.fast5>  >params.xml\n"
   "  (to parameterize a model from the HMM in a FAST5 file)\n"
   "\n"
-  " nanopair eventseed <read.fast5> [<read2.fast5> ...]  >params.xml\n"
+  " nanopair eventseed -fast5 <read.fast5> [-fast5 <read2.fast5> ...]  >params.xml\n"
   "  (to parameterize a model from the basecalled event data in a FAST5 file)\n"
   "\n"
-  " nanopair normalize <in.fast5> <out.fast5>\n"
+  " nanopair normalize -in <in.fast5> -out <out.fast5>\n"
   "  (to normalize events in a FAST5 file)\n"
   "\n"
-  " nanopair count <params.xml> <refs.fasta> <read.fast5> [...]  >counts.xml\n"
+  " nanopair count -params <params.xml> -fasta <refs.fasta> -fast5 <read.fast5> [more fast5...]  >counts.xml\n"
   "  (to calculate expected counts under the posterior distribution,\n"
   "   as summary statistics or for distributed EM updates)\n"
   "\n"
-  " nanopair train <params.xml> <refs.fasta> <read.fast5> [...]  >newparams.xml\n"
+  " nanopair train -params <params.xml> -fasta <refs.fasta> -fast5 <read.fast5> [more fast5...]  >newparams.xml\n"
   "  (to re-parameterize a model via the Baum-Welch/EM algorithm,\n"
   "   aligning one or more FAST5 reads to one or more reference sequences)\n"
   "\n"
-  " nanopair align <params.xml> <refs.fasta> <read.fast5> [...]  >hits.gff\n"
+  " nanopair align -params <params.xml> -fasta <refs.fasta> -fast5 <read.fast5> [more fast5...]  >hits.gff\n"
   "  (to align FAST5 reads to reference sequences via the Viterbi algorithm)\n"
   "\n"
   "For 'align', 'train' & 'count' commands, to bypass the appropriate seed step,\n"
-  "use '-eventseed' or '-seed' in place of <params.xml>.\n";
+  "use '-eventseed' or '-seed' in place of '-params <params.xml>'.\n";
 
 #define MODEL_ORDER 5
+
+typedef enum SeedFlag { EventSeed, Seed, Params } SeedFlag;
 
 int help_failure (char* warning, ...) {
   va_list argptr;
@@ -48,23 +50,6 @@ void delete_fast5_event_array_null (void* ptr) {
   delete_fast5_event_array ((Fast5_event_array*) ptr);
 }
 
-Vector* init_fast5_event_array_vector (int argc, char** argv) {
-  Vector* vec;
-  Fast5_event_array* events;
-  vec = newVector (NullCopyFunction, delete_fast5_event_array_null, NullPrintFunction);
-  for (; argc > 0; --argc, ++argv) {
-    events = read_fast5_event_array (*argv);
-    if (events != NULL)
-      VectorPushBack (vec, events);
-  }
-  if (VectorSize(vec) == 0) {
-    deleteVector (vec);
-    (void) help_failure ("Couldn't open any FAST5 files");
-    return NULL;
-  }
-  return vec;
-}
-
 Seq_event_pair_model* init_params (char* filename) {
   xmlChar* xml_params = (xmlChar*) readFileAsString (filename);
   if (xml_params == NULL) {
@@ -76,7 +61,7 @@ Seq_event_pair_model* init_params (char* filename) {
   return params;
 }
 
-Seq_event_pair_model* seed_params (char* filename) {
+Seq_event_pair_model* seed_params (const char* filename) {
   Seq_event_pair_model* params = new_seq_event_pair_model (MODEL_ORDER);
   if (init_seq_event_model_from_fast5 (params, filename) != 0) {
     delete_seq_event_pair_model (params);
@@ -92,12 +77,13 @@ Seq_event_pair_model* eventseed_params (Vector* event_arrays) {
   return params;
 }
 
-Seq_event_pair_model* get_params (char** argv, Vector* event_arrays) {
-  if (strcmp (argv[2], "-eventseed") == 0)
-    return eventseed_params (event_arrays);
-  if (strcmp (argv[2], "-seed") == 0)
-    return seed_params (argv[4]);
-  return init_params (argv[2]);
+void get_params (SeedFlag seedFlag, StringVector* fast5_filenames, Vector* event_arrays, Seq_event_pair_model** modelPtr) {
+  if (seedFlag == EventSeed)
+    *modelPtr = eventseed_params (event_arrays);
+  else if (seedFlag == Seed)
+    *modelPtr = seed_params (StringVectorGet (fast5_filenames, 0));
+  else
+    Assert (*modelPtr != NULL, "No model parameters specified");
 }
 
 Kseq_container* init_seqs (char* filename) {
@@ -127,26 +113,150 @@ void normalize_fast5 (const char* fnIn, const char* fnOut) {
   delete_fast5_event_array (event_array);
 }
 
+void init_event_arrays (StringVector* filenames, Vector* event_arrays) {
+  for (int n = 0; n < (int) VectorSize(filenames); ++n) {
+    const char* filename = StringVectorGet (filenames, n);
+    Fast5_event_array* events = read_fast5_event_array (filename);
+    Assert (events != NULL, "Couldn't read fast5 file %s", filename);
+    VectorPushBack (event_arrays, events);
+  }
+  Assert (VectorSize (event_arrays) > 0, "No fast5 files specified");
+}
+
+/* parsers */
+int parse_params (int* argcPtr, char*** argvPtr, SeedFlag* seedFlag, Seq_event_pair_model** modelPtr) {
+  if (*argcPtr > 0) {
+    if (strcmp (**argvPtr, "-eventseed") == 0) {
+      *seedFlag = EventSeed;
+      ++*argvPtr;
+      --*argcPtr;
+      return 1;
+    } else if (strcmp (**argvPtr, "-seed") == 0) {
+      *seedFlag = EventSeed;
+      ++*argvPtr;
+      --*argcPtr;
+      return 1;
+    } else if (strcmp (**argvPtr, "-params") == 0) {
+      Assert (*argcPtr > 1, "-params must have an argument");
+      *modelPtr = init_params ((*argvPtr)[1]);
+      *argvPtr += 2;
+      *argcPtr -= 2;
+      return 1;
+    }
+  }
+  return 0;
+}
+
+int parse_normalize (int* argcPtr, char*** argvPtr, const char** inFilenamePtr, const char** outFilenamePtr) {
+  if (*argcPtr > 0) {
+    const int isIn = strcmp (**argvPtr, "-in") == 0;
+    const int isOut = strcmp (**argvPtr, "-out") == 0;
+    if (isIn || isOut) {
+      Assert (*argcPtr > 1, "%s must have an argument", **argvPtr);
+      const char** filenamePtr = isIn ? inFilenamePtr : outFilenamePtr;
+      Assert (*filenamePtr==0, "Can't specify multiple fast5 files with %s", **argvPtr);
+      *filenamePtr = (*argvPtr)[1];
+      *argvPtr += 2;
+      *argcPtr -= 2;
+      return 1;
+    }
+  }
+  return 0;
+}
+
+int parse_fast5_filename (int* argcPtr, char*** argvPtr, const char** filenamePtr) {
+  if (*argcPtr > 0) {
+    if (strcmp (**argvPtr, "-fast5") == 0) {
+      Assert (*argcPtr > 1, "-fast5 must have an argument");
+      Assert (*filenamePtr==0, "Can't specify multiple fast5 files with this command");
+      *filenamePtr = (*argvPtr)[1];
+      *argvPtr += 2;
+      *argcPtr -= 2;
+      return 1;
+    }
+  }
+  return 0;
+}
+
+int parse_fast5 (int* argcPtr, char*** argvPtr, StringVector* filenames) {
+  if (*argcPtr > 0) {
+    if (strcmp (**argvPtr, "-fast5") == 0) {
+      Assert (*argcPtr > 1, "-fast5 must have an argument");
+      VectorPushBack (filenames, StringNew ((*argvPtr)[1]));
+      *argvPtr += 2;
+      *argcPtr -= 2;
+      return 1;
+    }
+  }
+  return 0;
+}
+
+int parse_seq (int* argcPtr, char*** argvPtr, Kseq_container **seqsPtr) {
+  if (*argcPtr > 0) {
+    if (strcmp (**argvPtr, "-fasta") == 0) {
+      Assert (*argcPtr > 1, "-fasta must have an argument");
+      Assert (*seqsPtr == NULL, "Can't specify multiple fasta files");
+      *seqsPtr = init_seqs ((*argvPtr)[1]);
+      Assert (*seqsPtr != NULL, "Couldn't read fasta file %s", (*argvPtr)[1]);
+      *argvPtr += 2;
+      *argcPtr -= 2;
+      return 1;
+    }
+  }
+  return 0;
+}
+
+int parse_unknown (int argc, char** argv) {
+  if (argc > 0) {
+    (void) help_failure ("Unknown option: %s", *argv);
+    Abort ("Error parsing command-line options");
+  }
+  return 0;
+}
+
+int parse_dp (int* argcPtr, char*** argvPtr, SeedFlag* seedFlag, Seq_event_pair_model** modelPtr, StringVector* fast5_filenames, Kseq_container **seqsPtr) {
+  return parse_params (argcPtr, argvPtr, seedFlag, modelPtr)
+    || parse_fast5 (argcPtr, argvPtr, fast5_filenames)
+    || parse_seq (argcPtr, argvPtr, seqsPtr)
+    || parse_unknown (*argcPtr, *argvPtr);
+}
+
+/* main */
 int main (int argc, char** argv) {
   int i, j;
-  Vector *event_arrays;
-  Kseq_container *seqs;
-  Seq_event_pair_model *params;
   Seq_event_pair_counts *counts;
   xmlChar *xml_params;
+
+  Seq_event_pair_model *params = NULL;
+  Kseq_container *seqs = NULL;
+  StringVector *fast5_filenames = newStringVector();
+  Vector *event_arrays = newVector (NullCopyFunction, delete_fast5_event_array_null, NullPrintFunction);
+  SeedFlag seedFlag = Params;
+  const char* fast5inFilename = NULL;
+  const char* fast5outFilename = NULL;
 
   init_log_sum_exp_lookup();
 
   if (argc < 2)
     return help_failure ("Please specify a command.");
 
-  else if (strcmp (argv[1], "seed") == 0) {
+  if (argc < 3)
+    return help_failure ("All commands need arguments.");
+
+  const char* command = argv[1];
+  argv += 2;
+  argc -= 2;
+
+  if (strcmp (command, "seed") == 0) {
     /* SEED: initialize emit parameters from model in a FAST5 read file */
-    if (argc != 3)
-      return help_failure ("For seeding, please specify a FAST5 file");
+    while (parse_fast5_filename (&argc, &argv, &fast5inFilename)
+	   || parse_unknown (argc, argv))
+      { }
+
+    Assert (fast5inFilename != NULL, "No FAST5 file specified");
 
     /* initialize model */
-    params = seed_params (argv[2]);
+    params = seed_params (fast5inFilename);
     if (params == NULL)
       return EXIT_FAILURE;
 
@@ -164,15 +274,13 @@ int main (int argc, char** argv) {
     SafeFree (xml_params);
     delete_seq_event_pair_model (params);
 
-  } else if (strcmp (argv[1], "eventseed") == 0) {
+  } else if (strcmp (command, "eventseed") == 0) {
     /* EVENTSEED: initialize parameters from base-called reads */
-    if (argc < 3)
-      return help_failure ("For event-based seeding, please specify at least one FAST5 file");
+    while (parse_fast5 (&argc, &argv, fast5_filenames)
+	   || parse_unknown (argc, argv))
+      { }
 
-    /* read FAST5 files */
-    event_arrays = init_fast5_event_array_vector (argc - 2, argv + 2);
-    if (event_arrays == NULL)
-      return EXIT_FAILURE;
+    init_event_arrays (fast5_filenames, event_arrays);
 
     /* initialize model */
     params = eventseed_params (event_arrays);
@@ -184,34 +292,26 @@ int main (int argc, char** argv) {
 
     /* free memory */
     delete_seq_event_pair_model (params);
-    deleteVector (event_arrays);  /* automatically calls delete_fast5_event_array */
 
-  } else if (strcmp (argv[1], "normalize") == 0) {
+  } else if (strcmp (command, "normalize") == 0) {
     /* NORMALIZE: write out normalized fast5 file */
-    if (argc != 4)
-      return help_failure ("To normalize FAST5, please specify input and output filenames");
+    while (parse_normalize (&argc, &argv, &fast5inFilename, &fast5outFilename)
+	   || parse_unknown (argc, argv))
+      { }
 
-    normalize_fast5 (argv[2], argv[3]);
+    Assert (fast5inFilename != NULL && fast5outFilename != NULL, "Both input & output FAST5 filenames must be specified");
 
-  } else if (strcmp (argv[1], "count") == 0) {
+    /* normalize */
+    normalize_fast5 (fast5inFilename, fast5outFilename);
+
+  } else if (strcmp (command, "count") == 0) {
     /* COUNT: single E-step of Baum-Welch/EM algorithm */
-    if (argc < 5)
-      return help_failure ("To calculate summary counts please specify parameters, a FASTA reference sequence and at least one FAST5 file");
+    while (parse_dp (&argc, &argv, &seedFlag, &params, fast5_filenames, &seqs))
+      { }
 
-    /* read FAST5 files */
-    event_arrays = init_fast5_event_array_vector (argc - 4, argv + 4);
-    if (event_arrays == NULL)
-      return EXIT_FAILURE;
-
-    /* read sequences */
-    seqs = init_seqs (argv[3]);
-    if (seqs == NULL)
-      return EXIT_FAILURE;
-
-    /* read parameters */
-    params = get_params (argv, event_arrays);
-    if (params == NULL)
-      return EXIT_FAILURE;
+    Assert (seqs != NULL, "Reference sequences not specified");
+    init_event_arrays (fast5_filenames, event_arrays);
+    get_params (seedFlag, fast5_filenames, event_arrays, &params);
 
     /* get counts */
     counts = get_seq_event_pair_counts (params, seqs, event_arrays);
@@ -223,27 +323,15 @@ int main (int argc, char** argv) {
     delete_seq_event_pair_counts (counts);
     delete_seq_event_pair_model (params);
     free_kseq_container (seqs);
-    deleteVector (event_arrays);  /* automatically calls delete_fast5_event_array */
 
-  } else if (strcmp (argv[1], "train") == 0) {
+  } else if (strcmp (command, "train") == 0) {
     /* TRAIN: Baum-Welch/EM algorithm */
-    if (argc < 5)
-      return help_failure ("For training, please specify parameters, a FASTA reference sequence and at least one FAST5 file");
+    while (parse_dp (&argc, &argv, &seedFlag, &params, fast5_filenames, &seqs))
+      { }
 
-    /* read FAST5 files */
-    event_arrays = init_fast5_event_array_vector (argc - 4, argv + 4);
-    if (event_arrays == NULL)
-      return EXIT_FAILURE;
-
-    /* read sequences */
-    seqs = init_seqs (argv[3]);
-    if (seqs == NULL)
-      return EXIT_FAILURE;
-
-    /* read parameters */
-    params = get_params (argv, event_arrays);
-    if (params == NULL)
-      return EXIT_FAILURE;
+    Assert (seqs != NULL, "Reference sequences not specified");
+    init_event_arrays (fast5_filenames, event_arrays);
+    get_params (seedFlag, fast5_filenames, event_arrays, &params);
 
     /* do Baum-Welch */
     fit_seq_event_pair_model (params, seqs, event_arrays);
@@ -254,27 +342,15 @@ int main (int argc, char** argv) {
     /* free memory */
     delete_seq_event_pair_model (params);
     free_kseq_container (seqs);
-    deleteVector (event_arrays);  /* automatically calls delete_fast5_event_array */
 
-  } else if (strcmp (argv[1], "align") == 0) {
+  } else if (strcmp (command, "align") == 0) {
     /* ALIGN: Viterbi algorithm */
-    if (argc < 5)
-      return help_failure ("For alignment, please specify parameters, a FASTA reference sequence and at least one FAST5 read file");
+    while (parse_dp (&argc, &argv, &seedFlag, &params, fast5_filenames, &seqs))
+      { }
 
-    /* read FAST5 files */
-    event_arrays = init_fast5_event_array_vector (argc - 4, argv + 4);
-    if (event_arrays == NULL)
-      return EXIT_FAILURE;
-
-    /* read sequences */
-    seqs = init_seqs (argv[3]);
-    if (seqs == NULL)
-      return EXIT_FAILURE;
-
-    /* read parameters */
-    params = get_params (argv, event_arrays);
-    if (params == NULL)
-      return EXIT_FAILURE;
+    Assert (seqs != NULL, "Reference sequences not specified");
+    init_event_arrays (fast5_filenames, event_arrays);
+    get_params (seedFlag, fast5_filenames, event_arrays, &params);
 
     /* loop through sequences, FAST5 files */
     for (i = 0; i < seqs->n; ++i)
@@ -284,25 +360,16 @@ int main (int argc, char** argv) {
     /* free memory */
     delete_seq_event_pair_model (params);
     free_kseq_container (seqs);
-    deleteVector (event_arrays);  /* automatically calls delete_fast5_event_array */
 
-  } else if (strcmp (argv[1], "squiggle") == 0) {
+  } else if (strcmp (command, "squiggle") == 0) {
     /* SQUIGGLE: draw squiggle plot as SVG wrapped in HTML */
-    if (argc < 4)
-      return help_failure ("For squiggle plots, please specify parameters and a FAST5 read file");
+    while (parse_fast5_filename (&argc, &argv, &fast5inFilename)
+	   || parse_params (&argc, &argv, &seedFlag, &params)
+	   || parse_unknown (argc, argv))
+      { }
 
-    /* read FAST5 file */
-    event_arrays = init_fast5_event_array_vector (argc - 3, argv + 3);
-    if (event_arrays == NULL)
-      return EXIT_FAILURE;
-
-    /* read parameters */
-    params = (strcmp (argv[2], "-seed") == 0)
-      ? seed_params (argv[3])
-      : init_params (argv[2]);
-      
-    if (params == NULL)
-      return EXIT_FAILURE;
+    init_event_arrays (fast5_filenames, event_arrays);
+    get_params (seedFlag, fast5_filenames, event_arrays, &params);
 
     /* loop through event arrays, print squiggle SVGs */
     printf ("<html>\n<title>Squiggle plot</title>\n<body>\n");
@@ -316,13 +383,15 @@ int main (int argc, char** argv) {
 
     /* free memory */
     delete_seq_event_pair_model (params);
-    deleteVector (event_arrays);  /* automatically calls delete_fast5_event_array */
 
-  } else if (strcmp (argv[1], "help") == 0) {
+  } else if (strcmp (command, "help") == 0) {
     return help_failure (NULL);
 
   } else
-    return help_failure ("Unrecognized command: %s", argv[1]);
+    return help_failure ("Unrecognized command: %s", command);
+
+  deleteVector (event_arrays);
+  deleteStringVector (fast5_filenames);
 
   return EXIT_SUCCESS;
 }
