@@ -300,7 +300,7 @@ void write_fast5_event_array (Fast5_event_array* events, const char* filename) {
     status = H5Tinsert (filetype, FAST5_EVENT_MEAN, 0, H5T_IEEE_F64LE);
     status = H5Tinsert (filetype, FAST5_EVENT_STDV, dbl_size, H5T_IEEE_F64LE);
     status = H5Tinsert (filetype, FAST5_EVENT_LENGTH, 2*dbl_size, H5T_IEEE_F64LE);
-    status = H5Tinsert (filetype, FAST5_EVENT_MODEL_LEVEL, 3*dbl_size, strtype);
+    status = H5Tinsert (filetype, FAST5_EVENT_MODEL_LEVEL, 3*dbl_size, H5T_IEEE_F64LE);
     status = H5Tinsert (filetype, FAST5_EVENT_MODEL_STATE, 4*dbl_size, strtype);
     status = H5Tinsert (filetype, FAST5_EVENT_MOVE, 4*dbl_size + strtype_size, H5T_STD_I64LE);
     status = H5Tinsert (filetype, FAST5_EVENT_MP_STATE, 4*dbl_size + strtype_size + int_size, strtype);

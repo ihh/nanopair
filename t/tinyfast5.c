@@ -7,8 +7,8 @@
 int main (int argc, char** argv) {
   char *fn;
   Fast5_event_array *events;
-  Fast5_event event[N_EVENTS] = { { .mean = 100, .stdv = 2, .length = .5, .model_state = "AAAAA", .mp_model_state = "AAAAA", .move = 0, .raw = 0 },
-				  { .mean = 102, .stdv = 1, .length = .4, .model_state = "AAAAC", .mp_model_state = "AAAAC", .move = 1, .raw = 100 } };
+  Fast5_event event[N_EVENTS] = { { .mean = 100, .stdv = 2, .length = .5, .model_state = "AAAAA", .mp_model_state = "AAAAA", .move = 0 },
+				  { .mean = 102, .stdv = 1, .length = .4, .model_state = "AAAAC", .mp_model_state = "AAAAC", .move = 1 } };
 
   /* check for output file name */
   if ( argc < 2 )
@@ -23,7 +23,7 @@ int main (int argc, char** argv) {
   fn = argv[1];
 
   /* create & write Fast5_event_array */
-  events = alloc_fast5_event_array (-1, N_EVENTS, DefaultFast5TickLength);
+  events = alloc_fast5_event_array (-1, N_EVENTS);
 
   SafeFree (events->event);
   events->event = event;

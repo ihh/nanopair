@@ -396,6 +396,7 @@ Seq_event_pair_counts* new_seq_event_pair_counts (Seq_event_pair_model* model) {
   counts->matchMoment0 = SafeMalloc (model->states * sizeof(long double));
   counts->matchMoment1 = SafeMalloc (model->states * sizeof(long double));
   counts->matchMoment2 = SafeMalloc (model->states * sizeof(long double));
+  counts->loglike = -INFINITY;
   return counts;
 }
 
@@ -708,6 +709,10 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 #if defined(SEQEVTPAIR_DEBUG) && SEQEVTPAIR_DEBUG >= 10
   dump_seq_event_pair_matrix_to_file (SEQEVTMATRIX_FILENAME, "Backward", data, matrix->backStart, matrix->backMatch, matrix->backDelete);
 #endif /* SEQEVTPAIR_DEBUG >= 10 */
+
+  xmlChar *xml_counts = convert_seq_event_pair_counts_to_xml_string (counts);
+  fprintf (stderr, "%s", (char*) xml_counts);
+  SafeFree (xml_counts);
 }
 
 void inc_seq_event_null_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_event_array* events) {
