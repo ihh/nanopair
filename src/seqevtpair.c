@@ -969,7 +969,7 @@ void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs
 #endif /* SEQEVTPAIR_DEBUG */
 
     if (iter > 0 && prev_loglike != 0. && fabsl(prev_loglike) != INFINITY
-	&& fabsl((loglike-prev_loglike)/prev_loglike) < seq_evt_pair_EM_min_fractional_loglike_increment)
+	&& ((loglike-prev_loglike)/fabsl(prev_loglike)) < seq_evt_pair_EM_min_fractional_loglike_increment)
       break;
     prev_loglike = loglike;
   }
