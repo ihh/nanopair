@@ -252,13 +252,16 @@ void xmlTextWriterWriteFormatElement (xmlTextWriterPtr writer, const xmlChar* ta
   va_start (argptr, fmt);
   xmlTextWriterVWriteFormat (writer, elementFmt, argptr);
   va_end (argptr);
+  SafeFree (elementFmt);
 }
 
 void xmlTextWriterEndElement (xmlTextWriterPtr writer) {
+  const char *tag = StringVectorGet (writer->tagStack, StringVectorSize (writer->tagStack) - 1);
   xmlTextWriterWriteFormatCDATA (writer,
 				 "</%s>",
-				 StringVectorGet (writer->tagStack, StringVectorSize (writer->tagStack) - 1));
+				 tag);
   VectorPop (writer->tagStack);
+  StringDelete ((void*) tag);
 }
 
 void xmlTextWriterFullEndElement (xmlTextWriterPtr writer) {
