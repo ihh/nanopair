@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2844A5BC1B60FBB0004D5436 /* logsumexp.c in Sources */ = {isa = PBXBuildFile; fileRef = 2844A5BA1B60FBB0004D5436 /* logsumexp.c */; };
 		285D8F361A858D2F00192131 /* fast5events.c in Sources */ = {isa = PBXBuildFile; fileRef = 285D8F211A858D2F00192131 /* fast5events.c */; };
 		285D8F371A858D2F00192131 /* kseqcontainer.c in Sources */ = {isa = PBXBuildFile; fileRef = 285D8F231A858D2F00192131 /* kseqcontainer.c */; settings = {COMPILER_FLAGS = "-w"; }; };
 		285D8F381A858D2F00192131 /* list.c in Sources */ = {isa = PBXBuildFile; fileRef = 285D8F251A858D2F00192131 /* list.c */; };
@@ -36,6 +37,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		2844A5BA1B60FBB0004D5436 /* logsumexp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = logsumexp.c; sourceTree = "<group>"; };
+		2844A5BB1B60FBB0004D5436 /* logsumexp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = logsumexp.h; sourceTree = "<group>"; };
 		285D8F211A858D2F00192131 /* fast5events.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = fast5events.c; path = ../../src/fast5events.c; sourceTree = SOURCE_ROOT; };
 		285D8F221A858D2F00192131 /* fast5events.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = fast5events.h; path = ../../src/fast5events.h; sourceTree = SOURCE_ROOT; };
 		285D8F231A858D2F00192131 /* kseqcontainer.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = kseqcontainer.c; path = ../../src/kseqcontainer.c; sourceTree = SOURCE_ROOT; };
@@ -82,6 +85,8 @@
 		285D8F201A858D2F00192131 /* src */ = {
 			isa = PBXGroup;
 			children = (
+				2844A5BA1B60FBB0004D5436 /* logsumexp.c */,
+				2844A5BB1B60FBB0004D5436 /* logsumexp.h */,
 				285D8F211A858D2F00192131 /* fast5events.c */,
 				285D8F221A858D2F00192131 /* fast5events.h */,
 				285D8F231A858D2F00192131 /* kseqcontainer.c */,
@@ -205,6 +210,7 @@
 				285D8F3D1A858D2F00192131 /* vector.c in Sources */,
 				285D8F3E1A858D2F00192131 /* xmlparser.c in Sources */,
 				285D8F561A85927600192131 /* nanopair.c in Sources */,
+				2844A5BC1B60FBB0004D5436 /* logsumexp.c in Sources */,
 				285D8F371A858D2F00192131 /* kseqcontainer.c in Sources */,
 				285D8F3A1A858D2F00192131 /* seqevtpair.c in Sources */,
 				285D8F3B1A858D2F00192131 /* stringmap.c in Sources */,

@@ -555,13 +555,14 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 
   matrix->fwdEnd = -INFINITY;
 
-  for (n_event = 0; n_event <= n_events; ++n_event) {
+  for (seqpos = order; seqpos <= seqlen; ++seqpos) {
 #ifdef SEQEVTPAIR_DEBUG
-    if (n_event % SEQEVTPAIR_DP_WARN_PERIOD == 0)
-      Warn ("Filling forward matrix, event %d", n_event + 1);
+    if (seqpos % SEQEVTPAIR_DP_WARN_PERIOD == 0)
+      Warn ("Filling forward matrix, residue %d", seqpos + 1);
 #endif /* SEQEVTPAIR_DEBUG */
 
-    for (seqpos = order; seqpos <= seqlen; ++seqpos) {
+    for (n_event = 0; n_event <= n_events; ++n_event) {
+
       idx = Seq_event_pair_index(seqpos,n_event);
       inputIdx = Seq_event_pair_index(seqpos-1,n_event);
 
@@ -574,7 +575,8 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 			   matrix->fwdMatch[outputIdx]
 			   + data->matchEmitYes[seqpos] * event->ticks
 			   + data->matchEmitDensity[idx]);     /* Match -> Match (output) */
-      }
+      } else
+	event = NULL;
 
       if (seqpos == order) {
 	del = -INFINITY;
@@ -593,10 +595,11 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
       matrix->fwdMatch[idx] = mat;
       matrix->fwdDelete[idx] = del;
 
-      matrix->fwdEnd = log_sum_exp
-	(matrix->fwdEnd,
-	 matrix->fwdMatch[Seq_event_pair_index(seqpos,n_events)] + data->matchEmitNo[seqpos]);  /* Match -> End (input) */
     }
+
+    matrix->fwdEnd = log_sum_exp
+      (matrix->fwdEnd,
+       matrix->fwdMatch[Seq_event_pair_index(seqpos,n_events)] + data->matchEmitNo[seqpos]);  /* Match -> End (input) */
   }
 
 #if defined(SEQEVTPAIR_DEBUG) && SEQEVTPAIR_DEBUG >= 10
@@ -604,18 +607,19 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 #endif /* SEQEVTPAIR_DEBUG >= 10 */
 
   /* fill backward & accumulate counts */
-  for (n_event = n_events; n_event >= 0; --n_event) {
-#ifdef SEQEVTPAIR_DEBUG
-    if (n_event % SEQEVTPAIR_DP_WARN_PERIOD == 0)
-      Warn ("Filling backward matrix, event %d", n_event + 1);
-#endif /* SEQEVTPAIR_DEBUG */
-
-    event = n_event < n_events ? &data->events->event[n_event] : NULL;
-
+  for (n_event = n_events; n_event >= 0; --n_event)
     matrix->backStart[n_event] = -INFINITY;
 
-    for (seqpos = seqlen; seqpos >= order; --seqpos) {
-      state = data->state[seqpos];
+  for (seqpos = seqlen; seqpos >= order; --seqpos) {
+    state = data->state[seqpos];
+
+#ifdef SEQEVTPAIR_DEBUG
+    if (seqpos % SEQEVTPAIR_DP_WARN_PERIOD == 0)
+      Warn ("Filling backward matrix, residue %d", seqpos + 1);
+#endif /* SEQEVTPAIR_DEBUG */
+
+    for (n_event = n_events; n_event >= 0; --n_event) {
+      event = n_event < n_events ? &data->events->event[n_event] : NULL;
       idx = Seq_event_pair_index(seqpos,n_event);
 
       if (n_event == n_events) {
@@ -694,17 +698,18 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 						&counts->nStartEmitNo, NULL,
 						NULL, NULL, NULL, NULL);   /* Start -> Match (input) */
     }
-
-    if (n_event < n_events)
-      matrix->backStart[n_event] = accum_count (matrix->backStart[n_event],
-						matrix->fwdStart[n_event],
-						data->startEmitYes * event->ticks
-						+ data->nullEmitDensity[n_event + 1],
-						matrix->backStart[n_event + 1],
-						matrix,
-						&counts->nStartEmitYes, NULL,
-						NULL, NULL, NULL, NULL);  /* Start -> Start (output) */
   }
+
+  for (n_event = n_events - 1; n_event >= 0; --n_event)
+    matrix->backStart[n_event] = accum_count (matrix->backStart[n_event],
+					      matrix->fwdStart[n_event],
+					      data->startEmitYes * event->ticks
+					      + data->nullEmitDensity[n_event + 1],
+					      matrix->backStart[n_event + 1],
+					      matrix,
+					      &counts->nStartEmitYes, NULL,
+					      NULL, NULL, NULL, NULL);  /* Start -> Start (output) */
+
 
 #if defined(SEQEVTPAIR_DEBUG) && SEQEVTPAIR_DEBUG >= 10
   dump_seq_event_pair_matrix_to_file (SEQEVTMATRIX_FILENAME, "Backward", data, matrix->backStart, matrix->backMatch, matrix->backDelete);
@@ -985,10 +990,13 @@ Seq_event_pair_counts* get_seq_event_pair_counts (Seq_event_pair_model* model, K
 
   counts = new_seq_event_pair_counts (model);
   reset_seq_event_pair_counts (counts);
+  reset_seq_event_null_counts (counts);
 
   seq_counts = SafeMalloc (2 * seqs->n * sizeof(Seq_event_pair_counts*));
-  for (n_seq = 0; n_seq < 2 * seqs->n; ++n_seq)
+  for (n_seq = 0; n_seq < 2 * seqs->n; ++n_seq) {
     seq_counts[n_seq] = new_seq_event_pair_counts (model);
+    reset_seq_event_pair_counts (seq_counts[n_seq]);
+  }
 
   for (events_iter = event_arrays->begin; events_iter != event_arrays->end; ++events_iter) {
     events = (Fast5_event_array*) *events_iter;
@@ -1540,9 +1548,9 @@ xmlChar* convert_seq_event_pair_counts_to_xml_string (Seq_event_pair_counts* cou
     encode_state_identifier (state, counts->order, id);
     xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(KMER), "%s", id);
     xmlTextWriterBooleanCount (writer, XMLPREFIX(EMIT), counts->nMatchEmitYes[state], counts->nMatchEmitNo[state]);
-    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(M0), "%g", counts->matchMoment0[state]);
-    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(M1), "%g", counts->matchMoment1[state]);
-    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(M2), "%g", counts->matchMoment2[state]);
+    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(M0), "%Lg", counts->matchMoment0[state]);
+    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(M1), "%Lg", counts->matchMoment1[state]);
+    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(M2), "%Lg", counts->matchMoment2[state]);
     xmlTextWriterEndElement (writer);
   }
   xmlTextWriterEndElement (writer);
@@ -1552,9 +1560,9 @@ xmlChar* convert_seq_event_pair_counts_to_xml_string (Seq_event_pair_counts* cou
   xmlTextWriterEndElement (writer);
 
   xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(NULLMODEL));
-  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(M0), "%g", counts->nullMoment0);
-  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(M1), "%g", counts->nullMoment1);
-  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(M2), "%g", counts->nullMoment2);
+  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(M0), "%Lg", counts->nullMoment0);
+  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(M1), "%Lg", counts->nullMoment1);
+  xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(M2), "%Lg", counts->nullMoment2);
   xmlTextWriterEndElement (writer);
 
   xmlTextWriterEndElement (writer);
