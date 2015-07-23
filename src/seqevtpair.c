@@ -89,7 +89,7 @@ herr_t populate_seq_event_model_emit_params (void *elem, hid_t type_id, unsigned
   Metrichor_state_iterator *iter = (Metrichor_state_iterator*) operator_data;
   int state = decode_state_identifier (iter->model->order, (char*) elem + iter->kmer_offset);
   iter->model->matchMean[state] = *((double*) (elem + iter->level_mean_offset));
-  double sd = *((double*) (elem + iter->level_sd_offset));
+  double sd = MAX (DBL_MIN, *((double*) (elem + iter->level_sd_offset)));
   iter->model->matchPrecision[state] = 1 / (sd * sd);
   return 0;
 }
@@ -168,7 +168,7 @@ Seq_event_pair_model* new_seq_event_pair_model_from_xml_string (const char* xml)
   nullNode = CHILD(modelNode,NULLMODEL);
   model->pNullEmit = meanLengthToEmitProb (CHILDFLOAT(nullNode,EMIT));
   model->nullMean = CHILDFLOAT(nullNode,MEAN);
-  model->nullPrecision = 1 / pow (CHILDFLOAT(nullNode,STDV), 2);
+  model->nullPrecision = 1 / pow (MAX (DBL_MIN, CHILDFLOAT(nullNode,STDV)), 2);
 
   deleteXmlTree (modelNode);
   return model;
@@ -775,7 +775,7 @@ void optimize_seq_event_null_model_for_counts (Seq_event_pair_model* model, Seq_
 
   model->pNullEmit = (counts->nNullEmitYes + prior->nNullEmitYes) / (counts->nNullEmitYes + prior->nNullEmitYes + counts->nNullEmitNo + prior->nNullEmitNo);
   model->nullMean = (counts->nullMoment1 + prior->nullMoment1) / (counts->nullMoment0 + prior->nullMoment0);
-  model->nullPrecision = 1. / ((counts->nullMoment2 + prior->nullMoment2) / (counts->nullMoment0 + prior->nullMoment0) - model->nullMean * model->nullMean);
+  model->nullPrecision = 1. / MAX (DBL_MIN, ((counts->nullMoment2 + prior->nullMoment2) / (counts->nullMoment0 + prior->nullMoment0) - model->nullMean * model->nullMean));
 
   if (dummy_prior != NULL)
     delete_seq_event_pair_counts (dummy_prior);
@@ -795,7 +795,7 @@ void optimize_seq_event_pair_model_for_counts (Seq_event_pair_model* model, Seq_
   for (state = 0; state < model->states; ++state) {
     model->pMatchEmit[state] = (counts->nMatchEmitYes[state] + prior->nMatchEmitYes[state]) / (counts->nMatchEmitYes[state] + prior->nMatchEmitYes[state] + counts->nMatchEmitNo[state] + prior->nMatchEmitNo[state]);
     model->matchMean[state] = (counts->matchMoment1[state] + prior->matchMoment1[state]) / (counts->matchMoment0[state] + prior->matchMoment0[state]);
-    model->matchPrecision[state] = 1. / ((counts->matchMoment2[state] + prior->matchMoment2[state]) / (counts->matchMoment0[state] + prior->matchMoment0[state]) - model->matchMean[state] * model->matchMean[state]);
+    model->matchPrecision[state] = 1. / MAX (DBL_MIN, ((counts->matchMoment2[state] + prior->matchMoment2[state]) / (counts->matchMoment0[state] + prior->matchMoment0[state]) - model->matchMean[state] * model->matchMean[state]));
   }
   model->pBeginDelete = (counts->nBeginDeleteYes + prior->nBeginDeleteYes) / (counts->nBeginDeleteYes + prior->nBeginDeleteYes + counts->nBeginDeleteNo + prior->nBeginDeleteNo);
   model->pExtendDelete = (counts->nExtendDeleteYes + prior->nExtendDeleteYes) / (counts->nExtendDeleteYes + prior->nExtendDeleteYes + counts->nExtendDeleteNo + prior->nExtendDeleteNo);
@@ -937,7 +937,7 @@ int init_seq_event_model_from_fast5 (Seq_event_pair_model* model, const char* fi
     m1 /= model->states;
     m2 /= model->states;
     model->nullMean = m1;
-    model->nullPrecision = 1 / (m2 - m1 * m1);
+    model->nullPrecision = 1 / MAX (DBL_MIN, (m2 - m1 * m1));
 
     /* set all boolean probabilities to 0.5 */
     model->pBeginDelete = model->pExtendDelete = model->pStartEmit = model->pNullEmit = 0.5;
