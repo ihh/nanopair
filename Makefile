@@ -93,7 +93,7 @@ $(TINY_FAST5): bin/tinyfast5
 	bin/tinyfast5 $@
 
 smalltrain: bin/nanopair submodule
-	bin/nanopair train -seed $(SHORT_FASTA) $(TEST_FAST5)
+	bin/nanopair train -modelseed $(SHORT_FASTA) $(TEST_FAST5)
 
 eventseed.xml:
 	bin/nanopair eventseed ~/nanopore/loman/LomanLabz_PC_E.coli_MG1655_ONI_3058_1_ch3*.fast5 >$@

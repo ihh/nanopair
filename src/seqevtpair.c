@@ -103,6 +103,19 @@ Seq_event_pair_model* new_seq_event_pair_model (int order) {
   model->pMatchEmit = SafeMalloc (model->states * sizeof(double));
   model->matchMean = SafeMalloc (model->states * sizeof(double));
   model->matchPrecision = SafeMalloc (model->states * sizeof(double));
+
+  model->pBeginDelete = .5;
+  model->pExtendDelete = .5;
+  model->pStartEmit = .5;
+  model->pNullEmit = .5;
+  model->nullMean = 0;
+  model->nullPrecision = 1;
+  for (int state = 0; state < model->states; ++state) {
+    model->pMatchEmit[state] = .5;
+    model->matchMean[state] = 0;
+    model->matchPrecision[state] = 1;
+  }
+
   return model;
 }
 
