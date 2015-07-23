@@ -28,7 +28,9 @@ const char* help_message =
   "  (to align FAST5 reads to reference sequences via the Viterbi algorithm)\n"
   "\n"
   "For 'align', 'train' & 'count' commands, to bypass the appropriate seed step,\n"
-  "use '-eventseed' or '-seed' in place of '-params <params.xml>'.\n";
+  "use '-eventseed' or '-seed' in place of '-params <params.xml>'.\n"
+  "\n"
+  "Use '-bothstrands' to count both forward & reverse strands (default is forward only).\n";
 
 #define MODEL_ORDER 5
 
@@ -206,6 +208,18 @@ int parse_seq (int* argcPtr, char*** argvPtr, Kseq_container **seqsPtr) {
   return 0;
 }
 
+int parse_both_strands (int* argcPtr, char*** argvPtr, int *bothStrandsPtr) {
+  if (*argcPtr > 0) {
+    if (strcmp (**argvPtr, "-bothstrands") == 0) {
+      *bothStrandsPtr = 1;
+      ++*argvPtr;
+      --*argcPtr;
+      return 1;
+    }
+  }
+  return 0;
+}
+
 int parse_unknown (int argc, char** argv) {
   if (argc > 0) {
     (void) help_failure ("Unknown option: %s", *argv);
@@ -214,10 +228,11 @@ int parse_unknown (int argc, char** argv) {
   return 0;
 }
 
-int parse_dp (int* argcPtr, char*** argvPtr, SeedFlag* seedFlag, Seq_event_pair_model** modelPtr, StringVector* fast5_filenames, Kseq_container **seqsPtr) {
+int parse_dp (int* argcPtr, char*** argvPtr, SeedFlag* seedFlag, Seq_event_pair_model** modelPtr, StringVector* fast5_filenames, Kseq_container **seqsPtr, int *bothStrandsPtr) {
   return parse_params (argcPtr, argvPtr, seedFlag, modelPtr)
     || parse_fast5 (argcPtr, argvPtr, fast5_filenames)
     || parse_seq (argcPtr, argvPtr, seqsPtr)
+    || parse_both_strands (argcPtr, argvPtr, bothStrandsPtr)
     || parse_unknown (*argcPtr, *argvPtr);
 }
 
@@ -234,6 +249,7 @@ int main (int argc, char** argv) {
   SeedFlag seedFlag = Params;
   const char* fast5inFilename = NULL;
   const char* fast5outFilename = NULL;
+  int both_strands = 0;
 
   init_log_sum_exp_lookup();
 
@@ -306,7 +322,7 @@ int main (int argc, char** argv) {
 
   } else if (strcmp (command, "count") == 0) {
     /* COUNT: single E-step of Baum-Welch/EM algorithm */
-    while (parse_dp (&argc, &argv, &seedFlag, &params, fast5_filenames, &seqs))
+    while (parse_dp (&argc, &argv, &seedFlag, &params, fast5_filenames, &seqs, &both_strands))
       { }
 
     Assert (seqs != NULL, "Reference sequences not specified");
@@ -314,7 +330,7 @@ int main (int argc, char** argv) {
     get_params (seedFlag, fast5_filenames, event_arrays, &params);
 
     /* get counts */
-    counts = get_seq_event_pair_counts (params, seqs, event_arrays);
+    counts = get_seq_event_pair_counts (params, seqs, event_arrays, both_strands);
 
     /* output counts */
     write_counts (counts);
@@ -326,7 +342,7 @@ int main (int argc, char** argv) {
 
   } else if (strcmp (command, "train") == 0) {
     /* TRAIN: Baum-Welch/EM algorithm */
-    while (parse_dp (&argc, &argv, &seedFlag, &params, fast5_filenames, &seqs))
+    while (parse_dp (&argc, &argv, &seedFlag, &params, fast5_filenames, &seqs, &both_strands))
       { }
 
     Assert (seqs != NULL, "Reference sequences not specified");
@@ -334,7 +350,7 @@ int main (int argc, char** argv) {
     get_params (seedFlag, fast5_filenames, event_arrays, &params);
 
     /* do Baum-Welch */
-    fit_seq_event_pair_model (params, seqs, event_arrays);
+    fit_seq_event_pair_model (params, seqs, event_arrays, both_strands);
 
     /* output model */
     write_params (params);
@@ -345,7 +361,7 @@ int main (int argc, char** argv) {
 
   } else if (strcmp (command, "align") == 0) {
     /* ALIGN: Viterbi algorithm */
-    while (parse_dp (&argc, &argv, &seedFlag, &params, fast5_filenames, &seqs))
+    while (parse_dp (&argc, &argv, &seedFlag, &params, fast5_filenames, &seqs, &both_strands))
       { }
 
     Assert (seqs != NULL, "Reference sequences not specified");
@@ -355,7 +371,7 @@ int main (int argc, char** argv) {
     /* loop through sequences, FAST5 files */
     for (i = 0; i < seqs->n; ++i)
       for (j = 0; j < (int) VectorSize(event_arrays); ++j)
-	print_seq_evt_pair_alignments_as_stockholm (params, seqs->len[i], seqs->seq[i], seqs->name[i], (Fast5_event_array*) VectorGet(event_arrays,j), stdout, 0.);
+	print_seq_evt_pair_alignments_as_stockholm (params, seqs->len[i], seqs->seq[i], seqs->name[i], both_strands, (Fast5_event_array*) VectorGet(event_arrays,j), stdout, 0.);
 
     /* free memory */
     delete_seq_event_pair_model (params);

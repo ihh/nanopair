@@ -34,7 +34,7 @@ static const char* gff3_feature = "Match";
 static const char* gff3_gap_attribute = "Gap";
 
 /* EM convergence criteria */
-const double seq_evt_pair_EM_max_iterations = 0.0001;
+const double seq_evt_pair_EM_max_iterations = 100;
 const double seq_evt_pair_EM_min_fractional_loglike_increment = 0.0001;
 
 /* squiggle plot config */
@@ -376,13 +376,13 @@ Seq_event_pair_fb_matrix* new_seq_event_pair_fb_matrix (Seq_event_pair_model* mo
 }
 
 void delete_seq_event_pair_fb_matrix (Seq_event_pair_fb_matrix* mx) {
+  delete_seq_event_pair_data (mx->data);
   SafeFree (mx->fwdStart);
   SafeFree (mx->backStart);
   SafeFree (mx->fwdMatch);
   SafeFree (mx->fwdDelete);
   SafeFree (mx->backMatch);
   SafeFree (mx->backDelete);
-  SafeFree (mx->data);
   SafeFree (mx);
 }
 
@@ -935,7 +935,7 @@ int init_seq_event_model_from_fast5 (Seq_event_pair_model* model, const char* fi
   return ret;
 }
 
-void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs, Vector* event_arrays) {
+void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs, Vector* event_arrays, int both_strands) {
   int iter;
   long double loglike, prev_loglike;
   Seq_event_pair_counts *counts, *prior;
@@ -944,7 +944,7 @@ void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs
 
   prev_loglike = 0.;
   for (iter = 0; iter < seq_evt_pair_EM_max_iterations; ++iter) {
-    counts = get_seq_event_pair_counts (model, seqs, event_arrays);
+    counts = get_seq_event_pair_counts (model, seqs, event_arrays, both_strands);
     loglike = counts->loglike;
 
     optimize_seq_event_pair_model_for_counts (model, counts, prior);
@@ -963,7 +963,7 @@ void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs
   delete_seq_event_pair_counts (prior);
 }
 
-Seq_event_pair_counts* get_seq_event_pair_counts (Seq_event_pair_model* model, Kseq_container* seqs, Vector* event_arrays) {
+Seq_event_pair_counts* get_seq_event_pair_counts (Seq_event_pair_model* model, Kseq_container* seqs, Vector* event_arrays, int both_strands) {
   int n_seq, *seqrev_len;
   char **rev, **seqrev;
   void **events_iter;
@@ -991,7 +991,7 @@ Seq_event_pair_counts* get_seq_event_pair_counts (Seq_event_pair_model* model, K
 
   for (events_iter = event_arrays->begin; events_iter != event_arrays->end; ++events_iter) {
     events = (Fast5_event_array*) *events_iter;
-    for (n_seq = 0; n_seq < 2 * seqs->n; ++n_seq) {
+    for (n_seq = 0; n_seq < 2 * seqs->n; n_seq += (both_strands ? 1 : 2)) {
       reset_seq_event_pair_counts (seq_counts[n_seq]);
       inc_seq_event_pair_counts_via_fb (model, seq_counts[n_seq], seqrev_len[n_seq], seqrev[n_seq], events);
 #ifdef SEQEVTPAIR_DEBUG
@@ -1433,15 +1433,15 @@ Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event
   return align;
 }
 
-void print_seq_evt_pair_alignments_as_gff_cigar (Seq_event_pair_model* model, int seqlen, char *seq, char *seqname, Fast5_event_array* events, FILE *out, double log_odds_ratio_threshold) {
-  print_seq_evt_pair_alignments_generic (model, seqlen, seq, seqname, events, out, log_odds_ratio_threshold, write_seq_event_pair_alignment_as_gff_cigar);
+void print_seq_evt_pair_alignments_as_gff_cigar (Seq_event_pair_model* model, int seqlen, char *seq, char *seqname, int both_strands, Fast5_event_array* events, FILE *out, double log_odds_ratio_threshold) {
+  print_seq_evt_pair_alignments_generic (model, seqlen, seq, seqname, both_strands, events, out, log_odds_ratio_threshold, write_seq_event_pair_alignment_as_gff_cigar);
 }
 
-void print_seq_evt_pair_alignments_as_stockholm (Seq_event_pair_model* model, int seqlen, char *seq, char *seqname, Fast5_event_array* events, FILE *out, double log_odds_ratio_threshold) {
-  print_seq_evt_pair_alignments_generic (model, seqlen, seq, seqname, events, out, log_odds_ratio_threshold, write_seq_event_pair_alignment_as_stockholm);
+void print_seq_evt_pair_alignments_as_stockholm (Seq_event_pair_model* model, int seqlen, char *seq, char *seqname, int both_strands, Fast5_event_array* events, FILE *out, double log_odds_ratio_threshold) {
+  print_seq_evt_pair_alignments_generic (model, seqlen, seq, seqname, both_strands, events, out, log_odds_ratio_threshold, write_seq_event_pair_alignment_as_stockholm);
 }
   
-void print_seq_evt_pair_alignments_generic (Seq_event_pair_model* model, int seqlen, char *seq, char *seqname, Fast5_event_array* events, FILE *out, double log_odds_ratio_threshold, WriteSeqEventPairAlignmentFunction write_func) {
+void print_seq_evt_pair_alignments_generic (Seq_event_pair_model* model, int seqlen, char *seq, char *seqname, int both_strands, Fast5_event_array* events, FILE *out, double log_odds_ratio_threshold, WriteSeqEventPairAlignmentFunction write_func) {
   Seq_event_pair_viterbi_matrix* matrix;
   Seq_event_pair_alignment* align;
   char *rev;
@@ -1449,7 +1449,7 @@ void print_seq_evt_pair_alignments_generic (Seq_event_pair_model* model, int seq
 
   rev = new_revcomp_seq (seq, seqlen);
 
-  for (strand = +1; strand >= -1; strand -= 2) {
+  for (strand = +1; strand >= (both_strands ? +1 : -1); strand -= 2) {
     matrix = new_seq_event_pair_viterbi_matrix (model, seqlen, strand > 0 ? seq : rev, events);
     fill_seq_event_pair_viterbi_matrix (matrix);
 
