@@ -1193,10 +1193,10 @@ Seq_event_pair_viterbi_matrix* new_seq_event_pair_viterbi_matrix (Seq_event_pair
 }
 
 void delete_seq_event_pair_viterbi_matrix (Seq_event_pair_viterbi_matrix* mx) {
+  delete_seq_event_pair_data (mx->data);
   SafeFree (mx->vitStart);
   SafeFree (mx->vitMatch);
   SafeFree (mx->vitDelete);
-  SafeFree (mx->data);
   SafeFree (mx);
 }
 
