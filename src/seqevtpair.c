@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <time.h>
+#include <float.h>
 
 #include <hdf5.h>
 #include <hdf5_hl.h>
@@ -158,7 +159,7 @@ Seq_event_pair_model* new_seq_event_pair_model_from_xml_string (const char* xml)
       state = decode_state_identifier (model->order, (char*) CHILDSTRING(stateNode,KMER));
       model->pMatchEmit[state] = meanLengthToEmitProb (CHILDFLOAT(stateNode,EMIT));
       model->matchMean[state] = CHILDFLOAT(stateNode,MEAN);
-      model->matchPrecision[state] = 1 / pow (CHILDFLOAT(stateNode,STDV), 2);
+      model->matchPrecision[state] = 1 / MAX (DBL_MIN, pow (CHILDFLOAT(stateNode,STDV), 2));
     }
 
   startNode = CHILD(modelNode,START);
@@ -744,6 +745,11 @@ long double accum_count (long double back_src,
 			 long double *moment2) {
   long double weight;
   weight = exp (fwd_src + trans + back_dest - matrix->fwdTotal);
+#if defined(SEQEVTPAIR_DEBUG) && SEQEVTPAIR_DEBUG >= 2
+  if (weight != weight) {
+    fprintf (stderr, "NaN in accum_count\n");
+  }
+#endif
   if (event) {
     *moment0 += weight * event->ticks;
     *moment1 += weight * event->sumticks_cur;
@@ -881,7 +887,7 @@ int init_seq_event_model_from_fast5 (Seq_event_pair_model* model, const char* fi
 
 	  /* check that the kmer strings are the same length as our model order */
 	  strtype_id = H5Tget_member_type( model_type_id, kmer_idx );
-	  int kmer_len = H5Tget_size (strtype_id);
+	  int kmer_len = (int) H5Tget_size (strtype_id);
 	  Assert (model->order == kmer_len, "Length of kmers in file '%s' (%d) does not match model order supplied to %s (%d)", filename, kmer_len, __FUNCTION__, model->order);
 
 	  /* get dimensions */
@@ -1108,7 +1114,7 @@ void append_evtrow_column_to_seqevt_alignment (StringVector *seqrow, StringVecto
     while (StringVectorSize(seqrow) > StringVectorSize(evtrow))
       StringVectorPushBack (evtrow, gap);
   } else {
-    len = strlen (evt->model_state);
+    len = (int) strlen (evt->model_state);
     if (evt->move > 0) {
       for (n = 0; n < evt->move; ++n) {
 	buf[0] = toupper (evt->model_state[len - evt->move + n]);
@@ -1128,7 +1134,7 @@ void write_seq_event_pair_alignment_as_stockholm (Seq_event_pair_alignment* alig
   int n_event, n, seqpos_offset, name_width;
   char namefmt[100], *revcomp;
 
-  revcomp = strand > 0 ? NULL : new_revcomp_seq (align->seq, strlen(align->seq));
+  revcomp = strand > 0 ? NULL : new_revcomp_seq (align->seq, (int) strlen(align->seq));
 
   seqrow = newStringVector();
   evtrow = newStringVector();
@@ -1146,7 +1152,7 @@ void write_seq_event_pair_alignment_as_stockholm (Seq_event_pair_alignment* alig
 	append_evtrow_column_to_seqevt_alignment (seqrow, evtrow, &align->events->event[n_event++]);
   }
 
-  name_width = 1 + MAX (strlen (align->seqname), strlen (align->events->name));
+  name_width = 1 + MAX ((int) strlen (align->seqname), (int) strlen (align->events->name));
   sprintf (namefmt, "%%-%ds", name_width);
 
   fprintf (out, "# STOCKHOLM 1.0\n");
@@ -1327,6 +1333,7 @@ Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event
   seqpos = end_seqpos;
   n_event = n_events;
   state = Match;
+  inputIdx = outputIdx = -1;
 
   events_emitted = newVector (IntCopy, IntDelete, IntPrint);
   VectorPushBack (events_emitted, IntNew(0));
