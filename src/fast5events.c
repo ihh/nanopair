@@ -266,6 +266,9 @@ void write_fast5_event_array (Fast5_event_array* events, const char* filename) {
     status = H5Tinsert (memtype, FAST5_EVENT_MEAN,
 			HOFFSET (Fast5_event, mean),
 			H5T_NATIVE_DOUBLE);
+    status = H5Tinsert (memtype, FAST5_EVENT_START,
+			HOFFSET (Fast5_event, start),
+			H5T_NATIVE_DOUBLE);
     status = H5Tinsert (memtype, FAST5_EVENT_STDV,
 			HOFFSET (Fast5_event, stdv),
 			H5T_NATIVE_DOUBLE);
@@ -294,16 +297,17 @@ void write_fast5_event_array (Fast5_event_array* events, const char* filename) {
     strtype_size = H5Tget_size (strtype);
     dbl_size = H5Tget_size (H5T_IEEE_F64LE);
     int_size = H5Tget_size (H5T_IEEE_F64LE);
-    filetype_size = 3*dbl_size + 2*strtype_size + 2*int_size;
+    filetype_size = 5*dbl_size + 2*strtype_size + int_size;
 
     filetype = H5Tcreate (H5T_COMPOUND, filetype_size);
     status = H5Tinsert (filetype, FAST5_EVENT_MEAN, 0, H5T_IEEE_F64LE);
-    status = H5Tinsert (filetype, FAST5_EVENT_STDV, dbl_size, H5T_IEEE_F64LE);
-    status = H5Tinsert (filetype, FAST5_EVENT_LENGTH, 2*dbl_size, H5T_IEEE_F64LE);
-    status = H5Tinsert (filetype, FAST5_EVENT_MODEL_LEVEL, 3*dbl_size, H5T_IEEE_F64LE);
-    status = H5Tinsert (filetype, FAST5_EVENT_MODEL_STATE, 4*dbl_size, strtype);
-    status = H5Tinsert (filetype, FAST5_EVENT_MOVE, 4*dbl_size + strtype_size, H5T_STD_I64LE);
-    status = H5Tinsert (filetype, FAST5_EVENT_MP_STATE, 4*dbl_size + strtype_size + int_size, strtype);
+    status = H5Tinsert (filetype, FAST5_EVENT_START, dbl_size, H5T_IEEE_F64LE);
+    status = H5Tinsert (filetype, FAST5_EVENT_STDV, 2*dbl_size, H5T_IEEE_F64LE);
+    status = H5Tinsert (filetype, FAST5_EVENT_LENGTH, 3*dbl_size, H5T_IEEE_F64LE);
+    status = H5Tinsert (filetype, FAST5_EVENT_MODEL_LEVEL, 4*dbl_size, H5T_IEEE_F64LE);
+    status = H5Tinsert (filetype, FAST5_EVENT_MODEL_STATE, 5*dbl_size, strtype);
+    status = H5Tinsert (filetype, FAST5_EVENT_MOVE, 5*dbl_size + strtype_size, H5T_STD_I64LE);
+    status = H5Tinsert (filetype, FAST5_EVENT_MP_STATE, 5*dbl_size + strtype_size + int_size, strtype);
 
     /*
      * Create dataspace.  Setting maximum size to NULL sets the maximum
