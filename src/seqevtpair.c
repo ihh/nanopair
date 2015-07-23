@@ -396,7 +396,6 @@ Seq_event_pair_counts* new_seq_event_pair_counts (Seq_event_pair_model* model) {
   counts->matchMoment0 = SafeMalloc (model->states * sizeof(long double));
   counts->matchMoment1 = SafeMalloc (model->states * sizeof(long double));
   counts->matchMoment2 = SafeMalloc (model->states * sizeof(long double));
-  counts->loglike = -INFINITY;
   return counts;
 }
 
@@ -977,7 +976,7 @@ Seq_event_pair_counts* get_seq_event_pair_counts (Seq_event_pair_model* model, K
   char **rev, **seqrev;
   void **events_iter;
   Fast5_event_array *events;
-  Seq_event_pair_counts *counts, **seq_counts;
+  Seq_event_pair_counts *counts, **seq_counts, **seqrev_counts;
 
   rev = SafeMalloc (seqs->n * sizeof(char*));
   for (n_seq = 0; n_seq < seqs->n; ++n_seq)
@@ -995,22 +994,23 @@ Seq_event_pair_counts* get_seq_event_pair_counts (Seq_event_pair_model* model, K
   reset_seq_event_pair_counts (counts);
   reset_seq_event_null_counts (counts);
 
-  seq_counts = SafeMalloc (2 * seqs->n * sizeof(Seq_event_pair_counts*));
-  for (n_seq = 0; n_seq < 2 * seqs->n; ++n_seq) {
-    seq_counts[n_seq] = new_seq_event_pair_counts (model);
-    reset_seq_event_pair_counts (seq_counts[n_seq]);
-  }
+  seqrev_counts = SafeMalloc (2 * seqs->n * sizeof(Seq_event_pair_counts*));
+  seq_counts = SafeMalloc (seqs->n * sizeof(Seq_event_pair_counts*));
+  for (n_seq = 0; n_seq < 2 * seqs->n; ++n_seq)
+    seqrev_counts[n_seq] = new_seq_event_pair_counts (model);
+  for (n_seq = 0; n_seq < seqs->n; ++n_seq)
+    seq_counts[n_seq] = seqrev_counts[2*n_seq];
 
   for (events_iter = event_arrays->begin; events_iter != event_arrays->end; ++events_iter) {
     events = (Fast5_event_array*) *events_iter;
     for (n_seq = 0; n_seq < 2 * seqs->n; n_seq += (both_strands ? 1 : 2)) {
-      reset_seq_event_pair_counts (seq_counts[n_seq]);
-      inc_seq_event_pair_counts_via_fb (model, seq_counts[n_seq], seqrev_len[n_seq], seqrev[n_seq], events);
+      reset_seq_event_pair_counts (seqrev_counts[n_seq]);
+      inc_seq_event_pair_counts_via_fb (model, seqrev_counts[n_seq], seqrev_len[n_seq], seqrev[n_seq], events);
 #ifdef SEQEVTPAIR_DEBUG
-      Warn ("FAST5 file \"%s\", sequence \"%s\" (%s strand): log-likelihood = %Lg", events->name == NULL ? "<none>" : events->name, seqs->name[n_seq/2], (n_seq % 2) ? "reverse" : "forward", seq_counts[n_seq]->loglike);
+      Warn ("FAST5 file \"%s\", sequence \"%s\" (%s strand): log-likelihood = %Lg", events->name == NULL ? "<none>" : events->name, seqs->name[n_seq/2], (n_seq % 2) ? "reverse" : "forward", seqrev_counts[n_seq]->loglike);
 #endif /* SEQEVTPAIR_DEBUG */
     }
-    add_weighted_seq_event_pair_counts (counts, seq_counts, 2 * seqs->n);
+    add_weighted_seq_event_pair_counts (counts, both_strands ? seqrev_counts : seq_counts, (both_strands ? 2 : 1) * seqs->n);
   }
 
   for (n_seq = 0; n_seq < seqs->n; ++n_seq)
@@ -1018,7 +1018,8 @@ Seq_event_pair_counts* get_seq_event_pair_counts (Seq_event_pair_model* model, K
   SafeFree (rev);
 
   for (n_seq = 0; n_seq < 2 * seqs->n; ++n_seq)
-    delete_seq_event_pair_counts (seq_counts[n_seq]);
+    delete_seq_event_pair_counts (seqrev_counts[n_seq]);
+  SafeFree (seqrev_counts);
   SafeFree (seq_counts);
   SafeFree (seqrev);
   SafeFree (seqrev_len);
