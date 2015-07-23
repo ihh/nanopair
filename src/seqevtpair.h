@@ -81,8 +81,8 @@ typedef struct Seq_event_pair_fb_matrix {
   /* data */
   Seq_event_pair_data* data;
   /* dynamic programming matrices: entries are all in log-probability space */
-  long double *fwdStart, *fwdMatch, *fwdDelete, fwdEnd;
-  long double *backStart, *backMatch, *backDelete;
+  long double *fwdStart, *fwdMatch, *fwdDelete, fwdTotal;
+  long double *backStart, *backMatch, *backDelete, backTotal;
 } Seq_event_pair_fb_matrix;
 
 Seq_event_pair_fb_matrix* new_seq_event_pair_fb_matrix (Seq_event_pair_model* model, int seqlen, char *seq, Fast5_event_array* events);  /* allocates only, does not fill */
@@ -93,8 +93,8 @@ void delete_seq_event_pair_fb_matrix (Seq_event_pair_fb_matrix* matrix);
 double log_gaussian_density (double x, double mean, double precision, double log_precision);
 double log_event_density (Fast5_event* event, double mean, double precision, double log_precision);
 
-void dump_seq_event_pair_matrix (FILE* file, const char* algorithm, Seq_event_pair_data *data, long double *mxStart, long double *mxMatch, long double *mxDelete);
-void dump_seq_event_pair_matrix_to_file (const char* filename, const char* algorithm, Seq_event_pair_data *data, long double *mxStart, long double *mxMatch, long double *mxDelete);
+void dump_seq_event_pair_matrix (FILE* file, const char* algorithm, Seq_event_pair_data *data, long double *mxStart, long double *mxMatch, long double *mxDelete, long double mxTotal);
+void dump_seq_event_pair_matrix_to_file (const char* filename, const char* algorithm, Seq_event_pair_data *data, long double *mxStart, long double *mxMatch, long double *mxDelete, long double mxTotal);
 
 /* Expected counts */
 
@@ -166,7 +166,7 @@ typedef struct Seq_event_pair_viterbi_matrix {
   /* data */
   Seq_event_pair_data* data;
   /* dynamic programming matrices: entries are all in log-probability space */
-  long double *vitStart, *vitMatch, *vitDelete, vitEnd;
+  long double *vitStart, *vitMatch, *vitDelete, vitTotal;
 } Seq_event_pair_viterbi_matrix;
 
 Seq_event_pair_viterbi_matrix* new_seq_event_pair_viterbi_matrix (Seq_event_pair_model* model, int seqlen, char *seq, Fast5_event_array* events);  /* allocates only, does not fill */
