@@ -1450,7 +1450,7 @@ void print_seq_evt_pair_alignments_generic (Seq_event_pair_model* model, int seq
 
   rev = new_revcomp_seq (seq, seqlen);
 
-  for (strand = +1; strand >= (both_strands ? +1 : -1); strand -= 2) {
+  for (strand = +1; strand >= (both_strands ? -1 : +1); strand -= 2) {
     matrix = new_seq_event_pair_viterbi_matrix (model, seqlen, strand > 0 ? seq : rev, events);
     fill_seq_event_pair_viterbi_matrix (matrix);
 
