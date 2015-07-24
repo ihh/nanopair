@@ -25,7 +25,7 @@ long double log_sum_exp (long double a, long double b) {
   diff = max - min;
   ret = max + log_sum_exp_unary (diff);
 #if defined(NAN_DEBUG)  /* define NAN_DEBUG in util.h */
-  if (ret != ret) {
+  if (isnan(ret)) {
     Abort ("NaN error in log_sum_exp");
   }
 #endif

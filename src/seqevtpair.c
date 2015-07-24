@@ -759,7 +759,7 @@ long double accum_count (long double back_src,
   long double weight;
   weight = exp (fwd_src + trans + back_dest - matrix->fwdTotal);
 #if defined(NAN_DEBUG)  /* define NAN_DEBUG in util.h */
-  if (weight != weight) {
+  if (isnan(weight)) {
     Abort ("NaN error in accum_count");
   }
 #endif
@@ -993,7 +993,7 @@ void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs
 void fit_seq_event_null_model (Seq_event_pair_model* model, Vector* event_arrays) {
   Seq_event_pair_counts *counts = new_seq_event_pair_counts (model);
   Seq_event_pair_counts *prior = new_seq_event_pair_counts_minimal_prior (model);
-  reset_seq_event_pair_counts (counts);
+  reset_seq_event_null_counts (counts);
   for (int n = 0; n < (int) VectorSize(event_arrays); ++n)
     inc_seq_event_null_counts_from_fast5 (counts, (Fast5_event_array*) VectorGet (event_arrays, n));
   optimize_seq_event_null_model_for_counts (model, counts, prior);
