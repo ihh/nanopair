@@ -19,11 +19,17 @@ void init_log_sum_exp_lookup() {
 }
 
 long double log_sum_exp (long double a, long double b) {
-  double min, max, diff;
+  double min, max, diff, ret;
   if (a < b) { min = a; max = b; }
   else { min = b; max = a; }
   diff = max - min;
-  return max + log_sum_exp_unary (diff);
+  ret = max + log_sum_exp_unary (diff);
+#if defined(SEQEVTPAIR_DEBUG) && SEQEVTPAIR_DEBUG >= 2
+  if (ret != ret) {
+    Abort ("NaN error in log_sum_exp");
+  }
+#endif
+  return ret;
 }
 
 long double log_sum_exp_unary (long double x) {
