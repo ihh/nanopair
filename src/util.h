@@ -3,6 +3,9 @@
 
 #include <stdlib.h>
 
+/* uncomment to enable NaN checks */
+#define NAN_DEBUG
+
 /* function pointer typedefs for generic containers */
 typedef int (*CompareFunction) (void*, void*);
 typedef void (*DestroyFunction) (void*);

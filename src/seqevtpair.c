@@ -758,7 +758,7 @@ long double accum_count (long double back_src,
 			 long double *moment2) {
   long double weight;
   weight = exp (fwd_src + trans + back_dest - matrix->fwdTotal);
-#if defined(SEQEVTPAIR_DEBUG) && SEQEVTPAIR_DEBUG >= 2
+#if defined(NAN_DEBUG)  /* define NAN_DEBUG in util.h */
   if (weight != weight) {
     Abort ("NaN error in accum_count");
   }
