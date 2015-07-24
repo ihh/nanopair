@@ -60,7 +60,7 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "train -params /Users/yam/latex/nanopair/params.xml -fasta /Users/yam/latex/nanopair/nanopair-data/ch8_file30.fasta -fast5 /Users/yam/latex/nanopair/nanopair-data/LomanLabz_PC_Ecoli_K12_R7.3_2549_1_ch8_file30_strand.fast5"
+            argument = "train -params /Users/yam/latex/nanopair/train8b.xml -fasta /Users/yam/latex/nanopair/nanopair-data/ch8_file30.fasta -fast5 /Users/yam/latex/nanopair/nanopair-data/LomanLabz_PC_Ecoli_K12_R7.3_2549_1_ch8_file30_strand.fast5"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

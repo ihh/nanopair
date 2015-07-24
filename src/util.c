@@ -17,9 +17,9 @@ void Warn(const char* warning, ...) {
 void Abort(const char* error, ...) {
   va_list argptr;
   va_start (argptr, error);
-  printf("Abort: ");
-  vprintf(error,argptr);
-  printf("\n");
+  fprintf(stderr,"Abort: ");
+  vfprintf(stderr,error,argptr);
+  fprintf(stderr,"\n");
   va_end (argptr);
   exit(-1);
 }
@@ -28,9 +28,9 @@ void Assert(int assertion, const char* error, ...) {
   va_list argptr;
   if(!assertion) {
     va_start (argptr, error);
-    printf("Assertion Failed: ");
-    vprintf(error,argptr);
-    printf("\n");
+    fprintf(stderr,"Assertion Failed: ");
+    vfprintf(stderr,error,argptr);
+    fprintf(stderr,"\n");
     va_end (argptr);
     exit(-1);
   }
