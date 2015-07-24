@@ -990,6 +990,17 @@ void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs
   delete_seq_event_pair_counts (prior);
 }
 
+void fit_seq_event_null_model (Seq_event_pair_model* model, Vector* event_arrays) {
+  Seq_event_pair_counts *counts = new_seq_event_pair_counts (model);
+  Seq_event_pair_counts *prior = new_seq_event_pair_counts_minimal_prior (model);
+  reset_seq_event_pair_counts (counts);
+  for (int n = 0; n < (int) VectorSize(event_arrays); ++n)
+    inc_seq_event_null_counts_from_fast5 (counts, (Fast5_event_array*) VectorGet (event_arrays, n));
+  optimize_seq_event_null_model_for_counts (model, counts, prior);
+  delete_seq_event_pair_counts (counts);
+  delete_seq_event_pair_counts (prior);
+}
+
 Seq_event_pair_counts* get_seq_event_pair_counts (Seq_event_pair_model* model, Kseq_container* seqs, Vector* event_arrays, int both_strands) {
   int n_seq, *seqrev_len;
   char **rev, **seqrev;

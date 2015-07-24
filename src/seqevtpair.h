@@ -139,6 +139,7 @@ Seq_event_pair_counts* get_seq_event_pair_counts (Seq_event_pair_model* model, K
 /* Full Baum-Welch wrapper */
 
 void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs, Vector* event_arrays, int both_strands);
+void fit_seq_event_null_model (Seq_event_pair_model* model, Vector* event_arrays);
 
 /* Alignment */
 
