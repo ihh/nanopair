@@ -363,6 +363,7 @@ int main (int argc, char** argv) {
     get_params (npargs.seedFlag, npargs.fast5_filenames, npargs.event_arrays, &npargs.params, npargs.model_order);
 
     /* do Baum-Welch */
+    fit_seq_event_kmer_model (npargs.params, npargs.seqs);
     fit_seq_event_null_model (npargs.params, npargs.event_arrays);
     fit_seq_event_pair_model (npargs.params, npargs.seqs, npargs.event_arrays, npargs.both_strands);
 

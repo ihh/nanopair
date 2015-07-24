@@ -103,6 +103,7 @@ Seq_event_pair_model* new_seq_event_pair_model (int order) {
   model->pMatchEmit = SafeMalloc (model->states * sizeof(double));
   model->matchMean = SafeMalloc (model->states * sizeof(double));
   model->matchPrecision = SafeMalloc (model->states * sizeof(double));
+  model->kmerProb = SafeMalloc (model->states * sizeof(double));
 
   model->pBeginDelete = .5;
   model->pExtendDelete = .5;
@@ -114,12 +115,14 @@ Seq_event_pair_model* new_seq_event_pair_model (int order) {
     model->pMatchEmit[state] = .5;
     model->matchMean[state] = 0;
     model->matchPrecision[state] = 1;
+    model->kmerProb[state] = 1. / (double) model->states;
   }
 
   return model;
 }
 
 void delete_seq_event_pair_model (Seq_event_pair_model* model) {
+  SafeFree (model->kmerProb);
   SafeFree (model->pMatchEmit);
   SafeFree (model->matchMean);
   SafeFree (model->matchPrecision);
@@ -144,9 +147,9 @@ void encode_state_identifier (int state, int order, char* state_id) {
 int decode_state_identifier (int order, char* state_id) {
   int k, token, chartok, mul;
   for (token = 0, mul = 1, k = 0; k < order; ++k, mul *= 4) {
-    chartok = base2token (state_id[order - k - 1]);
-    if (chartok < 0)
-      return -1;
+    char c = state_id[order - k - 1];
+    chartok = base2token (c);
+    Assert (chartok >= 0, "Unknown character in k-mer: %c", c);
     token += mul * chartok;
   }
   return token;
@@ -173,6 +176,7 @@ Seq_event_pair_model* new_seq_event_pair_model_from_xml_string (const char* xml)
       model->pMatchEmit[state] = meanLengthToEmitProb (CHILDFLOAT(stateNode,WAIT));
       model->matchMean[state] = CHILDFLOAT(stateNode,MEAN);
       model->matchPrecision[state] = 1 / MAX (DBL_MIN, pow (CHILDFLOAT(stateNode,STDV), 2));
+      model->kmerProb[state] = CHILDFLOAT(stateNode,FREQ);
     }
 
   startNode = CHILD(modelNode,START);
@@ -211,6 +215,7 @@ xmlChar* convert_seq_event_pair_model_to_xml_string (Seq_event_pair_model* model
     xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(WAIT), "%g", emitProbToMeanLength (model->pMatchEmit[state]));
     xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(MEAN), "%g", model->matchMean[state]);
     xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(STDV), "%g", 1 / sqrt(model->matchPrecision[state]));
+    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(FREQ), "%g", model->kmerProb[state]);
     xmlTextWriterEndElement (writer);
   }
   xmlTextWriterEndElement (writer);
@@ -999,6 +1004,19 @@ void fit_seq_event_null_model (Seq_event_pair_model* model, Vector* event_arrays
   optimize_seq_event_null_model_for_counts (model, counts, prior);
   delete_seq_event_pair_counts (counts);
   delete_seq_event_pair_counts (prior);
+}
+
+void fit_seq_event_kmer_model (Seq_event_pair_model* model, Kseq_container* seqs) {
+  int *kmerCount = SafeCalloc (model->states, sizeof(int));
+  int totalKmers = 0;
+  for (int n = 0; n < seqs->n; ++n)
+    for (int seqpos = 0; seqpos <= seqs->len[n] - model->order; ++seqpos) {
+      ++kmerCount[decode_state_identifier (model->order, seqs->seq[n] + seqpos)];
+      ++totalKmers;
+    }
+  for (int state = 0; state < model->states; ++state)
+    model->kmerProb[state] = ((double) kmerCount[state]) / (double) totalKmers;
+  SafeFree (kmerCount);
 }
 
 Seq_event_pair_counts* get_seq_event_pair_counts (Seq_event_pair_model* model, Kseq_container* seqs, Vector* event_arrays, int both_strands) {

@@ -28,6 +28,7 @@ typedef struct Seq_event_pair_model {
   double *matchMean, *matchPrecision;
   double pStartEmit;
   double pNullEmit, nullMean, nullPrecision;
+  double *kmerProb;
 } Seq_event_pair_model;
 
 Seq_event_pair_model* new_seq_event_pair_model (int order);
@@ -140,6 +141,7 @@ Seq_event_pair_counts* get_seq_event_pair_counts (Seq_event_pair_model* model, K
 
 void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs, Vector* event_arrays, int both_strands);
 void fit_seq_event_null_model (Seq_event_pair_model* model, Vector* event_arrays);
+void fit_seq_event_kmer_model (Seq_event_pair_model* model, Kseq_container* seqs);
 
 /* Alignment */
 

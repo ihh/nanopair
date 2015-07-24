@@ -18,6 +18,7 @@
 #define XMLNP_STDV      "stdv"
 #define XMLNP_START     "start"
 #define XMLNP_NULLMODEL "null"
+#define XMLNP_FREQ      "freq"
 
 #define XMLNP_COUNTS    "counts"
 #define XMLNP_YES       "yes"
