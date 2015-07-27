@@ -18,10 +18,10 @@
 		285D8F3D1A858D2F00192131 /* vector.c in Sources */ = {isa = PBXBuildFile; fileRef = 285D8F2F1A858D2F00192131 /* vector.c */; };
 		285D8F3E1A858D2F00192131 /* xmlparser.c in Sources */ = {isa = PBXBuildFile; fileRef = 285D8F321A858D2F00192131 /* xmlparser.c */; };
 		285D8F3F1A858D2F00192131 /* xmlutil.c in Sources */ = {isa = PBXBuildFile; fileRef = 285D8F341A858D2F00192131 /* xmlutil.c */; };
-		285D8F501A858F3E00192131 /* libhdf5.9.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 285D8F4F1A858F3E00192131 /* libhdf5.9.dylib */; };
-		285D8F521A85904100192131 /* libhdf5_hl.9.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 285D8F511A85904100192131 /* libhdf5_hl.9.dylib */; };
 		285D8F541A85905C00192131 /* libz.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 285D8F531A85905C00192131 /* libz.dylib */; };
 		285D8F561A85927600192131 /* nanopair.c in Sources */ = {isa = PBXBuildFile; fileRef = 285D8F551A85927600192131 /* nanopair.c */; };
+		28DFA0B21B66E4140096461C /* libhdf5.10.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 28DFA0B11B66E4140096461C /* libhdf5.10.dylib */; };
+		28DFA0B41B66E4270096461C /* libhdf5_hl.10.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 28DFA0B31B66E4270096461C /* libhdf5_hl.10.dylib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -60,12 +60,13 @@
 		285D8F331A858D2F00192131 /* xmlparser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xmlparser.h; path = ../../src/xmlparser.h; sourceTree = SOURCE_ROOT; };
 		285D8F341A858D2F00192131 /* xmlutil.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = xmlutil.c; path = ../../src/xmlutil.c; sourceTree = SOURCE_ROOT; };
 		285D8F351A858D2F00192131 /* xmlutil.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xmlutil.h; path = ../../src/xmlutil.h; sourceTree = SOURCE_ROOT; };
-		285D8F4F1A858F3E00192131 /* libhdf5.9.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libhdf5.9.dylib; path = ../../../../../../usr/local/lib/libhdf5.9.dylib; sourceTree = "<group>"; };
-		285D8F511A85904100192131 /* libhdf5_hl.9.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libhdf5_hl.9.dylib; path = ../../../../../../usr/local/lib/libhdf5_hl.9.dylib; sourceTree = "<group>"; };
 		285D8F531A85905C00192131 /* libz.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libz.dylib; path = usr/lib/libz.dylib; sourceTree = SDKROOT; };
 		285D8F551A85927600192131 /* nanopair.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = nanopair.c; path = ../../t/nanopair.c; sourceTree = SOURCE_ROOT; };
 		285D8F581A8592B000192131 /* kseq.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = kseq.h; path = ../../kseq/kseq.h; sourceTree = SOURCE_ROOT; };
 		287EA0781A804DE70077CE92 /* nanopair */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = nanopair; sourceTree = BUILT_PRODUCTS_DIR; };
+		28DFA0AF1B66E3DC0096461C /* libhdf5.la */ = {isa = PBXFileReference; lastKnownFileType = text; name = libhdf5.la; path = "../../../../hdf5-1.8.15-patch1/hdf5/lib/libhdf5.la"; sourceTree = "<group>"; };
+		28DFA0B11B66E4140096461C /* libhdf5.10.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libhdf5.10.dylib; path = "../../../../hdf5-1.8.15-patch1/hdf5/lib/libhdf5.10.dylib"; sourceTree = "<group>"; };
+		28DFA0B31B66E4270096461C /* libhdf5_hl.10.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libhdf5_hl.10.dylib; path = "../../../../hdf5-1.8.15-patch1/hdf5/lib/libhdf5_hl.10.dylib"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -73,9 +74,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				28DFA0B41B66E4270096461C /* libhdf5_hl.10.dylib in Frameworks */,
+				28DFA0B21B66E4140096461C /* libhdf5.10.dylib in Frameworks */,
 				285D8F541A85905C00192131 /* libz.dylib in Frameworks */,
-				285D8F521A85904100192131 /* libhdf5_hl.9.dylib in Frameworks */,
-				285D8F501A858F3E00192131 /* libhdf5.9.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -125,9 +126,10 @@
 		287EA06F1A804DE70077CE92 = {
 			isa = PBXGroup;
 			children = (
+				28DFA0B31B66E4270096461C /* libhdf5_hl.10.dylib */,
+				28DFA0B11B66E4140096461C /* libhdf5.10.dylib */,
+				28DFA0AF1B66E3DC0096461C /* libhdf5.la */,
 				285D8F531A85905C00192131 /* libz.dylib */,
-				285D8F511A85904100192131 /* libhdf5_hl.9.dylib */,
-				285D8F4F1A858F3E00192131 /* libhdf5.9.dylib */,
 				287EA07A1A804DE70077CE92 /* nanopair */,
 				287EA0791A804DE70077CE92 /* Products */,
 			);
@@ -299,7 +301,10 @@
 					/usr/local/include,
 					/usr/local/hdf5/include,
 				);
-				LIBRARY_SEARCH_PATHS = /usr/local/lib;
+				LIBRARY_SEARCH_PATHS = (
+					/usr/local/lib,
+					"/Users/yam/hdf5-1.8.15-patch1/hdf5/lib",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -313,7 +318,10 @@
 					/usr/local/include,
 					/usr/local/hdf5/include,
 				);
-				LIBRARY_SEARCH_PATHS = /usr/local/lib;
+				LIBRARY_SEARCH_PATHS = (
+					/usr/local/lib,
+					"/Users/yam/hdf5-1.8.15-patch1/hdf5/lib",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;

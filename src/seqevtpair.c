@@ -707,7 +707,7 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 	count = 0;
 	mat = accum_count (mat,
 			   matrix->fwdMatch[idx],
-			   data->matchEmitNo[seqpos+1] + data->beginDeleteYes,
+			   data->matchEmitNo[seqpos] + data->beginDeleteYes,
 			   matrix->backDelete[inputIdx],
 			   matrix,
 			   &count,
@@ -718,7 +718,7 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 	count = 0;
 	mat = accum_count (mat,
 			   matrix->fwdMatch[idx],
-			   data->matchEmitNo[seqpos+1] + data->beginDeleteNo + data->skipYes,
+			   data->matchEmitNo[seqpos] + data->beginDeleteNo + data->skipYes,
 			   matrix->backMatch[inputIdx],
 			   matrix,
 			   &count,
@@ -733,17 +733,17 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 	  count = 0;
 	  mat = accum_count (mat,
 			     matrix->fwdMatch[ioIdx],
-			     data->matchEmitNo[seqpos+1] + data->beginDeleteNo + data->skipNo
-			     + data->matchEmitYes[seqpos] * (event->ticks - 1)
-			     + data->matchEmitDensity[outputIdx],
+			     data->matchEmitNo[seqpos] + data->beginDeleteNo + data->skipNo
+			     + data->matchEmitYes[seqpos+1] * (event->ticks - 1)
+			     + data->matchEmitDensity[ioIdx],
 			     matrix->backMatch[inputIdx],
 			     matrix,
 			     &count,
 			     NULL, NULL, NULL, NULL);  /* Match -> Match (input/output) */
-	  counts->nMatchEmitNo[nextState] += count;
+	  counts->nMatchEmitNo[state] += count;
 	  counts->nBeginDeleteNo += count;
 	  counts->nSkipNo += count;
-	  counts->nMatchEmitYes[state] += count * (event->ticks - 1);
+	  counts->nMatchEmitYes[nextState] += count * (event->ticks - 1);
 	}
       }
 
@@ -1614,7 +1614,7 @@ void dump_seq_event_pair_matrix (FILE* file, const char* algorithm, Seq_event_pa
   int n_event, seqpos, n_events, seqlen, order;
   Fast5_event *event, *next_event;
   char *id;
-  unsigned long idx, next_idx;
+  unsigned long idx, out_idx, inout_idx;
   time_t rawtime;
   struct tm *rawtime_tm;
 
@@ -1629,19 +1629,21 @@ void dump_seq_event_pair_matrix (FILE* file, const char* algorithm, Seq_event_pa
   fprintf (file, "%s matrix: %s\n", algorithm, asctime(rawtime_tm));
 
   fprintf (file, "Event %d: start %Lg(in>m:%Lg", 0, mxStart[0], data->startEmitNo);
-  if (n_events > 0)
-    fprintf (file, ",out>s:%Lg", data->startEmitYes * data->events->event[0].ticks + data->nullEmitDensity[1]);
+  fprintf (file, ",out>s:%Lg", data->startEmitYes * data->events->event[0].ticks + data->nullEmitDensity[1]);
   fprintf (file, ")\n");
   for (seqpos = order; seqpos <= seqlen; ++seqpos) {
     encode_state_identifier (data->state[seqpos], data->model->order, id);
     idx = Seq_event_pair_index(seqpos,0);
-    fprintf (file, "Event %d, seqpos %d (base=%c,state=%s): match %Lg(", 0, seqpos, data->seq[seqpos-1], id, mxMatch[idx]);
-    if (seqpos < seqlen)
-      fprintf (file, "in>d:%Lg,in>m:%Lg", data->matchEmitNo[seqpos] + data->beginDeleteYes, data->matchEmitNo[seqpos] + data->beginDeleteNo);
-    else
+    fprintf (file, "Event 0, seqpos %d (base=%c,state=%s): match %Lg(", seqpos, data->seq[seqpos-1], id, mxMatch[idx]);
+    if (seqpos < seqlen) {
+      fprintf (file, "in>d:%Lg,in>m:%Lg", data->matchEmitNo[seqpos] + data->beginDeleteYes, data->matchEmitNo[seqpos] + data->beginDeleteNo + data->skipYes);
+      if (n_events > 0)
+	fprintf (file, ",io>m:%Lg", data->matchEmitNo[seqpos] + data->beginDeleteNo + data->skipNo + data->matchEmitYes[seqpos+1] * (data->events->event[0].ticks - 1) + data->matchEmitDensity[Seq_event_pair_index(seqpos+1,1)]);
+    } else
       fprintf (file, "null>e:%Lg", data->matchEmitNo[seqpos]);
-    if (n_events > 0)
+    if (n_events > 0) {
       fprintf (file, ",out>m:%Lg", data->matchEmitYes[seqpos] * data->events->event[0].ticks + data->matchEmitDensity[Seq_event_pair_index(seqpos,1)]);
+    }
     fprintf (file, "), delete %Lg", mxDelete[idx]);
     if (seqpos < seqlen)
       fprintf (file, "(in>d:%Lg)", data->extendDeleteYes);
@@ -1657,14 +1659,17 @@ void dump_seq_event_pair_matrix (FILE* file, const char* algorithm, Seq_event_pa
     for (seqpos = order; seqpos <= seqlen; ++seqpos) {
       encode_state_identifier (data->state[seqpos], data->model->order, id);
       idx = Seq_event_pair_index(seqpos,n_event);
-      next_idx = n_event < n_events ? Seq_event_pair_index(seqpos,n_event+1) : -1;
+      out_idx = n_event < n_events ? Seq_event_pair_index(seqpos,n_event+1) : -1;
+      inout_idx = (n_event < n_events && seqpos < seqlen) ? Seq_event_pair_index(seqpos+1,n_event+1) : -1;
       fprintf (file, "Event %d (n=%g,sum=%g,sumsq=%g), seqpos %d (base=%c,state=%s): match %Lg(", n_event, event->ticks, event->sumticks_cur, event->sumticks_cur_sq, seqpos, data->seq[seqpos-1], id, mxMatch[idx]);
-      if (seqpos < seqlen)
-	fprintf (file, "in>d:%Lg,in>m:%Lg", data->matchEmitNo[seqpos] + data->beginDeleteYes, data->matchEmitNo[seqpos] + data->beginDeleteNo);
-      else
+      if (seqpos < seqlen) {
+	fprintf (file, "in>d:%Lg,in>m:%Lg", data->matchEmitNo[seqpos] + data->beginDeleteYes, data->matchEmitNo[seqpos] + data->beginDeleteNo + data->skipYes);
+	if (n_event < n_events)
+	  fprintf (file, ",io>m:%Lg", data->matchEmitNo[seqpos] + data->beginDeleteNo + data->skipNo + data->matchEmitYes[seqpos+1] * (next_event->ticks - 1) + data->matchEmitDensity[inout_idx]);
+      } else
 	fprintf (file, "null>e:%Lg", data->matchEmitNo[seqpos]);
       if (n_event < n_events)
-	fprintf (file, ",out>m:%Lg", data->matchEmitYes[seqpos] * next_event->ticks + data->matchEmitDensity[next_idx]);
+	fprintf (file, ",out>m:%Lg", data->matchEmitYes[seqpos] * next_event->ticks + data->matchEmitDensity[out_idx]);
       fprintf (file, "), delete %Lg", mxDelete[idx]);
       if (seqpos < seqlen)
 	fprintf (file, "(in>d:%Lg,null>m:%Lg", data->extendDeleteYes, data->extendDeleteNo);
