@@ -7,6 +7,7 @@
 #define XMLNP_SHIFT     "shift"
 #define XMLNP_VAR       "var"
 #define XMLNP_ORDER     "order"
+#define XMLNP_SKIP      "skip"
 #define XMLNP_DELETE    "delete"
 #define XMLNP_BEGIN     "begin"
 #define XMLNP_EXTEND    "extend"

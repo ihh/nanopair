@@ -217,7 +217,7 @@ P(y_1 \ldots y_K) dy_1 \ldots dy_K = \left( 1 - p^{\paramlabel{NullEmit}} \right
 \item Output alphabet: $\Re$ (real numbers signifying current levels)
 \item States: Start, End, $\{$ Match${}_{x_1 \ldots x_N}$, Delete${}_{x_1 \ldots x_N}: x_1 \ldots x_N \in \Omega^N \}$
 \item Parameters:
-$p^{\paramlabel{StartEmit}}, p^{\paramlabel{BeginDelete}}, p^{\paramlabel{ExtendDelete}},$ \\
+$p^{\paramlabel{StartEmit}}, p^{\paramlabel{Skip}}, p^{\paramlabel{BeginDelete}}, p^{\paramlabel{ExtendDelete}},$ \\
 $\{ p^{\paramlabel{MatchEmit}}_{x_1\ldots x_N}, \mu^{\paramlabel{Match}}_{x_1\ldots x_N},\tau^{\paramlabel{Match}}_{x_1\ldots x_N} : x_1 \ldots x_N \in \Omega^N \}$
 \end{itemize}
 
@@ -235,7 +235,10 @@ Start & Match${}_{x_1 \ldots x_N}$ & $1 - p^{\paramlabel{StartEmit}}$ & $x_1 \ld
 Match${}_{x_1 \ldots x_N}$ & Match${}_{x_1 \ldots x_N}$ & ${p^{\paramlabel{MatchEmit}}_{x_1\ldots x_N}}$ & & $y_m \sim \mbox{Normal}(\mu^{\paramlabel{Match}}_{x_1\ldots x_N},\tau^{\paramlabel{Match}}_{x_1\ldots x_N})$ \\
 & & $\times P(y_m|\mu^{\paramlabel{Match}}_{x_1\ldots x_N},\tau^{\paramlabel{Match}}_{x_1\ldots x_N}) dy_m$ & & \\
 Match${}_{x_1 \ldots x_N}$ & Match${}_{x_2 \ldots x_{N+1}}$ & $(1 - {p^{\paramlabel{MatchEmit}}_{x_1\ldots x_N}})$ & $x_{N+1} \in \Omega$ & \\
-& & $\times (1 - p^{\paramlabel{BeginDelete}})$ & & \\
+& & $\times (1 - p^{\paramlabel{BeginDelete}}) p^{\paramlabel{Skip}}$ & & \\
+Match${}_{x_1 \ldots x_N}$ & Match${}_{x_2 \ldots x_{N+1}}$ & $(1 - {p^{\paramlabel{MatchEmit}}_{x_1\ldots x_N}})$ & $x_{N+1} \in \Omega$ & $y_m \sim \mbox{Normal}(\mu^{\paramlabel{Match}}_{x_1\ldots x_N},\tau^{\paramlabel{Match}}_{x_1\ldots x_N})$ \\
+& & $\times (1 - p^{\paramlabel{BeginDelete}}) (1 - p^{\paramlabel{Skip}})$ & & \\
+& & $\times P(y_m|\mu^{\paramlabel{Match}}_{x_1\ldots x_N},\tau^{\paramlabel{Match}}_{x_1\ldots x_N}) dy_m$ & & \\
 Match${}_{x_1 \ldots x_N}$ & Delete${}_{x_2 \ldots x_{N+1}}$ & $(1 - {p^{\paramlabel{MatchEmit}}_{x_1\ldots x_N}})$ & $x_{N+1} \in \Omega$ & \\
 & & $\times p^{\paramlabel{BeginDelete}}$ & & \\
 Match${}_{x_1 \ldots x_N}$ & End & $1 - {p^{\paramlabel{MatchEmit}}_{x_1\ldots x_N}}$ & & \\

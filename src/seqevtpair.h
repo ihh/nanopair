@@ -23,7 +23,7 @@ int decode_state_identifier (int order, char* state_id);
 
 typedef struct Seq_event_pair_model {
   double *pMatchEmit;
-  double pBeginDelete, pExtendDelete;
+  double pSkip, pBeginDelete, pExtendDelete;
   int order, states;
   double *matchMean, *matchPrecision;
   double pStartEmit;
@@ -55,6 +55,7 @@ typedef struct Seq_event_pair_data {
   long double *nullEmitDensity, *matchEmitDensity, *matchEmitYes, *matchEmitNo;
   long double nullEmitYes, nullEmitNo;
   long double startEmitYes, startEmitNo;
+  long double skipYes, skipNo;
   long double beginDeleteYes, beginDeleteNo;
   long double extendDeleteYes, extendDeleteNo;
   /* null model log-likelihood */
@@ -102,6 +103,7 @@ typedef struct Seq_event_pair_counts {
   long double nStartEmitYes, nStartEmitNo;
   long double nNullEmitYes, nNullEmitNo;
   long double *nMatchEmitYes, *nMatchEmitNo;
+  long double nSkipYes, nSkipNo;
   long double nBeginDeleteYes, nBeginDeleteNo;
   long double nExtendDeleteYes, nExtendDeleteNo;
   int order, states;
