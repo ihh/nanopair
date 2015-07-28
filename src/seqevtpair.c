@@ -12,6 +12,7 @@
 #include "xmlkeywords.h"
 #include "kseqcontainer.h"
 #include "logsumexp.h"
+#include "gamma.h"
 
 /* logging stuff */
 #define SEQEVTPAIR_PRECALC_WARN_PERIOD 1000000
@@ -179,6 +180,14 @@ double get_seq_event_prior_mode (Seq_event_pair_model* model, const char* param)
   double p = BetaMode (get_seq_event_pair_pseudocount(model,param), get_seq_event_pair_pseudocount(model,no_param));
   SafeFree (no_param);
   return p;
+}
+
+double get_seq_event_log_beta_prior (Seq_event_pair_model* model, const char* param, double x) {
+  char *no_param = SafeMalloc ((strlen(param) + 4) * sizeof(char));
+  sprintf (no_param, "no_%s", param);
+  double lp = log_beta_dist (x, get_seq_event_pair_pseudocount(model,no_param) + 1, get_seq_event_pair_pseudocount(model,param) + 1);
+  SafeFree (no_param);
+  return lp;
 }
 
 int base2token (char base) {
@@ -435,6 +444,16 @@ void precalc_seq_event_pair_data (Seq_event_pair_data* data) {
 			     logPrecision);
     }
   }
+
+  /* calculate prior */
+  data->logPrior = data->logNullPrior = 0;
+  data->logNullPrior += get_seq_event_log_beta_prior (model, "emit", model->pNullEmit);
+  data->logPrior += get_seq_event_log_beta_prior (model, "emit", model->pStartEmit);
+  for (state = 0; state < model->states; ++state)
+    data->logPrior += get_seq_event_log_beta_prior (model, "emit", model->pMatchEmit[state]);
+  data->logPrior += get_seq_event_log_beta_prior (model, "delete", model->pBeginDelete);
+  data->logPrior += get_seq_event_log_beta_prior (model, "extend", model->pExtendDelete);
+  data->logPrior += get_seq_event_log_beta_prior (model, "skip", model->pSkip);
 }
 
 unsigned long seq_event_pair_index_wrapper (Seq_event_pair_data* data, int seqpos, int n_event) {
@@ -722,7 +741,7 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
   }
 
   if (LogThisAt(2))
-    fprintf (stderr, "Forward log-likelihood is %Lg\n", matrix->fwdTotal);
+    fprintf (stderr, "Forward log-likelihood is %Lg (prior %Lg, null model %Lg, null prior %Lg)\n", matrix->fwdTotal, matrix->data->logPrior, matrix->data->nullModel, matrix->data->logNullPrior);
 
   if (LogThisAt(10))
     dump_seq_event_pair_matrix_to_file (model->config.debug_matrix_filename, "Forward", data, matrix->fwdStart, matrix->fwdMatch, matrix->fwdDelete, matrix->fwdTotal);
@@ -958,13 +977,15 @@ void optimize_seq_event_pair_model_for_counts (Seq_event_pair_model* model, Seq_
 
 void inc_seq_event_pair_counts_via_fb (Seq_event_pair_model* model, Seq_event_pair_counts* counts, int seqlen, char *seq, Fast5_event_array* events) {
   Seq_event_pair_fb_matrix* matrix;
-  long double fwdTotal, nullModel;
+  long double fwdTotal, nullModel, logPrior, logNullPrior;
   matrix = new_seq_event_pair_fb_matrix (model, seqlen, seq, events);
   fill_seq_event_pair_fb_matrix_and_inc_counts (matrix, counts);
   fwdTotal = matrix->fwdTotal;
   nullModel = matrix->data->nullModel;
+  logPrior = matrix->data->logPrior;
+  logNullPrior = matrix->data->logNullPrior;
   delete_seq_event_pair_fb_matrix (matrix);
-  counts->loglike += fwdTotal - nullModel;
+  counts->loglike += fwdTotal + logPrior - nullModel - logNullPrior;
 }
 
 void optimize_seq_event_model_for_events (Seq_event_pair_model* model, Vector* event_arrays) {
@@ -1643,7 +1664,7 @@ Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event
   }
 
   align = new_seq_event_pair_alignment (data->events, data->seq, seqlen);
-  align->log_likelihood_ratio = matrix->vitTotal - matrix->data->nullModel;
+  align->log_likelihood_ratio = matrix->vitTotal + matrix->data->logPrior - matrix->data->nullModel - matrix->data->logNullPrior;
   align->start_seqpos = start_seqpos - 1;
   align->end_seqpos = end_seqpos - 1;
   align->start_n_event = start_n_event;

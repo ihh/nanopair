@@ -52,6 +52,7 @@ xmlChar* make_squiggle_svg (Fast5_event_array *events, Seq_event_pair_model* mod
 
 double get_seq_event_pair_pseudocount (Seq_event_pair_model* model, const char* param);
 double get_seq_event_prior_mode (Seq_event_pair_model* model, const char* param);
+double get_seq_event_log_beta_prior (Seq_event_pair_model* model, const char* param, double x);
 #define BetaMode(YesCount,NoCount) (1. / (1. + ((NoCount) / (YesCount))))
 
 /* Data + precomputed log-likelihoods for DP */
@@ -74,6 +75,8 @@ typedef struct Seq_event_pair_data {
   long double extendDeleteYes, extendDeleteNo;
   /* null model log-likelihood */
   long double nullModel;
+  /* prior log-likelihoods (currently probability parameters only; ignores prior on Gaussian params) */
+  long double logPrior, logNullPrior;
 } Seq_event_pair_data;
 
 Seq_event_pair_data* new_seq_event_pair_data (Seq_event_pair_model* model, int seqlen, char *seq, Fast5_event_array* events);  /* allocates only, does not fill */
