@@ -34,9 +34,41 @@ static const char* gff3_source = "nanopair";
 static const char* gff3_feature = "Match";
 static const char* gff3_gap_attribute = "Gap";
 
-/* EM convergence criteria */
-const double seq_evt_pair_EM_max_iterations = 100;
-const double seq_evt_pair_EM_min_fractional_loglike_increment = 0.0001;
+void init_seq_event_pair_config (Seq_event_pair_config *config) {
+  /* EM convergence criteria */
+  config->seq_evt_pair_EM_max_iterations = 100;
+  config->seq_evt_pair_EM_min_fractional_loglike_increment = 0.0001;
+  config->debug_matrix_filename = "npmatrix";
+}
+
+int parse_seq_event_pair_config (int* argcPtr, char*** argvPtr, Seq_event_pair_config *config) {
+  if (*argcPtr > 0) {
+    const char* arg = **argvPtr;
+    if (strcmp (arg, "-maxiter") == 0) {
+      Assert (*argcPtr > 1, "%s must have an argument", **argvPtr);
+      const char* val = (*argvPtr)[1];
+      config->seq_evt_pair_EM_max_iterations = atoi (val);
+      *argvPtr += 2;
+      *argcPtr -= 2;
+      return 1;
+    } else if (strcmp (arg, "-mininc") == 0) {
+      Assert (*argcPtr > 1, "%s must have an argument", **argvPtr);
+      const char* val = (*argvPtr)[1];
+      config->seq_evt_pair_EM_min_fractional_loglike_increment = atof (val);
+      *argvPtr += 2;
+      *argcPtr -= 2;
+      return 1;
+    } else if (strcmp (arg, "-matrixdumpfile") == 0) {
+      Assert (*argcPtr > 1, "%s must have an argument", **argvPtr);
+      const char* val = (*argvPtr)[1];
+      config->debug_matrix_filename = val;
+      *argvPtr += 2;
+      *argcPtr -= 2;
+      return 1;
+    }
+  }
+  return 0;
+}
 
 /* squiggle plot config */
 const double pixels_per_tick = .02;
@@ -249,6 +281,8 @@ Seq_event_pair_data* new_seq_event_pair_data (Seq_event_pair_model* model, int s
   int n_events, seqpos;
   unsigned long matrix_cells;
 
+  Logger *logger = model->logger;
+
   Assert (seqlen >= model->order, "Sequence length is %d, which is less than model order (%d)", seqlen, model->order);
 
   data = SafeMalloc (sizeof (Seq_event_pair_data));
@@ -260,7 +294,8 @@ Seq_event_pair_data* new_seq_event_pair_data (Seq_event_pair_model* model, int s
   n_events = events->n_events;
 
   matrix_cells = ((unsigned long) (n_events + 1)) * (unsigned long) (seqlen - model->order + 1);
-  Warn ("Allocating DP scratch space with %d*%d = %Lu cells", n_events + 1, seqlen - model->order + 1, matrix_cells);
+  if (LogThisAt(1))
+    Warn ("Allocating DP scratch space with %d*%d = %Lu cells", n_events + 1, seqlen - model->order + 1, matrix_cells);
 
   data->matrix_cells = matrix_cells;
 
@@ -292,6 +327,7 @@ void delete_seq_event_pair_data (Seq_event_pair_data* data) {
 
 void precalc_seq_event_pair_data (Seq_event_pair_data* data) {
   Seq_event_pair_model* model;
+  Logger *logger;
   int seqlen, n_events, order, seqpos, n_event, state;
   long double logNullPrecision, loglike;
   double mean, precision, logPrecision;
@@ -301,6 +337,8 @@ void precalc_seq_event_pair_data (Seq_event_pair_data* data) {
   order = model->order;
   seqlen = data->seqlen;
   n_events = data->events->n_events;
+
+  logger = model->logger;
 
   /* calculate logs of transition probabilities & emit precisions */
   data->nullEmitYes = log (model->pNullEmit);
@@ -340,10 +378,8 @@ void precalc_seq_event_pair_data (Seq_event_pair_data* data) {
 
   for (seqpos = order; seqpos <= seqlen; ++seqpos) {
 
-#ifdef SEQEVTPAIR_DEBUG
-    if (seqpos % SEQEVTPAIR_PRECALC_WARN_PERIOD == 0)
+    if (LogThisAt(1) && seqpos % SEQEVTPAIR_PRECALC_WARN_PERIOD == 0)
       Warn ("Precalculating likelihoods at sequence position %d", seqpos);
-#endif /* SEQEVTPAIR_DEBUG */
 
     state = data->state[seqpos];
 
@@ -377,9 +413,12 @@ unsigned long seq_event_pair_index_wrapper (Seq_event_pair_data* data, int seqpo
 /* Forward-backward matrix */
 
 Seq_event_pair_fb_matrix* new_seq_event_pair_fb_matrix (Seq_event_pair_model* model, int seqlen, char *seq, Fast5_event_array* events) {
+  Logger *logger;
   Seq_event_pair_fb_matrix* mx;
   int n_events;
   unsigned long matrix_cells;
+
+  logger = model->logger;
 
   mx = SafeMalloc (sizeof (Seq_event_pair_fb_matrix));
   mx->data = new_seq_event_pair_data (model, seqlen, seq, events);
@@ -387,9 +426,8 @@ Seq_event_pair_fb_matrix* new_seq_event_pair_fb_matrix (Seq_event_pair_model* mo
   n_events = mx->data->events->n_events;
   matrix_cells = mx->data->matrix_cells;
 
-#ifdef SEQEVTPAIR_DEBUG
-  Warn ("Allocating Forward-Backward matrix of size %d*%d (approx.)", n_events, seqlen);
-#endif /* SEQEVTPAIR_DEBUG */
+  if (LogThisAt(1))
+    Warn ("Allocating Forward-Backward matrix of size %d*%d (approx.)", n_events, seqlen);
 
   mx->fwdStart = SafeMalloc ((n_events + 1) * sizeof(long double));
   mx->backStart = SafeMalloc ((n_events + 1) * sizeof(long double));
@@ -572,6 +610,8 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
   model = data->model;
   order = model->order;
 
+  Logger *logger = model->logger;
+
   /* update data */
   precalc_seq_event_pair_data (data);
 
@@ -588,10 +628,9 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
   matrix->fwdTotal = matrix->backTotal = -INFINITY;
 
   for (seqpos = order; seqpos <= seqlen; ++seqpos) {
-#ifdef SEQEVTPAIR_DEBUG
-    if (seqpos % SEQEVTPAIR_DP_WARN_PERIOD == 0)
+
+    if (LogThisAt(2) && seqpos % SEQEVTPAIR_DP_WARN_PERIOD == 0)
       Warn ("Filling forward matrix, residue %d", seqpos + 1);
-#endif /* SEQEVTPAIR_DEBUG */
 
     for (n_event = 0; n_event <= n_events; ++n_event) {
 
@@ -645,11 +684,11 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
        matrix->fwdMatch[Seq_event_pair_index(seqpos,n_events)] + data->matchEmitNo[seqpos]);  /* Match -> End (input) */
   }
 
-  if (LogFunc(model->logger,2))
+  if (LogThisAt(2))
     fprintf (stderr, "Forward log-likelihood is %Lg\n", matrix->fwdTotal);
 
-  if (LogFunc(model->logger,10))
-    dump_seq_event_pair_matrix_to_file (SEQEVTMATRIX_FILENAME, "Forward", data, matrix->fwdStart, matrix->fwdMatch, matrix->fwdDelete, matrix->fwdTotal);
+  if (LogThisAt(10))
+    dump_seq_event_pair_matrix_to_file (model->config.debug_matrix_filename, "Forward", data, matrix->fwdStart, matrix->fwdMatch, matrix->fwdDelete, matrix->fwdTotal);
 
   /* fill backward & accumulate counts */
   for (n_event = n_events; n_event >= 0; --n_event)
@@ -657,11 +696,9 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 
   for (seqpos = seqlen; seqpos >= order; --seqpos) {
     state = data->state[seqpos];
-
-#ifdef SEQEVTPAIR_DEBUG
-    if (seqpos % SEQEVTPAIR_DP_WARN_PERIOD == 0)
+    
+    if (LogThisAt(2) && seqpos % SEQEVTPAIR_DP_WARN_PERIOD == 0)
       Warn ("Filling backward matrix, residue %d", seqpos + 1);
-#endif /* SEQEVTPAIR_DEBUG */
 
     for (n_event = n_events; n_event >= 0; --n_event) {
       event = n_event < n_events ? &data->events->event[n_event] : NULL;
@@ -676,6 +713,7 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 			   &count,
 			   NULL, NULL, NULL, NULL);   /* Match -> End (input) */
 	counts->nMatchEmitNo[state] += count;
+
       } else {  /* n_event < n_events */
 	outputIdx = Seq_event_pair_index(seqpos,n_event+1);
 
@@ -733,11 +771,11 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 	  ioIdx = Seq_event_pair_index(seqpos+1,n_event+1);
 
 	  mat = accum_count (mat,
-			     matrix->fwdMatch[ioIdx],
+			     matrix->fwdMatch[idx],
 			     data->matchEmitNo[seqpos] + data->beginDeleteNo + data->skipNo
 			     + data->matchEmitYes[seqpos+1] * (event->ticks - 1)
 			     + data->matchEmitDensity[ioIdx],
-			     matrix->backMatch[inputIdx],
+			     matrix->backMatch[ioIdx],
 			     matrix,
 			     &count,
 			     event,
@@ -791,11 +829,11 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
   }
   matrix->backTotal = matrix->backStart[0];
 
-  if (LogFunc(model->logger,2))
+  if (LogThisAt(2))
     fprintf (stderr, "Backward log-likelihood is %Lg\n", matrix->backTotal);
 
-  if (LogFunc(model->logger,10))
-    dump_seq_event_pair_matrix_to_file (SEQEVTMATRIX_FILENAME, "Backward", data, matrix->backStart, matrix->backMatch, matrix->backDelete, matrix->backTotal);
+  if (LogThisAt(10))
+    dump_seq_event_pair_matrix_to_file (model->config.debug_matrix_filename, "Backward", data, matrix->backStart, matrix->backMatch, matrix->backDelete, matrix->backTotal);
 }
 
 void inc_seq_event_null_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_event_array* events) {
@@ -1030,22 +1068,23 @@ void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs
   long double loglike, prev_loglike;
   Seq_event_pair_counts *counts, *prior;
 
+  Logger *logger = model->logger;
+
   prior = new_seq_event_pair_counts_minimal_prior (model);
 
   prev_loglike = 0.;
-  for (iter = 0; iter < seq_evt_pair_EM_max_iterations; ++iter) {
+  for (iter = 0; iter < model->config.seq_evt_pair_EM_max_iterations; ++iter) {
     counts = get_seq_event_pair_counts (model, seqs, event_arrays, both_strands);
     loglike = counts->loglike;
 
     optimize_seq_event_pair_model_for_counts (model, counts, prior);
     delete_seq_event_pair_counts (counts);
 
-#ifdef SEQEVTPAIR_DEBUG
-    Warn ("Baum-Welch iteration %d: log-likelihood ratio score %Lg", iter + 1, loglike);
-#endif /* SEQEVTPAIR_DEBUG */
+    if (LogThisAt(1))
+      Warn ("Baum-Welch iteration %d: log-likelihood ratio score %Lg", iter + 1, loglike);
 
     if (iter > 0 && prev_loglike != 0. && fabsl(prev_loglike) != INFINITY
-	&& ((loglike-prev_loglike)/fabsl(prev_loglike)) < seq_evt_pair_EM_min_fractional_loglike_increment)
+	&& ((loglike-prev_loglike)/fabsl(prev_loglike)) < model->config.seq_evt_pair_EM_min_fractional_loglike_increment)
       break;
     prev_loglike = loglike;
   }
@@ -1090,6 +1129,8 @@ Seq_event_pair_counts* get_seq_event_pair_counts (Seq_event_pair_model* model, K
   Fast5_event_array *events;
   Seq_event_pair_counts *counts, **seq_counts, **seqrev_counts;
 
+  Logger *logger = model->logger;
+
   rev = SafeMalloc (seqs->n * sizeof(char*));
   for (n_seq = 0; n_seq < seqs->n; ++n_seq)
     rev[n_seq] = new_revcomp_seq (seqs->seq[n_seq], seqs->len[n_seq]);
@@ -1118,9 +1159,8 @@ Seq_event_pair_counts* get_seq_event_pair_counts (Seq_event_pair_model* model, K
     for (n_seq = 0; n_seq < 2 * seqs->n; n_seq += (both_strands ? 1 : 2)) {
       reset_seq_event_pair_counts (seqrev_counts[n_seq]);
       inc_seq_event_pair_counts_via_fb (model, seqrev_counts[n_seq], seqrev_len[n_seq], seqrev[n_seq], events);
-#ifdef SEQEVTPAIR_DEBUG
-      Warn ("FAST5 file \"%s\", sequence \"%s\" (%s strand): log-likelihood = %Lg", events->name == NULL ? "<none>" : events->name, seqs->name[n_seq/2], (n_seq % 2) ? "reverse" : "forward", seqrev_counts[n_seq]->loglike);
-#endif /* SEQEVTPAIR_DEBUG */
+      if (LogThisAt(2))
+	Warn ("FAST5 file \"%s\", sequence \"%s\" (%s strand): log-likelihood = %Lg", events->name == NULL ? "<none>" : events->name, seqs->name[n_seq/2], (n_seq % 2) ? "reverse" : "forward", seqrev_counts[n_seq]->loglike);
     }
     add_weighted_seq_event_pair_counts (counts, both_strands ? seqrev_counts : seq_counts, (both_strands ? 2 : 1) * seqs->n);
   }
@@ -1240,6 +1280,8 @@ void write_seq_event_pair_alignment_as_stockholm (Seq_event_pair_alignment* alig
   int n_event, n, seqpos_offset, name_width;
   char namefmt[100], *revcomp;
 
+  Logger *logger = model->logger;
+
   revcomp = strand > 0 ? NULL : new_revcomp_seq (align->seq, (int) strlen(align->seq));
 
   seqrow = newStringVector();
@@ -1277,20 +1319,20 @@ void write_seq_event_pair_alignment_as_stockholm (Seq_event_pair_alignment* alig
     fprintf (out, "%s", StringVectorGet(evtrow,n));
   fprintf (out, "\n");
 
-#ifdef DEBUG
-  char state_id[20];
-  fprintf (out, "#=GF event NumEvent\tEventMean\tEventSD\tModelState\tModelMean\tSeqPos\tSeqState\tStateMean\tStateSD\n");
-  for (n_event = n = 0; n < align->start_n_event; ++n_event, ++n) {
-    fprintf (out, "#=GR event %d\t%g\t%g\t%s\t%g - -\t%g\t%g\n", n_event, align->events->event[n_event].mean, align->events->event[n_event].stdv, align->events->event[n_event].model_state, align->events->event[n_event].model_level, model->nullMean, sqrt(1/model->nullPrecision));
-  }
-  for (seqpos_offset = 0; seqpos_offset <= align->end_seqpos - align->start_seqpos; ++seqpos_offset) {
-    int state = decode_state_identifier (model->order, (char*) (align->seq + align->start_seqpos + seqpos_offset - model->order + 1));
-    encode_state_identifier (state, model->order, state_id);
-    for (n = 0; n < align->events_at_pos[seqpos_offset]; ++n_event, ++n) {
-      fprintf (out, "#=GR event %d\t%g\t%g\t%s\t%g\t%d\t%s\t%g\t%g\n", n_event, align->events->event[n_event].mean, align->events->event[n_event].stdv, align->events->event[n_event].model_state, align->events->event[n_event].model_level, align->start_seqpos + seqpos_offset, state_id, model->matchMean[state], sqrt(1/model->matchPrecision[state]));
+  if (LogThisAt(3)) {
+    char state_id[20];
+    fprintf (out, "#=GF event NumEvent\tEventMean\tEventSD\tModelState\tModelMean\tSeqPos\tSeqState\tStateMean\tStateSD\n");
+    for (n_event = n = 0; n < align->start_n_event; ++n_event, ++n) {
+      fprintf (out, "#=GR event %d\t%g\t%g\t%s\t%g - -\t%g\t%g\n", n_event, align->events->event[n_event].mean, align->events->event[n_event].stdv, align->events->event[n_event].model_state, align->events->event[n_event].model_level, model->nullMean, sqrt(1/model->nullPrecision));
+    }
+    for (seqpos_offset = 0; seqpos_offset <= align->end_seqpos - align->start_seqpos; ++seqpos_offset) {
+      int state = decode_state_identifier (model->order, (char*) (align->seq + align->start_seqpos + seqpos_offset - model->order + 1));
+      encode_state_identifier (state, model->order, state_id);
+      for (n = 0; n < align->events_at_pos[seqpos_offset]; ++n_event, ++n) {
+	fprintf (out, "#=GR event %d\t%g\t%g\t%s\t%g\t%d\t%s\t%g\t%g\n", n_event, align->events->event[n_event].mean, align->events->event[n_event].stdv, align->events->event[n_event].model_state, align->events->event[n_event].model_level, align->start_seqpos + seqpos_offset, state_id, model->matchMean[state], sqrt(1/model->matchPrecision[state]));
+      }
     }
   }
-#endif /* DEBUG */
 
   fprintf (out, "//\n");
 
@@ -1346,6 +1388,8 @@ void fill_seq_event_pair_viterbi_matrix (Seq_event_pair_viterbi_matrix* matrix) 
   model = data->model;
   order = model->order;
 
+  Logger *logger = model->logger;
+
   /* update data */
   precalc_seq_event_pair_data (data);
 
@@ -1400,8 +1444,8 @@ void fill_seq_event_pair_viterbi_matrix (Seq_event_pair_viterbi_matrix* matrix) 
        matrix->vitMatch[Seq_event_pair_index(seqpos,n_events)] + data->matchEmitNo[seqpos]);  /* Match -> End (input) */
   }
 
-  if (LogFunc(model->logger,10))
-    dump_seq_event_pair_matrix_to_file (SEQEVTMATRIX_FILENAME, "Viterbi", data, matrix->vitStart, matrix->vitMatch, matrix->vitDelete, matrix->vitTotal);
+  if (LogThisAt(10))
+    dump_seq_event_pair_matrix_to_file (model->config.debug_matrix_filename, "Viterbi", data, matrix->vitStart, matrix->vitMatch, matrix->vitDelete, matrix->vitTotal);
 }
 
 Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event_pair_viterbi_matrix* matrix) {

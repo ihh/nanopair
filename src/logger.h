@@ -13,10 +13,10 @@ void deleteLogger (Logger*);
 
 int parseLogArgs (int* argcPtr, char*** argvPtr, Logger*);
 
-#define LogVerb(LOGGER,V) ((LOGGER) != NULL && (LOGGER)->verbosity >= (V))
-#define LogTag(LOGGER,TAG) ((LOGGER) != NULL && (LOGGER)->logTags != NULL && StringSetFind((LOGGER)->logTags,TAG) != NULL)
-#define LogFuncTag(LOGGER) LogTag(LOGGER,__FUNCTION__)
-#define LogFunc(LOGGER,V) (LogVerb(LOGGER,V) || LogFuncTag(LOGGER))
+#define LogAt(V)     (logger != NULL && logger->verbosity >= (V))
+#define LogWhen(TAG) (logger != NULL && logger->logTags != NULL && StringSetFind(logger->logTags,TAG) != NULL)
+#define LogThis      LogWhen(__FUNCTION__)
+#define LogThisAt(V) (LogAt(V) || LogThis)
 
 #endif /* LOGGER_INCLUDED */
 

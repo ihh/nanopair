@@ -31,7 +31,13 @@ const char* help_message =
   "For 'align', 'train' & 'count' commands, to bypass the appropriate seed step,\n"
   "use '-eventseed', '-flatseed' or '-modelseed' in place of '-params <params.xml>'.\n"
   "\n"
-  "Use '-bothstrands' to count both forward & reverse strands (default is forward only).\n";
+  "Other options:\n"
+  " -verbose, -vv, -vvv, -v4, etc.\n"
+  " -log <function_name>\n"
+  "                 various levels of logging\n"
+  " -bothstrands    count both forward & reverse strands (default is forward only)\n"
+  " -mininc         minimum fractional increment in log-likelihood for EM to continue\n"
+  " -maxiter        maximum number of iterations of EM\n";
 
 #define MODEL_ORDER 5
 
@@ -46,6 +52,7 @@ typedef struct Nanopair_args_str {
   SeedFlag seedFlag;
   int both_strands, model_order;
   Logger *logger;
+  Seq_event_pair_config config;
 } Nanopair_args;
 
 int help_failure (char* warning, ...) {
@@ -91,7 +98,7 @@ Seq_event_pair_model* eventseed_params (Vector* event_arrays) {
   return params;
 }
 
-void get_params (SeedFlag seedFlag, StringVector* fast5_filenames, Vector* event_arrays, Seq_event_pair_model** modelPtr, int order, Logger* logger) {
+void get_params (SeedFlag seedFlag, StringVector* fast5_filenames, Vector* event_arrays, Seq_event_pair_model** modelPtr, int order, Logger* logger, Seq_event_pair_config* config) {
   if (seedFlag == EventSeed)
     *modelPtr = eventseed_params (event_arrays);
   else if (seedFlag == ModelSeed)
@@ -102,6 +109,7 @@ void get_params (SeedFlag seedFlag, StringVector* fast5_filenames, Vector* event
     Assert (*modelPtr != NULL, "No model parameters specified");
 
   (*modelPtr)->logger = logger;
+  (*modelPtr)->config = *config;
 }
 
 Kseq_container* init_seqs (char* filename) {
@@ -261,6 +269,7 @@ int parse_dp (int* argcPtr, char*** argvPtr, Nanopair_args* npargPtr) {
     || parse_seq (argcPtr, argvPtr, &npargPtr->seqs)
     || parse_both_strands (argcPtr, argvPtr, &npargPtr->both_strands)
     || parseLogArgs (argcPtr, argvPtr, npargPtr->logger)
+    || parse_seq_event_pair_config (argcPtr, argvPtr, &npargPtr->config)
     || parse_unknown (*argcPtr, *argvPtr);
 }
 
@@ -281,7 +290,9 @@ int main (int argc, char** argv) {
   npargs.fast5outFilename = NULL;
   npargs.both_strands = 0;
   npargs.model_order = 5;
+
   npargs.logger = newLogger();
+  init_seq_event_pair_config (&npargs.config);
   
   init_log_sum_exp_lookup();
 
@@ -299,6 +310,7 @@ int main (int argc, char** argv) {
     /* SEED: initialize emit parameters from model in a FAST5 read file */
     while (parse_fast5_filename (&argc, &argv, &npargs.fast5inFilename)
 	   || parseLogArgs (&argc, &argv, npargs.logger)
+	   || parse_seq_event_pair_config (&argc, &argv, &npargs.config)
 	   || parse_unknown (argc, argv))
       { }
 
@@ -323,6 +335,7 @@ int main (int argc, char** argv) {
     /* EVENTSEED: initialize parameters from base-called reads */
     while (parse_fast5 (&argc, &argv, npargs.fast5_filenames)
 	   || parseLogArgs (&argc, &argv, npargs.logger)
+	   || parse_seq_event_pair_config (&argc, &argv, &npargs.config)
 	   || parse_unknown (argc, argv))
       { }
 
@@ -340,6 +353,7 @@ int main (int argc, char** argv) {
     /* NORMALIZE: write out normalized fast5 file */
     while (parse_normalize (&argc, &argv, &npargs.fast5inFilename, &npargs.fast5outFilename)
 	   || parseLogArgs (&argc, &argv, npargs.logger)
+	   || parse_seq_event_pair_config (&argc, &argv, &npargs.config)
 	   || parse_unknown (argc, argv))
       { }
 
@@ -355,7 +369,7 @@ int main (int argc, char** argv) {
 
     Assert (npargs.seqs != NULL, "Reference sequences not specified");
     init_event_arrays (npargs.fast5_filenames, npargs.event_arrays);
-    get_params (npargs.seedFlag, npargs.fast5_filenames, npargs.event_arrays, &npargs.params, npargs.model_order, npargs.logger);
+    get_params (npargs.seedFlag, npargs.fast5_filenames, npargs.event_arrays, &npargs.params, npargs.model_order, npargs.logger, &npargs.config);
 
     /* get counts */
     counts = get_seq_event_pair_counts (npargs.params, npargs.seqs, npargs.event_arrays, npargs.both_strands);
@@ -370,7 +384,7 @@ int main (int argc, char** argv) {
 
     Assert (npargs.seqs != NULL, "Reference sequences not specified");
     init_event_arrays (npargs.fast5_filenames, npargs.event_arrays);
-    get_params (npargs.seedFlag, npargs.fast5_filenames, npargs.event_arrays, &npargs.params, npargs.model_order, npargs.logger);
+    get_params (npargs.seedFlag, npargs.fast5_filenames, npargs.event_arrays, &npargs.params, npargs.model_order, npargs.logger, &npargs.config);
 
     /* do Baum-Welch */
     fit_seq_event_kmer_model (npargs.params, npargs.seqs);
@@ -387,7 +401,7 @@ int main (int argc, char** argv) {
 
     Assert (npargs.seqs != NULL, "Reference sequences not specified");
     init_event_arrays (npargs.fast5_filenames, npargs.event_arrays);
-    get_params (npargs.seedFlag, npargs.fast5_filenames, npargs.event_arrays, &npargs.params, npargs.model_order, npargs.logger);
+    get_params (npargs.seedFlag, npargs.fast5_filenames, npargs.event_arrays, &npargs.params, npargs.model_order, npargs.logger, &npargs.config);
 
     /* loop through sequences, FAST5 files */
     for (i = 0; i < npargs.seqs->n; ++i)
@@ -399,11 +413,12 @@ int main (int argc, char** argv) {
     while (parse_fast5_filename (&argc, &argv, &npargs.fast5inFilename)
 	   || parse_params (&argc, &argv, &npargs.seedFlag, &npargs.params, &npargs.model_order)
 	   || parseLogArgs (&argc, &argv, npargs.logger)
+	   || parse_seq_event_pair_config (&argc, &argv, &npargs.config)
 	   || parse_unknown (argc, argv))
       { }
 
     init_event_arrays (npargs.fast5_filenames, npargs.event_arrays);
-    get_params (npargs.seedFlag, npargs.fast5_filenames, npargs.event_arrays, &npargs.params, npargs.model_order, npargs.logger);
+    get_params (npargs.seedFlag, npargs.fast5_filenames, npargs.event_arrays, &npargs.params, npargs.model_order, npargs.logger, &npargs.config);
 
     /* loop through event arrays, print squiggle SVGs */
     printf ("<html>\n<title>Squiggle plot</title>\n<body>\n");

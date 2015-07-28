@@ -6,19 +6,22 @@
 #include "xmlparser.h"
 #include "logger.h"
 
-/* #define the following for various levels of debugging info/code
-   (if defined at all) adds out-of-bounds guards to DP matrix accessors, logs progress messages
-   (if defined to 10 or greater) dumps DP matrices to filename SEQEVTMATRIX_FILENAME
- */
-#define SEQEVTPAIR_DEBUG 10
-#define SEQEVTMATRIX_FILENAME "npmatrix"
-
 /* state encoding functions */
 int base2token (char base);
 char token2base (int token);
 
 void encode_state_identifier (int state, int order, char* state_id);
 int decode_state_identifier (int order, char* state_id);
+
+/* Algorithm configuration */
+typedef struct Seq_event_pair_config {
+  int seq_evt_pair_EM_max_iterations;
+  double seq_evt_pair_EM_min_fractional_loglike_increment;
+  const char *debug_matrix_filename;
+} Seq_event_pair_config;
+
+void init_seq_event_pair_config (Seq_event_pair_config *config);
+int parse_seq_event_pair_config (int* argcPtr, char*** argvPtr, Seq_event_pair_config *config);
 
 /* Parameters */
 
@@ -30,7 +33,9 @@ typedef struct Seq_event_pair_model {
   double pStartEmit;
   double pNullEmit, nullMean, nullPrecision;
   double *kmerProb;
+  /* configuration */
   Logger *logger;  /* not owned */
+  Seq_event_pair_config config;
 } Seq_event_pair_model;
 
 Seq_event_pair_model* new_seq_event_pair_model (int order);
