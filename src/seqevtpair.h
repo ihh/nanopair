@@ -26,13 +26,17 @@ int parse_seq_event_pair_config (int* argcPtr, char*** argvPtr, Seq_event_pair_c
 /* Parameters */
 
 typedef struct Seq_event_pair_model {
+  /* transducer */
   double *pMatchEmit;
   double pSkip, pBeginDelete, pExtendDelete;
   int order, states;
   double *matchMean, *matchPrecision;
   double pStartEmit;
   double pNullEmit, nullMean, nullPrecision;
+  /* generator */
   double *kmerProb;
+  /* prior */
+  StringDoubleMap *prior;
   /* configuration */
   Logger *logger;  /* not owned */
   Seq_event_pair_config config;
@@ -46,6 +50,9 @@ xmlChar* convert_seq_event_pair_model_to_xml_string (Seq_event_pair_model* model
 
 xmlChar* make_squiggle_svg (Fast5_event_array *events, Seq_event_pair_model* model);
 
+double get_seq_event_pair_pseudocount (Seq_event_pair_model* model, const char* param);
+double get_seq_event_prior_mode (Seq_event_pair_model* model, const char* param);
+#define BetaMode(YesCount,NoCount) (1. / (1. + ((NoCount) / (YesCount))))
 
 /* Data + precomputed log-likelihoods for DP */
 

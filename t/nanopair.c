@@ -45,6 +45,7 @@ typedef enum SeedFlag { EventSeed, ModelSeed, FlatSeed, ParamFile } SeedFlag;
 
 typedef struct Nanopair_args_str {
   Seq_event_pair_model *params;
+  StringDoubleMap *prior;
   Kseq_container *seqs;
   StringVector *fast5_filenames;
   const char *fast5inFilename, *fast5outFilename;
@@ -98,7 +99,15 @@ Seq_event_pair_model* eventseed_params (Vector* event_arrays) {
   return params;
 }
 
-void get_params (SeedFlag seedFlag, StringVector* fast5_filenames, Vector* event_arrays, Seq_event_pair_model** modelPtr, int order, Logger* logger, Seq_event_pair_config* config) {
+void copy_prior (Seq_event_pair_model *model, StringDoubleMap *prior) {
+  for (StringDoubleMapNode *pseudoNode = RBTreeFirst(prior);
+       !RBTreeIteratorFinished(prior,pseudoNode);
+       pseudoNode = RBTreeSuccessor(prior,pseudoNode)) {
+    StringDoubleMapSet (model->prior, (char*) pseudoNode->key, *(double*)pseudoNode->value);
+  }
+}
+
+void get_params (SeedFlag seedFlag, StringVector* fast5_filenames, Vector* event_arrays, Seq_event_pair_model** modelPtr, int order, Logger* logger, Seq_event_pair_config* config, StringDoubleMap *prior) {
   if (seedFlag == EventSeed)
     *modelPtr = eventseed_params (event_arrays);
   else if (seedFlag == ModelSeed)
@@ -110,6 +119,8 @@ void get_params (SeedFlag seedFlag, StringVector* fast5_filenames, Vector* event
 
   (*modelPtr)->logger = logger;
   (*modelPtr)->config = *config;
+
+  copy_prior (*modelPtr, prior);
 }
 
 Kseq_container* init_seqs (char* filename) {
@@ -151,7 +162,20 @@ void init_event_arrays (StringVector* filenames, Vector* event_arrays) {
 }
 
 /* parsers */
-int parse_params (int* argcPtr, char*** argvPtr, SeedFlag* seedFlag, Seq_event_pair_model** modelPtr, int* orderPtr) {
+int parse_pseudo (int* argcPtr, char*** argvPtr, StringDoubleMap *prior) {
+  if (*argcPtr > 0) {
+    if (strcmp (**argvPtr, "-pseudo") == 0) {
+      Assert (*argcPtr > 2, "-pseudo must have two arguments");
+      StringDoubleMapSet (prior, (*argvPtr)[1], atof((*argvPtr)[2]));
+      *argvPtr += 3;
+      *argcPtr -= 3;
+      return 1;
+    }
+  }
+  return 0;
+}
+
+int parse_params (int* argcPtr, char*** argvPtr, SeedFlag* seedFlag, Seq_event_pair_model** modelPtr, int* orderPtr, StringDoubleMap *prior) {
   if (*argcPtr > 0) {
     if (strcmp (**argvPtr, "-eventseed") == 0) {
       *seedFlag = EventSeed;
@@ -179,7 +203,8 @@ int parse_params (int* argcPtr, char*** argvPtr, SeedFlag* seedFlag, Seq_event_p
       *argvPtr += 2;
       *argcPtr -= 2;
       return 1;
-    }
+    } else
+      return parse_pseudo (argcPtr, argvPtr, prior);
   }
   return 0;
 }
@@ -264,7 +289,7 @@ int parse_unknown (int argc, char** argv) {
 }
 
 int parse_dp (int* argcPtr, char*** argvPtr, Nanopair_args* npargPtr) {
-  return parse_params (argcPtr, argvPtr, &npargPtr->seedFlag, &npargPtr->params, &npargPtr->model_order)
+  return parse_params (argcPtr, argvPtr, &npargPtr->seedFlag, &npargPtr->params, &npargPtr->model_order, npargPtr->prior)
     || parse_fast5 (argcPtr, argvPtr, npargPtr->fast5_filenames)
     || parse_seq (argcPtr, argvPtr, &npargPtr->seqs)
     || parse_both_strands (argcPtr, argvPtr, &npargPtr->both_strands)
@@ -290,6 +315,7 @@ int main (int argc, char** argv) {
   npargs.fast5outFilename = NULL;
   npargs.both_strands = 0;
   npargs.model_order = 5;
+  npargs.prior = newStringDoubleMap();
 
   npargs.logger = newLogger();
   init_seq_event_pair_config (&npargs.config);
@@ -311,6 +337,7 @@ int main (int argc, char** argv) {
     while (parse_fast5_filename (&argc, &argv, &npargs.fast5inFilename)
 	   || parseLogArgs (&argc, &argv, npargs.logger)
 	   || parse_seq_event_pair_config (&argc, &argv, &npargs.config)
+	   || parse_pseudo (&argc, &argv, npargs.prior)
 	   || parse_unknown (argc, argv))
       { }
 
@@ -320,6 +347,8 @@ int main (int argc, char** argv) {
     npargs.params = seed_params (npargs.fast5inFilename);
     if (npargs.params == NULL)
       return EXIT_FAILURE;
+
+    copy_prior (npargs.params, npargs.prior);
 
     /* output model */
     xml_params = convert_seq_event_pair_model_to_xml_string (npargs.params);
@@ -336,6 +365,7 @@ int main (int argc, char** argv) {
     while (parse_fast5 (&argc, &argv, npargs.fast5_filenames)
 	   || parseLogArgs (&argc, &argv, npargs.logger)
 	   || parse_seq_event_pair_config (&argc, &argv, &npargs.config)
+	   || parse_pseudo (&argc, &argv, npargs.prior)
 	   || parse_unknown (argc, argv))
       { }
 
@@ -345,6 +375,8 @@ int main (int argc, char** argv) {
     npargs.params = eventseed_params (npargs.event_arrays);
     if (npargs.params == NULL)
       return EXIT_FAILURE;
+
+    copy_prior (npargs.params, npargs.prior);
 
     /* output model */
     write_params (npargs.params);
@@ -369,7 +401,7 @@ int main (int argc, char** argv) {
 
     Assert (npargs.seqs != NULL, "Reference sequences not specified");
     init_event_arrays (npargs.fast5_filenames, npargs.event_arrays);
-    get_params (npargs.seedFlag, npargs.fast5_filenames, npargs.event_arrays, &npargs.params, npargs.model_order, npargs.logger, &npargs.config);
+    get_params (npargs.seedFlag, npargs.fast5_filenames, npargs.event_arrays, &npargs.params, npargs.model_order, npargs.logger, &npargs.config, npargs.prior);
 
     /* get counts */
     counts = get_seq_event_pair_counts (npargs.params, npargs.seqs, npargs.event_arrays, npargs.both_strands);
@@ -384,7 +416,7 @@ int main (int argc, char** argv) {
 
     Assert (npargs.seqs != NULL, "Reference sequences not specified");
     init_event_arrays (npargs.fast5_filenames, npargs.event_arrays);
-    get_params (npargs.seedFlag, npargs.fast5_filenames, npargs.event_arrays, &npargs.params, npargs.model_order, npargs.logger, &npargs.config);
+    get_params (npargs.seedFlag, npargs.fast5_filenames, npargs.event_arrays, &npargs.params, npargs.model_order, npargs.logger, &npargs.config, npargs.prior);
 
     /* do Baum-Welch */
     fit_seq_event_kmer_model (npargs.params, npargs.seqs);
@@ -401,7 +433,7 @@ int main (int argc, char** argv) {
 
     Assert (npargs.seqs != NULL, "Reference sequences not specified");
     init_event_arrays (npargs.fast5_filenames, npargs.event_arrays);
-    get_params (npargs.seedFlag, npargs.fast5_filenames, npargs.event_arrays, &npargs.params, npargs.model_order, npargs.logger, &npargs.config);
+    get_params (npargs.seedFlag, npargs.fast5_filenames, npargs.event_arrays, &npargs.params, npargs.model_order, npargs.logger, &npargs.config, npargs.prior);
 
     /* loop through sequences, FAST5 files */
     for (i = 0; i < npargs.seqs->n; ++i)
@@ -411,14 +443,14 @@ int main (int argc, char** argv) {
   } else if (strcmp (command, "squiggle") == 0) {
     /* SQUIGGLE: draw squiggle plot as SVG wrapped in HTML */
     while (parse_fast5_filename (&argc, &argv, &npargs.fast5inFilename)
-	   || parse_params (&argc, &argv, &npargs.seedFlag, &npargs.params, &npargs.model_order)
+	   || parse_params (&argc, &argv, &npargs.seedFlag, &npargs.params, &npargs.model_order, npargs.prior)
 	   || parseLogArgs (&argc, &argv, npargs.logger)
 	   || parse_seq_event_pair_config (&argc, &argv, &npargs.config)
 	   || parse_unknown (argc, argv))
       { }
 
     init_event_arrays (npargs.fast5_filenames, npargs.event_arrays);
-    get_params (npargs.seedFlag, npargs.fast5_filenames, npargs.event_arrays, &npargs.params, npargs.model_order, npargs.logger, &npargs.config);
+    get_params (npargs.seedFlag, npargs.fast5_filenames, npargs.event_arrays, &npargs.params, npargs.model_order, npargs.logger, &npargs.config, npargs.prior);
 
     /* loop through event arrays, print squiggle SVGs */
     printf ("<html>\n<title>Squiggle plot</title>\n<body>\n");
@@ -446,6 +478,7 @@ int main (int argc, char** argv) {
   if (npargs.seqs)
     free_kseq_container (npargs.seqs);
 
+  deleteStringMap (npargs.prior);
   deleteVector (npargs.event_arrays);
   deleteStringVector (npargs.fast5_filenames);
   deleteLogger (npargs.logger);

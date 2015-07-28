@@ -311,6 +311,17 @@ RBNode * RBTreeInsert(RBTree* tree, void* key, void* value) {
 #endif
 }
 
+RBNode* RBTreeSet(RBTree* tree, void* key, void* value) {
+  RBNode* node = RBTreeFind (tree, key);
+  if (node) {
+    tree->DestroyKey (key);
+    tree->DestroyValue (node->value);
+    node->value = value;
+  } else
+    node = RBTreeInsert (tree, key, value);
+  return node;
+}
+
 /***********************************************************************/
 /*  FUNCTION:  RBTreeSuccessor  */
 /**/

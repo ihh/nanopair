@@ -136,30 +136,49 @@ Seq_event_pair_model* new_seq_event_pair_model (int order) {
   model->matchPrecision = SafeMalloc (model->states * sizeof(double));
   model->kmerProb = SafeMalloc (model->states * sizeof(double));
 
-  model->pBeginDelete = .5;
-  model->pExtendDelete = .5;
-  model->pStartEmit = .5;
-  model->pNullEmit = .5;
+  model->prior = newStringDoubleMap();
+  StringDoubleMapSet (model->prior, "no_skip", 999);
+  StringDoubleMapSet (model->prior, "no_delete", 99);
+
+  model->pBeginDelete = get_seq_event_prior_mode(model,"delete");
+  model->pExtendDelete = get_seq_event_prior_mode(model,"extend");
+  model->pStartEmit = get_seq_event_prior_mode(model,"emit");
+  model->pNullEmit = get_seq_event_prior_mode(model,"emit");
   model->nullMean = 0;
   model->nullPrecision = 1;
   for (int state = 0; state < model->states; ++state) {
-    model->pMatchEmit[state] = .5;
+    model->pMatchEmit[state] = get_seq_event_prior_mode(model,"emit");
     model->matchMean[state] = 0;
     model->matchPrecision[state] = 1;
     model->kmerProb[state] = 1. / (double) model->states;
   }
 
   model->logger = NULL;
+  init_seq_event_pair_config (&model->config);
   
   return model;
 }
 
 void delete_seq_event_pair_model (Seq_event_pair_model* model) {
+  deleteStringDoubleMap (model->prior);
   SafeFree (model->kmerProb);
   SafeFree (model->pMatchEmit);
   SafeFree (model->matchMean);
   SafeFree (model->matchPrecision);
   SafeFree (model);
+}
+
+double get_seq_event_pair_pseudocount (Seq_event_pair_model* model, const char* param) {
+  StringDoubleMapNode *node = StringDoubleMapFind (model->prior, param);
+  return node ? *((double*)node->value) : 1.;
+}
+
+double get_seq_event_prior_mode (Seq_event_pair_model* model, const char* param) {
+  char *no_param = SafeMalloc ((strlen(param) + 4) * sizeof(char));
+  sprintf (no_param, "no_%s", param);
+  double p = BetaMode (get_seq_event_pair_pseudocount(model,param), get_seq_event_pair_pseudocount(model,no_param));
+  SafeFree (no_param);
+  return p;
 }
 
 int base2token (char base) {
@@ -192,11 +211,18 @@ double emitProbToMeanLength (double p) { return p / (1. - p); }
 double meanLengthToEmitProb (double l) { return l / (1. + l); }
 
 Seq_event_pair_model* new_seq_event_pair_model_from_xml_string (const char* xml) {
-  xmlNode *modelNode, *statesNode, *stateNode, *deleteNode, *startNode, *nullNode;
+  xmlNode *modelNode, *statesNode, *stateNode, *deleteNode, *startNode, *nullNode, *pseudoNode;
   Seq_event_pair_model *model;
   int state;
   modelNode = xmlTreeFromString (xml);
   model = new_seq_event_pair_model (CHILDINT(modelNode,ORDER));
+
+  for (pseudoNode = modelNode->children; pseudoNode; pseudoNode = pseudoNode->next)
+    if (MATCHES(pseudoNode,PSEUDO)) {
+      const char* param = (const char*) CHILDSTRING(pseudoNode,PARAM);
+      const double count = CHILDFLOAT(pseudoNode,COUNT);
+      StringDoubleMapSet (model->prior, param, count);
+    }
 
   model->pSkip = CHILDFLOAT(modelNode,SKIP);
 
@@ -236,6 +262,15 @@ xmlChar* convert_seq_event_pair_model_to_xml_string (Seq_event_pair_model* model
   writer = newXmlTextWriter();
   xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(MODEL));
   xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(ORDER), "%d", model->order);
+
+  for (StringDoubleMapNode *pseudoNode = RBTreeFirst(model->prior);
+       !RBTreeIteratorFinished(model->prior,pseudoNode);
+       pseudoNode = RBTreeSuccessor(model->prior,pseudoNode)) {
+    xmlTextWriterStartElement (writer, (xmlChar*) XMLPREFIX(PSEUDO));
+    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(PARAM), "%s", (char*) pseudoNode->key);
+    xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(COUNT), "%g", *(double*)pseudoNode->value);
+    xmlTextWriterEndElement (writer);
+  }
 
   xmlTextWriterWriteFormatElement (writer, (xmlChar*) XMLPREFIX(SKIP), "%g", model->pSkip);
 
@@ -509,21 +544,23 @@ Seq_event_pair_counts* new_seq_event_pair_counts_minimal_prior (Seq_event_pair_m
   reset_seq_event_null_counts (counts);
   reset_seq_event_pair_counts (counts);
 
+  double pseudoEmitYes = get_seq_event_pair_pseudocount (model, "emit");
+  double pseudoEmitNo = get_seq_event_pair_pseudocount (model, "no_emit");
   for (state = 0; state < counts->states; ++state) {
-    counts->nMatchEmitYes[state] += 1.;
-    counts->nMatchEmitNo[state] += 1.;
+    counts->nMatchEmitYes[state] += pseudoEmitYes;
+    counts->nMatchEmitNo[state] += pseudoEmitNo;
     counts->matchMoment0[state] += 1.;
   }
-  counts->nStartEmitYes += 1.;
-  counts->nStartEmitNo += 1.;
-  counts->nSkipYes += 1.;
-  counts->nSkipNo += 1.;
-  counts->nBeginDeleteYes += 1.;
-  counts->nBeginDeleteNo += 1.;
-  counts->nExtendDeleteYes += 1.;
-  counts->nExtendDeleteNo += 1.;
-  counts->nNullEmitYes += 1.;
-  counts->nNullEmitNo += 1.;
+  counts->nStartEmitYes += pseudoEmitYes;
+  counts->nStartEmitNo += pseudoEmitNo;
+  counts->nSkipYes += get_seq_event_pair_pseudocount (model, "skip");
+  counts->nSkipNo += get_seq_event_pair_pseudocount (model, "no_skip");
+  counts->nBeginDeleteYes += get_seq_event_pair_pseudocount (model, "delete");
+  counts->nBeginDeleteNo += get_seq_event_pair_pseudocount (model, "no_delete");
+  counts->nExtendDeleteYes += get_seq_event_pair_pseudocount (model, "extend");
+  counts->nExtendDeleteNo += get_seq_event_pair_pseudocount (model, "no_extend");
+  counts->nNullEmitYes += pseudoEmitYes;
+  counts->nNullEmitNo += pseudoEmitNo;
   /* counts->nullMoment0 is untouched */
 
   return counts;
@@ -906,14 +943,14 @@ void optimize_seq_event_pair_model_for_counts (Seq_event_pair_model* model, Seq_
     dummy_prior = NULL;
 
   for (state = 0; state < model->states; ++state) {
-    model->pMatchEmit[state] = (counts->nMatchEmitYes[state] + prior->nMatchEmitYes[state]) / (counts->nMatchEmitYes[state] + prior->nMatchEmitYes[state] + counts->nMatchEmitNo[state] + prior->nMatchEmitNo[state]);
+    model->pMatchEmit[state] = BetaMode (counts->nMatchEmitYes[state] + prior->nMatchEmitYes[state], counts->nMatchEmitNo[state] + prior->nMatchEmitNo[state]);
     model->matchMean[state] = (counts->matchMoment1[state] + prior->matchMoment1[state]) / (counts->matchMoment0[state] + prior->matchMoment0[state]);
     model->matchPrecision[state] = 1. / MAX (DBL_MIN, ((counts->matchMoment2[state] + prior->matchMoment2[state]) / (counts->matchMoment0[state] + prior->matchMoment0[state]) - model->matchMean[state] * model->matchMean[state]));
   }
-  model->pSkip = (counts->nSkipYes + prior->nSkipYes) / (counts->nSkipYes + prior->nSkipYes + counts->nSkipNo + prior->nSkipNo);
-  model->pBeginDelete = (counts->nBeginDeleteYes + prior->nBeginDeleteYes) / (counts->nBeginDeleteYes + prior->nBeginDeleteYes + counts->nBeginDeleteNo + prior->nBeginDeleteNo);
-  model->pExtendDelete = (counts->nExtendDeleteYes + prior->nExtendDeleteYes) / (counts->nExtendDeleteYes + prior->nExtendDeleteYes + counts->nExtendDeleteNo + prior->nExtendDeleteNo);
-  model->pStartEmit = (counts->nStartEmitYes + prior->nStartEmitYes) / (counts->nStartEmitYes + prior->nStartEmitYes + counts->nStartEmitNo + prior->nStartEmitNo);
+  model->pSkip = BetaMode (counts->nSkipYes + prior->nSkipYes, counts->nSkipNo + prior->nSkipNo);
+  model->pBeginDelete = BetaMode (counts->nBeginDeleteYes + prior->nBeginDeleteYes, counts->nBeginDeleteNo + prior->nBeginDeleteNo);
+  model->pExtendDelete = BetaMode (counts->nExtendDeleteYes + prior->nExtendDeleteYes, counts->nExtendDeleteNo + prior->nExtendDeleteNo);
+  model->pStartEmit = BetaMode (counts->nStartEmitYes + prior->nStartEmitYes, counts->nStartEmitNo + prior->nStartEmitNo);
 
   if (dummy_prior != NULL)
     delete_seq_event_pair_counts (dummy_prior);

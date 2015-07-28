@@ -61,7 +61,7 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "count -fast5 t/tiny.fast5 -fasta t/tiny.fasta -params ch8params.xml -log fill_seq_event_pair_fb_matrix_and_inc_counts"
+            argument = "eventseed -fast5 nanopair-data/LomanLabz_PC_Ecoli_K12_R7.3_2549_1_ch8_file30_strand.fast5 -pseudo xyz 1"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

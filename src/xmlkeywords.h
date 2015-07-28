@@ -20,6 +20,9 @@
 #define XMLNP_START     "start"
 #define XMLNP_NULLMODEL "null"
 #define XMLNP_FREQ      "freq"
+#define XMLNP_PSEUDO    "pseudo"
+#define XMLNP_PARAM     "param"
+#define XMLNP_COUNT     "count"
 
 #define XMLNP_COUNTS    "counts"
 #define XMLNP_YES       "yes"
