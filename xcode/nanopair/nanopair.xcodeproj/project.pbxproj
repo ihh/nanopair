@@ -22,6 +22,7 @@
 		285D8F561A85927600192131 /* nanopair.c in Sources */ = {isa = PBXBuildFile; fileRef = 285D8F551A85927600192131 /* nanopair.c */; };
 		2862E7481B67164100B04F52 /* libhdf5_hl.10.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 2862E7461B67164100B04F52 /* libhdf5_hl.10.dylib */; };
 		2862E7491B67164100B04F52 /* libhdf5.10.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 2862E7471B67164100B04F52 /* libhdf5.10.dylib */; };
+		2862E74C1B6727DD00B04F52 /* logger.c in Sources */ = {isa = PBXBuildFile; fileRef = 2862E74A1B6727DD00B04F52 /* logger.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -65,6 +66,8 @@
 		285D8F581A8592B000192131 /* kseq.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = kseq.h; path = ../../kseq/kseq.h; sourceTree = SOURCE_ROOT; };
 		2862E7461B67164100B04F52 /* libhdf5_hl.10.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libhdf5_hl.10.dylib; path = ../../../../../../usr/local/lib/libhdf5_hl.10.dylib; sourceTree = "<group>"; };
 		2862E7471B67164100B04F52 /* libhdf5.10.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libhdf5.10.dylib; path = ../../../../../../usr/local/lib/libhdf5.10.dylib; sourceTree = "<group>"; };
+		2862E74A1B6727DD00B04F52 /* logger.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = logger.c; path = /Users/yam/latex/nanopair/xcode/nanopair/../../src/logger.c; sourceTree = "<absolute>"; };
+		2862E74B1B6727DD00B04F52 /* logger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = logger.h; path = ../../src/logger.h; sourceTree = SOURCE_ROOT; };
 		287EA0781A804DE70077CE92 /* nanopair */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = nanopair; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -85,6 +88,8 @@
 		285D8F201A858D2F00192131 /* src */ = {
 			isa = PBXGroup;
 			children = (
+				2862E74A1B6727DD00B04F52 /* logger.c */,
+				2862E74B1B6727DD00B04F52 /* logger.h */,
 				2844A5BA1B60FBB0004D5436 /* logsumexp.c */,
 				2844A5BB1B60FBB0004D5436 /* logsumexp.h */,
 				285D8F211A858D2F00192131 /* fast5events.c */,
@@ -203,6 +208,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				285D8F381A858D2F00192131 /* list.c in Sources */,
+				2862E74C1B6727DD00B04F52 /* logger.c in Sources */,
 				285D8F391A858D2F00192131 /* rbtree.c in Sources */,
 				285D8F3C1A858D2F00192131 /* util.c in Sources */,
 				285D8F3F1A858D2F00192131 /* xmlutil.c in Sources */,
@@ -299,10 +305,7 @@
 					/usr/local/include,
 					/usr/local/hdf5/include,
 				);
-				LIBRARY_SEARCH_PATHS = (
-					/usr/local/lib,
-					"/Users/yam/hdf5-1.8.15-patch1/hdf5/lib",
-				);
+				LIBRARY_SEARCH_PATHS = /usr/local/lib;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -316,10 +319,7 @@
 					/usr/local/include,
 					/usr/local/hdf5/include,
 				);
-				LIBRARY_SEARCH_PATHS = (
-					/usr/local/lib,
-					"/Users/yam/hdf5-1.8.15-patch1/hdf5/lib",
-				);
+				LIBRARY_SEARCH_PATHS = /usr/local/lib;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;

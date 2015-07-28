@@ -787,9 +787,8 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
   }
   matrix->backTotal = matrix->backStart[0];
 
-#if defined(SEQEVTPAIR_DEBUG) && SEQEVTPAIR_DEBUG >= 10
-  dump_seq_event_pair_matrix_to_file (SEQEVTMATRIX_FILENAME, "Backward", data, matrix->backStart, matrix->backMatch, matrix->backDelete, matrix->backTotal);
-#endif /* SEQEVTPAIR_DEBUG >= 10 */
+  if (LogFunc(model->logger,10))
+    dump_seq_event_pair_matrix_to_file (SEQEVTMATRIX_FILENAME, "Backward", data, matrix->backStart, matrix->backMatch, matrix->backDelete, matrix->backTotal);
 }
 
 void inc_seq_event_null_counts_from_fast5 (Seq_event_pair_counts* counts, Fast5_event_array* events) {
@@ -1394,9 +1393,8 @@ void fill_seq_event_pair_viterbi_matrix (Seq_event_pair_viterbi_matrix* matrix) 
        matrix->vitMatch[Seq_event_pair_index(seqpos,n_events)] + data->matchEmitNo[seqpos]);  /* Match -> End (input) */
   }
 
-#if defined(SEQEVTPAIR_DEBUG) && SEQEVTPAIR_DEBUG >= 10
-  dump_seq_event_pair_matrix_to_file (SEQEVTMATRIX_FILENAME, "Viterbi", data, matrix->vitStart, matrix->vitMatch, matrix->vitDelete, matrix->vitTotal);
-#endif /* SEQEVTPAIR_DEBUG >= 10 */
+  if (LogFunc(model->logger,10))
+    dump_seq_event_pair_matrix_to_file (SEQEVTMATRIX_FILENAME, "Viterbi", data, matrix->vitStart, matrix->vitMatch, matrix->vitDelete, matrix->vitTotal);
 }
 
 Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event_pair_viterbi_matrix* matrix) {

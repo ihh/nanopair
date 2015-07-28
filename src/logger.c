@@ -20,7 +20,7 @@ int parseLogArgs (int* argcPtr, char*** argvPtr, Logger* logger) {
     if (strcmp (arg, "-log") == 0) {
       Assert (*argcPtr > 1, "%s must have an argument", **argvPtr);
       const char* tag = (*argvPtr)[1];
-      if (logger->logTags != NULL)
+      if (logger->logTags == NULL)
 	logger->logTags = newStringSet();
       if (StringSetFind(logger->logTags,tag) == NULL)
 	StringSetInsert (logger->logTags, tag);
