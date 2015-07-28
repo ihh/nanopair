@@ -6,7 +6,7 @@
 #include "../src/logger.h"
 
 const char* help_message = 
-  "Usage: nanopair {seed,eventseed,normalize,count,train,align} <args>\n"
+  "Usage: nanopair {seed,eventseed,normalize,count,train,align,squiggle} <args>\n"
   "\n"
   " nanopair seed -fast5 <read.fast5>  >params.xml\n"
   "  (to parameterize a model from the HMM in a FAST5 file)\n"
@@ -16,6 +16,9 @@ const char* help_message =
   "\n"
   " nanopair normalize -in <in.fast5> -out <out.fast5>\n"
   "  (to normalize events in a FAST5 file)\n"
+  "\n"
+  " nanopair squiggle -fast5 <read.fast5>  >plot.svg\n"
+  "  (to make a crude squiggle plot)\n"
   "\n"
   " nanopair count -params <params.xml> -fasta <refs.fasta> -fast5 <read.fast5> [more fast5...]  >counts.xml\n"
   "  (to calculate expected counts under the posterior distribution,\n"
@@ -37,7 +40,9 @@ const char* help_message =
   "                 various levels of logging\n"
   " -bothstrands    count both forward & reverse strands (default is forward only)\n"
   " -mininc         minimum fractional increment in log-likelihood for EM to continue\n"
-  " -maxiter        maximum number of iterations of EM\n";
+  " -maxiter        maximum number of iterations of EM\n"
+  " -pseudo {[no_]skip,delete,extend,emit} <count>\n"
+  "                 override various pseudocounts from the command-line\n";
 
 #define MODEL_ORDER 5
 
