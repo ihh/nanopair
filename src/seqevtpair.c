@@ -670,7 +670,7 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 			   data->matchEmitNo[seqpos],
 			   0.,
 			   matrix,
-			   state < 0 ? NULL : &counts->nMatchEmitNo[state],
+			   &counts->nMatchEmitNo[state],
 			   NULL, NULL, NULL, NULL);   /* Match -> End (input) */
       } else {  /* n_event < n_events */
 	outputIdx = Seq_event_pair_index(seqpos,n_event+1);
@@ -683,12 +683,11 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 			   matrix->backMatch[outputIdx],
 			   matrix,
 			   &count,
-			   state < 0 ? NULL : event,
-			   state < 0 ? NULL : &counts->matchMoment0[state],
-			   state < 0 ? NULL : &counts->matchMoment1[state],
-			   state < 0 ? NULL : &counts->matchMoment2[state]);  /* Match -> Match (output) */
-	if (state >= 0)
-	  counts->nMatchEmitYes[state] += count * event->ticks;
+			   event,
+			   &counts->matchMoment0[state],
+			   &counts->matchMoment1[state],
+			   &counts->matchMoment2[state]);  /* Match -> Match (output) */
+	counts->nMatchEmitYes[state] += count * event->ticks;
       }
 
       if (seqpos == seqlen) {
