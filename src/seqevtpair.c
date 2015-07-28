@@ -673,12 +673,12 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 			   data->matchEmitNo[seqpos],
 			   0.,
 			   matrix,
-			   &counts->nMatchEmitNo[state],
+			   &count,
 			   NULL, NULL, NULL, NULL);   /* Match -> End (input) */
+	counts->nMatchEmitNo[state] += count;
       } else {  /* n_event < n_events */
 	outputIdx = Seq_event_pair_index(seqpos,n_event+1);
 
-	count = 0;
 	mat = accum_count (-INFINITY,
 			   matrix->fwdMatch[idx],
 			   data->matchEmitYes[seqpos] * event->ticks
@@ -704,10 +704,10 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 			   data->extendDeleteYes,
 			   matrix->backDelete[inputIdx],
 			   matrix,
-			   &counts->nExtendDeleteYes,
+			   &count,
 			   NULL, NULL, NULL, NULL);   /* Delete -> Delete (input) */
-
-	count = 0;
+	counts->nExtendDeleteYes += count;
+	
 	mat = accum_count (mat,
 			   matrix->fwdMatch[idx],
 			   data->matchEmitNo[seqpos] + data->beginDeleteYes,
@@ -718,7 +718,6 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 	counts->nMatchEmitNo[state] += count;
 	counts->nBeginDeleteYes += count;
 
-	count = 0;
 	mat = accum_count (mat,
 			   matrix->fwdMatch[idx],
 			   data->matchEmitNo[seqpos] + data->beginDeleteNo + data->skipYes,
@@ -733,7 +732,6 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 	if (n_event < n_events) {
 	  ioIdx = Seq_event_pair_index(seqpos+1,n_event+1);
 
-	  count = 0;
 	  mat = accum_count (mat,
 			     matrix->fwdMatch[ioIdx],
 			     data->matchEmitNo[seqpos] + data->beginDeleteNo + data->skipNo
@@ -758,8 +756,9 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 			 data->extendDeleteNo,
 			 mat,
 			 matrix,
-			 &counts->nExtendDeleteNo,
+			 &count,
 			 NULL, NULL, NULL, NULL);  /* Delete -> Match */
+      counts->nExtendDeleteNo += count;
 
       matrix->backMatch[idx] = mat;
       matrix->backDelete[idx] = del;
@@ -769,15 +768,15 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 						data->startEmitNo,
 						mat,
 						matrix,
-						&counts->nStartEmitNo,
+						&count,
 						NULL, NULL, NULL, NULL);   /* Start -> Match (input) */
+      counts->nStartEmitNo += count;
     }
   }
 
   for (n_event = n_events - 1; n_event >= 0; --n_event) {
     event = &data->events->event[n_event];
 
-    count = 0;
     st = accum_count (matrix->backStart[n_event],
 		      matrix->fwdStart[n_event],
 		      data->startEmitYes * event->ticks
@@ -829,13 +828,13 @@ long double accum_count (long double back_src,
     Abort ("NaN error in accum_count");
   }
 #endif
+  if (count)
+    *count = weight;
   if (event) {
     *moment0 += weight * event->ticks;
     *moment1 += weight * event->sumticks_cur;
     *moment2 += weight * event->sumticks_cur_sq;
   }
-  if (count)
-    *count += weight;
   return log_sum_exp (back_src, trans + back_dest);
 }
 
