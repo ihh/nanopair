@@ -61,7 +61,7 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "count -params nostart.xml -fasta t/tiny.fasta -fast5 t/tiny.fast5"
+            argument = "count -params ch8params.xml -fasta nanopair-data/ch101_file20_strand.fasta -fast5 nanopair-data/LomanLabz_PC_E.coli_MG1655_ONI_3058_1_ch101_file20_strand.fast5"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

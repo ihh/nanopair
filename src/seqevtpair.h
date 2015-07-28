@@ -4,6 +4,7 @@
 #include "fast5events.h"
 #include "kseqcontainer.h"
 #include "xmlparser.h"
+#include "logger.h"
 
 /* #define the following for various levels of debugging info/code
    (if defined at all) adds out-of-bounds guards to DP matrix accessors, logs progress messages
@@ -29,6 +30,7 @@ typedef struct Seq_event_pair_model {
   double pStartEmit;
   double pNullEmit, nullMean, nullPrecision;
   double *kmerProb;
+  Logger *logger;  /* not owned */
 } Seq_event_pair_model;
 
 Seq_event_pair_model* new_seq_event_pair_model (int order);

@@ -117,6 +117,8 @@ Seq_event_pair_model* new_seq_event_pair_model (int order) {
     model->kmerProb[state] = 1. / (double) model->states;
   }
 
+  model->logger = NULL;
+  
   return model;
 }
 
@@ -643,9 +645,8 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
        matrix->fwdMatch[Seq_event_pair_index(seqpos,n_events)] + data->matchEmitNo[seqpos]);  /* Match -> End (input) */
   }
 
-#if defined(SEQEVTPAIR_DEBUG) && SEQEVTPAIR_DEBUG >= 10
-  dump_seq_event_pair_matrix_to_file (SEQEVTMATRIX_FILENAME, "Forward", data, matrix->fwdStart, matrix->fwdMatch, matrix->fwdDelete, matrix->fwdTotal);
-#endif /* SEQEVTPAIR_DEBUG >= 10 */
+  if (LogFunc(model->logger,10))
+    dump_seq_event_pair_matrix_to_file (SEQEVTMATRIX_FILENAME, "Forward", data, matrix->fwdStart, matrix->fwdMatch, matrix->fwdDelete, matrix->fwdTotal);
 
   /* fill backward & accumulate counts */
   for (n_event = n_events; n_event >= 0; --n_event)
