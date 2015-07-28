@@ -564,7 +564,7 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
   int seqlen, n_events, order, seqpos, n_event, state, nextState;
   long double mat, del, st, count;
   unsigned long idx, inputIdx, outputIdx, ioIdx;
-  Fast5_event* event;
+  Fast5_event *event;
 
   data = matrix->data;
   seqlen = data->seqlen;
@@ -713,7 +713,7 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 			   matrix,
 			   &count,
 			   NULL, NULL, NULL, NULL);  /* Match -> Delete (input) */
-	counts->nMatchEmitNo[nextState] += count;
+	counts->nMatchEmitNo[state] += count;
 	counts->nBeginDeleteYes += count;
 
 	count = 0;
@@ -724,7 +724,7 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 			   matrix,
 			   &count,
 			   NULL, NULL, NULL, NULL);  /* Match -> Match (input) */
-	counts->nMatchEmitNo[nextState] += count;
+	counts->nMatchEmitNo[state] += count;
 	counts->nBeginDeleteNo += count;
 	counts->nSkipYes += count;
 
@@ -740,7 +740,10 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 			     matrix->backMatch[inputIdx],
 			     matrix,
 			     &count,
-			     NULL, NULL, NULL, NULL);  /* Match -> Match (input/output) */
+			     event,
+			     &counts->matchMoment0[nextState],
+			     &counts->matchMoment1[nextState],
+			     &counts->matchMoment2[nextState]);  /* Match -> Match (input/output) */
 	  counts->nMatchEmitNo[state] += count;
 	  counts->nBeginDeleteNo += count;
 	  counts->nSkipNo += count;
