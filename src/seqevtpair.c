@@ -645,6 +645,9 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
        matrix->fwdMatch[Seq_event_pair_index(seqpos,n_events)] + data->matchEmitNo[seqpos]);  /* Match -> End (input) */
   }
 
+  if (LogFunc(model->logger,2))
+    fprintf (stderr, "Forward log-likelihood is %Lg\n", matrix->fwdTotal);
+
   if (LogFunc(model->logger,10))
     dump_seq_event_pair_matrix_to_file (SEQEVTMATRIX_FILENAME, "Forward", data, matrix->fwdStart, matrix->fwdMatch, matrix->fwdDelete, matrix->fwdTotal);
 
@@ -788,6 +791,9 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
     matrix->backStart[n_event] = st;
   }
   matrix->backTotal = matrix->backStart[0];
+
+  if (LogFunc(model->logger,2))
+    fprintf (stderr, "Backward log-likelihood is %Lg\n", matrix->backTotal);
 
   if (LogFunc(model->logger,10))
     dump_seq_event_pair_matrix_to_file (SEQEVTMATRIX_FILENAME, "Backward", data, matrix->backStart, matrix->backMatch, matrix->backDelete, matrix->backTotal);
@@ -1036,7 +1042,7 @@ void fit_seq_event_pair_model (Seq_event_pair_model* model, Kseq_container* seqs
     delete_seq_event_pair_counts (counts);
 
 #ifdef SEQEVTPAIR_DEBUG
-    Warn ("Baum-Welch iteration %d: log-likelihood %Lg", iter + 1, loglike);
+    Warn ("Baum-Welch iteration %d: log-likelihood ratio score %Lg", iter + 1, loglike);
 #endif /* SEQEVTPAIR_DEBUG */
 
     if (iter > 0 && prev_loglike != 0. && fabsl(prev_loglike) != INFINITY
