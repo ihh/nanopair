@@ -2,6 +2,7 @@
 #define UTIL_INCLUDED
 
 #include <stdlib.h>
+#include <time.h>
 
 /* uncomment to enable NaN checks */
 #define NAN_DEBUG
@@ -83,5 +84,9 @@ unsigned int hexToUnsignedInt (const char *);
 
 /* function to read file into a string */
 char* readFileAsString (const char *);  /* must be freed by caller */
+
+/* progress logging */
+void init_progress();
+void log_progress (double completedFraction, const char* desc, ...);
 
 #endif /* UTIL_INCLUDED */

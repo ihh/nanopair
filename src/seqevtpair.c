@@ -14,10 +14,6 @@
 #include "logsumexp.h"
 #include "gamma.h"
 
-/* logging stuff */
-#define SEQEVTPAIR_PRECALC_WARN_PERIOD 1000000
-#define SEQEVTPAIR_DP_WARN_PERIOD 500
-
 /* log(sqrt(2*pi)) */
 static const double log_sqrt2pi = 1.83787706640935;
 
@@ -420,10 +416,11 @@ void precalc_seq_event_pair_data (Seq_event_pair_data* data) {
     data->matchEmitNo[seqpos] = -INFINITY;
   }
 
+  init_progress();
   for (seqpos = order; seqpos <= seqlen; ++seqpos) {
 
-    if (LogThisAt(1) && seqpos % SEQEVTPAIR_PRECALC_WARN_PERIOD == 0)
-      Warn ("Precalculating likelihoods at sequence position %d", seqpos);
+    if (LogThisAt(1))
+      log_progress ((seqpos - order) / (double) (seqlen - order), "precomputing residue %d", seqpos);
 
     state = data->state[seqpos];
 
@@ -683,10 +680,11 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 
   matrix->fwdTotal = matrix->backTotal = -INFINITY;
 
+  init_progress();
   for (seqpos = order; seqpos <= seqlen; ++seqpos) {
 
-    if (LogThisAt(2) && seqpos % SEQEVTPAIR_DP_WARN_PERIOD == 0)
-      Warn ("Filling forward matrix, residue %d", seqpos + 1);
+    if (LogThisAt(2))
+      log_progress ((seqpos - order) / (double) (seqlen - order), "Forward matrix residue %d", seqpos+1);
 
     for (n_event = 0; n_event <= n_events; ++n_event) {
 
@@ -750,11 +748,12 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
   for (n_event = n_events; n_event >= 0; --n_event)
     matrix->backStart[n_event] = -INFINITY;
 
+  init_progress();
   for (seqpos = seqlen; seqpos >= order; --seqpos) {
     state = data->state[seqpos];
-    
-    if (LogThisAt(2) && seqpos % SEQEVTPAIR_DP_WARN_PERIOD == 0)
-      Warn ("Filling backward matrix, residue %d", seqpos + 1);
+
+    if (LogThisAt(2))
+      log_progress ((seqlen - seqpos) / (double) (seqlen - order), "Backward matrix residue %d", seqpos);
 
     for (n_event = n_events; n_event >= 0; --n_event) {
       event = n_event < n_events ? &data->events->event[n_event] : NULL;

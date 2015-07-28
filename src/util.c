@@ -187,3 +187,40 @@ char* readFileAsString (const char *filename) {
 
   return buffer;
 }
+
+clock_t progress_startTime;
+double progress_lastElapsedSeconds, progress_reportInterval;
+void init_progress() {
+  progress_startTime = clock();
+  progress_lastElapsedSeconds = 0;
+  progress_reportInterval = 2;
+}
+
+void log_progress (double completedFraction, const char* desc, ...) {
+  va_list argptr;
+  const clock_t currentTime = clock();
+  const double elapsedSeconds = ((double) (currentTime - progress_startTime)) / CLOCKS_PER_SEC;
+  const double estimatedTotalSeconds = elapsedSeconds / completedFraction;
+  if (elapsedSeconds > progress_lastElapsedSeconds + progress_reportInterval) {
+    const double estimatedSecondsLeft = estimatedTotalSeconds - elapsedSeconds;
+    const double estimatedMinutesLeft = estimatedSecondsLeft / 60;
+    const double estimatedHoursLeft = estimatedMinutesLeft / 60;
+    const double estimatedDaysLeft = estimatedHoursLeft / 24;
+    fprintf (stderr, "Estimated time remaining (");
+    va_start (argptr, desc);
+    vfprintf (stderr, desc, argptr);
+    va_end (argptr);
+    fprintf (stderr, "): ");
+    if (estimatedDaysLeft > 2)
+      fprintf (stderr, "%g days", estimatedDaysLeft);
+    else if (estimatedHoursLeft > 2)
+      fprintf (stderr, "%g hours", estimatedHoursLeft);
+    else if (estimatedMinutesLeft > 2)
+      fprintf (stderr, "%g minutes", estimatedMinutesLeft);
+    else
+      fprintf (stderr, "%g seconds", estimatedSecondsLeft);
+    fprintf (stderr, " (completed %g%%)\n", 100*completedFraction);
+    progress_lastElapsedSeconds = elapsedSeconds;
+    progress_reportInterval = MIN (10, 2*progress_reportInterval);
+  }
+}
