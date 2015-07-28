@@ -23,6 +23,7 @@
 		2862E7481B67164100B04F52 /* libhdf5_hl.10.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 2862E7461B67164100B04F52 /* libhdf5_hl.10.dylib */; };
 		2862E7491B67164100B04F52 /* libhdf5.10.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 2862E7471B67164100B04F52 /* libhdf5.10.dylib */; };
 		2862E74C1B6727DD00B04F52 /* logger.c in Sources */ = {isa = PBXBuildFile; fileRef = 2862E74A1B6727DD00B04F52 /* logger.c */; };
+		28DFA0B71B6837060096461C /* gamma.c in Sources */ = {isa = PBXBuildFile; fileRef = 28DFA0B51B6837060096461C /* gamma.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -69,6 +70,8 @@
 		2862E74A1B6727DD00B04F52 /* logger.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = logger.c; path = /Users/yam/latex/nanopair/xcode/nanopair/../../src/logger.c; sourceTree = "<absolute>"; };
 		2862E74B1B6727DD00B04F52 /* logger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = logger.h; path = ../../src/logger.h; sourceTree = SOURCE_ROOT; };
 		287EA0781A804DE70077CE92 /* nanopair */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = nanopair; sourceTree = BUILT_PRODUCTS_DIR; };
+		28DFA0B51B6837060096461C /* gamma.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = gamma.c; path = ../../src/gamma.c; sourceTree = "<group>"; };
+		28DFA0B61B6837060096461C /* gamma.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = gamma.h; path = ../../src/gamma.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -88,6 +91,8 @@
 		285D8F201A858D2F00192131 /* src */ = {
 			isa = PBXGroup;
 			children = (
+				28DFA0B51B6837060096461C /* gamma.c */,
+				28DFA0B61B6837060096461C /* gamma.h */,
 				2862E74A1B6727DD00B04F52 /* logger.c */,
 				2862E74B1B6727DD00B04F52 /* logger.h */,
 				2844A5BA1B60FBB0004D5436 /* logsumexp.c */,
@@ -220,6 +225,7 @@
 				285D8F371A858D2F00192131 /* kseqcontainer.c in Sources */,
 				285D8F3A1A858D2F00192131 /* seqevtpair.c in Sources */,
 				285D8F3B1A858D2F00192131 /* stringmap.c in Sources */,
+				28DFA0B71B6837060096461C /* gamma.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
