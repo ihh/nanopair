@@ -104,7 +104,8 @@ Kseq_container* init_seqs (char* filename) {
   Kseq_container* seqs = init_kseq_container (filename);
   if (seqs == NULL)
     (void) help_failure ("Couldn't open FASTA file %s", filename);
-  validate_kseq_container (seqs, dna_alphabet, stderr);
+  else
+    validate_kseq_container (seqs, dna_alphabet, stderr);
   return seqs;
 }
 
