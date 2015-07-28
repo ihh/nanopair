@@ -750,10 +750,11 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 
   init_progress();
   for (seqpos = seqlen; seqpos >= order; --seqpos) {
-    state = data->state[seqpos];
 
     if (LogThisAt(2))
       log_progress ((seqlen - seqpos) / (double) (seqlen - order), "Backward matrix residue %d", seqpos);
+
+    state = data->state[seqpos];
 
     for (n_event = n_events; n_event >= 0; --n_event) {
       event = n_event < n_events ? &data->events->event[n_event] : NULL;
@@ -1462,10 +1463,14 @@ void fill_seq_event_pair_viterbi_matrix (Seq_event_pair_viterbi_matrix* matrix) 
 
   matrix->vitTotal = -INFINITY;
 
+  init_progress();
   for (seqpos = order; seqpos <= seqlen; ++seqpos) {
     for (n_event = 0; n_event <= n_events; ++n_event) {
-      idx = Seq_event_pair_index(seqpos,n_event);
 
+      if (LogThisAt(2))
+	log_progress ((seqpos - order) / (double) (seqlen - order), "Viterbi matrix residue %d", seqpos+1);
+
+      idx = Seq_event_pair_index(seqpos,n_event);
       mat = matrix->vitStart[n_event] + data->startEmitNo;   /* Start -> Match (input) */
 
       if (n_event > 0) {
@@ -1591,7 +1596,7 @@ Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event
 		      + data->matchEmitNo[seqpos-1] + data->beginDeleteNo + data->skipNo
 		      + data->matchEmitYes[seqpos] * (event->ticks - 1)
 		      + data->matchEmitDensity[idx],
-		      MatchMatchInOut);    /* Match -> Match (output) */
+		      MatchMatchInOut);    /* Match -> Match (input/output) */
       }
       break;
 
@@ -1636,7 +1641,9 @@ Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event
     case MatchMatchInOut:
       Assert (state == Match, "oops");
       --seqpos;
-      VectorPushBack (events_emitted, IntNew(1));
+      --n_event;
+      ++*((int*) VectorBack (events_emitted));
+      VectorPushBack (events_emitted, IntNew(0));
       break;
 
     case MatchDeleteIn:

@@ -70,8 +70,8 @@
 		2862E74A1B6727DD00B04F52 /* logger.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = logger.c; path = /Users/yam/latex/nanopair/xcode/nanopair/../../src/logger.c; sourceTree = "<absolute>"; };
 		2862E74B1B6727DD00B04F52 /* logger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = logger.h; path = ../../src/logger.h; sourceTree = SOURCE_ROOT; };
 		287EA0781A804DE70077CE92 /* nanopair */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = nanopair; sourceTree = BUILT_PRODUCTS_DIR; };
-		28DFA0B51B6837060096461C /* gamma.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = gamma.c; path = ../../src/gamma.c; sourceTree = "<group>"; };
-		28DFA0B61B6837060096461C /* gamma.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = gamma.h; path = ../../src/gamma.h; sourceTree = "<group>"; };
+		28DFA0B51B6837060096461C /* gamma.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = gamma.c; path = /Users/yam/latex/nanopair/src/gamma.c; sourceTree = "<absolute>"; };
+		28DFA0B61B6837060096461C /* gamma.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = gamma.h; path = /Users/yam/latex/nanopair/src/gamma.h; sourceTree = "<absolute>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
