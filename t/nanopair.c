@@ -32,21 +32,21 @@ const char* help_message =
   "  (to align FAST5 reads to reference sequences via the Viterbi algorithm)\n"
   "\n"
   "For 'align', 'train' & 'count' commands, to bypass the appropriate seed step,\n"
-  "use '-eventseed', '-flatseed' or '-modelseed' in place of '-params <params.xml>'.\n"
+  "use '-eventseed', '-priorseed' or '-modelseed' in place of '-params <params.xml>'.\n"
   "\n"
   "Other options:\n"
   " -verbose, -vv, -vvv, -v4, etc.\n"
   " -log <function_name>\n"
   "                 various levels of logging\n"
   " -bothstrands    count both forward & reverse strands (default is forward only)\n"
-  " -mininc         minimum fractional increment in log-likelihood for EM to continue\n"
+  " -mininc         minimum fractional log-likelihood increment for EM to proceed\n"
   " -maxiter        maximum number of iterations of EM\n"
   " -pseudo {[no_]skip,delete,extend,emit} <count>\n"
   "                 override various pseudocounts from the command-line\n";
 
 #define MODEL_ORDER 5
 
-typedef enum SeedFlag { EventSeed, ModelSeed, FlatSeed, ParamFile } SeedFlag;
+typedef enum SeedFlag { EventSeed, ModelSeed, PriorSeed, ParamFile } SeedFlag;
 
 typedef struct Nanopair_args_str {
   Seq_event_pair_model *params;
@@ -117,8 +117,8 @@ void get_params (SeedFlag seedFlag, StringVector* fast5_filenames, Vector* event
     *modelPtr = eventseed_params (event_arrays);
   else if (seedFlag == ModelSeed)
     *modelPtr = seed_params (StringVectorGet (fast5_filenames, 0));
-  else if (seedFlag == FlatSeed)
-    *modelPtr = new_seq_event_pair_model (order);
+  else if (seedFlag == PriorSeed)
+    *modelPtr = new_seq_event_pair_model_from_prior (order, prior);
   else
     Assert (*modelPtr != NULL, "No model parameters specified");
 
@@ -192,8 +192,8 @@ int parse_params (int* argcPtr, char*** argvPtr, SeedFlag* seedFlag, Seq_event_p
       ++*argvPtr;
       --*argcPtr;
       return 1;
-    } else if (strcmp (**argvPtr, "-flatseed") == 0) {
-      *seedFlag = FlatSeed;
+    } else if (strcmp (**argvPtr, "-priorseed") == 0) {
+      *seedFlag = PriorSeed;
       ++*argvPtr;
       --*argcPtr;
       return 1;
@@ -320,7 +320,7 @@ int main (int argc, char** argv) {
   npargs.fast5outFilename = NULL;
   npargs.both_strands = 0;
   npargs.model_order = 5;
-  npargs.prior = newStringDoubleMap();
+  npargs.prior = new_seq_event_pair_model_default_prior();
 
   npargs.logger = newLogger();
   init_seq_event_pair_config (&npargs.config);

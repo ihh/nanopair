@@ -42,7 +42,10 @@ typedef struct Seq_event_pair_model {
   Seq_event_pair_config config;
 } Seq_event_pair_model;
 
+StringDoubleMap* new_seq_event_pair_model_default_prior();
+
 Seq_event_pair_model* new_seq_event_pair_model (int order);
+Seq_event_pair_model* new_seq_event_pair_model_from_prior (int order, StringDoubleMap *prior);
 void delete_seq_event_pair_model (Seq_event_pair_model* model);
 
 Seq_event_pair_model* new_seq_event_pair_model_from_xml_string (const char* xml);

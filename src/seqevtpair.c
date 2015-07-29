@@ -123,7 +123,21 @@ herr_t populate_seq_event_model_emit_params (void *elem, hid_t type_id, unsigned
 }
 
 /* main function bodies */
+StringDoubleMap* new_seq_event_pair_model_default_prior() {
+  StringDoubleMap *prior = newStringDoubleMap();
+  StringDoubleMapSet (prior, "no_skip", 999);
+  StringDoubleMapSet (prior, "no_delete", 99);
+  return prior;
+}
+
 Seq_event_pair_model* new_seq_event_pair_model (int order) {
+  StringDoubleMap* prior = new_seq_event_pair_model_default_prior();
+  Seq_event_pair_model* model = new_seq_event_pair_model_from_prior (order, prior);
+  deleteStringDoubleMap (prior);
+  return model;
+}
+
+Seq_event_pair_model* new_seq_event_pair_model_from_prior (int order, StringDoubleMap *prior) {
   Seq_event_pair_model *model;
   model = SafeMalloc (sizeof (Seq_event_pair_model));
   model->order = order;
@@ -133,10 +147,8 @@ Seq_event_pair_model* new_seq_event_pair_model (int order) {
   model->matchPrecision = SafeMalloc (model->states * sizeof(double));
   model->kmerProb = SafeMalloc (model->states * sizeof(double));
 
-  model->prior = newStringDoubleMap();
-  StringDoubleMapSet (model->prior, "no_skip", 999);
-  StringDoubleMapSet (model->prior, "no_delete", 99);
-
+  model->prior = RBTreeDeepCopy (prior);
+  
   model->pBeginDelete = get_seq_event_prior_mode(model,"delete");
   model->pExtendDelete = get_seq_event_prior_mode(model,"extend");
   model->pStartEmit = get_seq_event_prior_mode(model,"emit");
