@@ -86,7 +86,7 @@ unsigned int hexToUnsignedInt (const char *);
 char* readFileAsString (const char *);  /* must be freed by caller */
 
 /* progress logging */
-void init_progress();
+void init_progress (const char* desc, ...);
 void log_progress (double completedFraction, const char* desc, ...);
 
 #endif /* UTIL_INCLUDED */

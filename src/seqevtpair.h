@@ -27,12 +27,12 @@ int parse_seq_event_pair_config (int* argcPtr, char*** argvPtr, Seq_event_pair_c
 
 typedef struct Seq_event_pair_model {
   /* transducer */
-  double *pMatchEmit;
+  double *pMatchEvent, *pMatchTick;
   double pSkip, pBeginDelete, pExtendDelete;
   int order, states;
   double *matchMean, *matchPrecision;
-  double pStartEmit;
-  double pNullEmit, nullMean, nullPrecision;
+  double pStartEvent;
+  double pNullEvent, pNullTick, nullMean, nullPrecision;
   /* generator */
   double *kmerProb;
   /* prior */
@@ -70,9 +70,9 @@ typedef struct Seq_event_pair_data {
   Fast5_event_array* events;  /* not owned */
   int *state;  /* owned */
   /* precalculated emit & transition scores */
-  long double *nullEmitDensity, *matchEmitDensity, *matchEmitYes, *matchEmitNo;
-  long double nullEmitYes, nullEmitNo;
-  long double startEmitYes, startEmitNo;
+  long double *nullEventProb, *matchEventProb, *matchEventYes, *matchEventNo;
+  long double nullEventYes, nullEventNo;
+  long double startEventYes, startEventNo;
   long double skipYes, skipNo;
   long double beginDeleteYes, beginDeleteNo;
   long double extendDeleteYes, extendDeleteNo;
@@ -112,7 +112,7 @@ void delete_seq_event_pair_fb_matrix (Seq_event_pair_fb_matrix* matrix);
 /* DP helper functions */
 
 double log_gaussian_density (double x, double mean, double precision, double log_precision);
-double log_event_density (Fast5_event* event, double mean, double precision, double log_precision);
+double log_event_density (Fast5_event* event, double mean, double precision, double log_precision, double log_pTick, double log_pNoTick);
 
 void dump_seq_event_pair_matrix (FILE* file, const char* algorithm, Seq_event_pair_data *data, long double *mxStart, long double *mxMatch, long double *mxDelete, long double mxTotal);
 void dump_seq_event_pair_matrix_to_file (const char* filename, const char* algorithm, Seq_event_pair_data *data, long double *mxStart, long double *mxMatch, long double *mxDelete, long double mxTotal);
@@ -120,9 +120,9 @@ void dump_seq_event_pair_matrix_to_file (const char* filename, const char* algor
 /* Expected counts */
 
 typedef struct Seq_event_pair_counts {
-  long double nStartEmitYes, nStartEmitNo;
-  long double nNullEmitYes, nNullEmitNo;
-  long double *nMatchEmitYes, *nMatchEmitNo;
+  long double nStartEventYes, nStartEventNo;
+  long double nNullEventYes, nNullEventNo;
+  long double *nMatchEventYes, *nMatchEventNo;
   long double nSkipYes, nSkipNo;
   long double nBeginDeleteYes, nBeginDeleteNo;
   long double nExtendDeleteYes, nExtendDeleteNo;

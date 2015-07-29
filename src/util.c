@@ -190,10 +190,25 @@ char* readFileAsString (const char *filename) {
 
 clock_t progress_startTime;
 double progress_lastElapsedSeconds, progress_reportInterval;
-void init_progress() {
+char* progress_desc = NULL;
+void init_progress (const char* desc, ...) {
   progress_startTime = clock();
   progress_lastElapsedSeconds = 0;
   progress_reportInterval = 2;
+
+  time_t rawtime;
+  struct tm * timeinfo;
+
+  time (&rawtime);
+  timeinfo = localtime (&rawtime);
+  
+  SafeFreeOrNull (progress_desc);
+
+  va_list argptr;
+  va_start (argptr, desc);
+  vasprintf (&progress_desc, desc, argptr);
+  va_end (argptr);
+  fprintf (stderr, "%s: started at %s", progress_desc, asctime(timeinfo));
 }
 
 void log_progress (double completedFraction, const char* desc, ...) {
@@ -206,20 +221,20 @@ void log_progress (double completedFraction, const char* desc, ...) {
     const double estimatedMinutesLeft = estimatedSecondsLeft / 60;
     const double estimatedHoursLeft = estimatedMinutesLeft / 60;
     const double estimatedDaysLeft = estimatedHoursLeft / 24;
-    fprintf (stderr, "Estimated time remaining (");
+    fprintf (stderr, "%s: ", progress_desc);
     va_start (argptr, desc);
     vfprintf (stderr, desc, argptr);
     va_end (argptr);
-    fprintf (stderr, "): ");
+    fprintf (stderr, ". Estimated time left: ");
     if (estimatedDaysLeft > 2)
       fprintf (stderr, "%g days", estimatedDaysLeft);
     else if (estimatedHoursLeft > 2)
-      fprintf (stderr, "%g hours", estimatedHoursLeft);
+      fprintf (stderr, "%g hrs", estimatedHoursLeft);
     else if (estimatedMinutesLeft > 2)
-      fprintf (stderr, "%g minutes", estimatedMinutesLeft);
+      fprintf (stderr, "%g mins", estimatedMinutesLeft);
     else
-      fprintf (stderr, "%g seconds", estimatedSecondsLeft);
-    fprintf (stderr, " (completed %g%%)\n", 100*completedFraction);
+      fprintf (stderr, "%g secs", estimatedSecondsLeft);
+    fprintf (stderr, " (%g%%)\n", 100*completedFraction);
     progress_lastElapsedSeconds = elapsedSeconds;
     progress_reportInterval = MIN (10, 2*progress_reportInterval);
   }
