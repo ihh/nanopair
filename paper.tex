@@ -195,15 +195,20 @@ Model \& inference algorithms.
 \subsection{Null model}
 
 \begin{itemize}
-\item Output alphabet: $\Re$ (real numbers signifying current levels)
-\item $K$ events. Sequence is $y_1 \ldots y_K$
+\item Output alphabet: $\Re$ (real numbers signifying current readings)
+\item $K$ current samples ({\em ticks}). Sequence is $y_1 \ldots y_K$
+ \begin{itemize}
+ \item partitioned into a sequence of $L$ {\em events}: $E_1 \ldots E_L$
+ \end{itemize}
 \item Parameters: $p^{\paramlabel{NullEvent}},p^{\paramlabel{NullTick}},\mu^{\paramlabel{Null}},\tau^{\paramlabel{Null}}$
 \item Gaussian emissions: $y_n \sim \mbox{Normal}(\mu^{\paramlabel{Null}},\tau^{\paramlabel{Null}})$
 \item Probability is
-\[
-P(y_1 \ldots y_K) dy_1 \ldots dy_K = \left( 1 - p^{\paramlabel{NullEvent}} \right)
- \prod_{n=1}^K p^{\paramlabel{NullEvent}} P(y_n|\mu^{\paramlabel{Null}},\tau^{\paramlabel{Null}}) dy_n
-\]
+\begin{eqnarray*}
+  \lefteqn{P(E_1 \ldots E_L, y_1 \ldots y_K) dy_1 \ldots dy_K} \\
+& = & \left( 1 - p^{\paramlabel{NullEvent}} \right)
+\prod_{\mbox{events:} E_l} p^{\paramlabel{NullEvent}} \left( 1 - p^{\paramlabel{NullTick}} \right)
+\prod_{\mbox{ticks:} y_k \in E_l} p^{\paramlabel{NullTick}} P(y_k|\mu^{\paramlabel{Null}},\tau^{\paramlabel{Null}}) dy_k
+\end{eqnarray*}
 \end{itemize}
 
 
@@ -214,12 +219,15 @@ P(y_1 \ldots y_K) dy_1 \ldots dy_K = \left( 1 - p^{\paramlabel{NullEvent}} \righ
 \begin{itemize}
 \item Order-$N$ Mealy transducer.
 \item Input alphabet: $\Omega = \{ A, C, G, T \}$ (nucleotides)
-\item Output alphabet: $\Re$ (real numbers signifying current levels)
+\item Output alphabet: real numbers partitioned into events, as with null model
 \item States: Start, End, $\{$ Match${}_{x_1 \ldots x_N}$, Delete${}_{x_1 \ldots x_N}: x_1 \ldots x_N \in \Omega^N \}$
 \item Parameters:
 $p^{\paramlabel{StartEvent}}, p^{\paramlabel{Skip}}, p^{\paramlabel{BeginDelete}}, p^{\paramlabel{ExtendDelete}},$ \\
 $\{ p^{\paramlabel{MatchEvent}}_{x_1\ldots x_N}, p^{\paramlabel{MatchTick}}_{x_1\ldots x_N}, \mu^{\paramlabel{Match}}_{x_1\ldots x_N},\tau^{\paramlabel{Match}}_{x_1\ldots x_N} : x_1 \ldots x_N \in \Omega^N \}$
 \end{itemize}
+
+Transducer can {\em skip} an individual base (on average one less event emission for that base),
+or can {\em delete} a run of bases (zero probability of event emissions during the run).
 
 \noindent Transitions:
 \\
