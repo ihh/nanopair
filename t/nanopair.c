@@ -38,7 +38,7 @@ const char* help_message =
   " -verbose, -vv, -vvv, -v4, etc.\n"
   " -log <function_name>\n"
   "                 various levels of logging\n"
-  " -bothstrands    count both forward & reverse strands (default is forward only)\n"
+  " -bothstrands    do forward & reverse complement FASTA (default is forward only)\n"
   " -mininc         minimum fractional log-likelihood increment for EM to proceed\n"
   " -maxiter        maximum number of iterations of EM\n"
   " -pseudo {[no_]skip,delete,extend,emit} <count>\n"
@@ -198,12 +198,12 @@ int parse_params (int* argcPtr, char*** argvPtr, SeedFlag* seedFlag, Seq_event_p
       --*argcPtr;
       return 1;
     } else if (strcmp (**argvPtr, "-order") == 0) {
-      Assert (*argcPtr > 1, "-order must have an argument");
+      Assert (*argcPtr > 1, "%s must have an argument", **argvPtr);
       *orderPtr = atoi ((*argvPtr)[1]);
       *argvPtr += 2;
       *argcPtr -= 2;
     } else if (strcmp (**argvPtr, "-params") == 0) {
-      Assert (*argcPtr > 1, "-params must have an argument");
+      Assert (*argcPtr > 1, "%s must have an argument", **argvPtr);
       *modelPtr = init_params ((*argvPtr)[1]);
       *argvPtr += 2;
       *argcPtr -= 2;
@@ -234,7 +234,7 @@ int parse_normalize (int* argcPtr, char*** argvPtr, const char** inFilenamePtr, 
 int parse_fast5_filename (int* argcPtr, char*** argvPtr, const char** filenamePtr) {
   if (*argcPtr > 0) {
     if (strcmp (**argvPtr, "-fast5") == 0) {
-      Assert (*argcPtr > 1, "-fast5 must have an argument");
+      Assert (*argcPtr > 1, "%s must have an argument", **argvPtr);
       Assert (*filenamePtr==0, "Can't specify multiple fast5 files with this command");
       *filenamePtr = (*argvPtr)[1];
       *argvPtr += 2;
@@ -248,7 +248,7 @@ int parse_fast5_filename (int* argcPtr, char*** argvPtr, const char** filenamePt
 int parse_fast5 (int* argcPtr, char*** argvPtr, StringVector* filenames) {
   if (*argcPtr > 0) {
     if (strcmp (**argvPtr, "-fast5") == 0) {
-      Assert (*argcPtr > 1, "-fast5 must have an argument");
+      Assert (*argcPtr > 1, "%s must have an argument", **argvPtr);
       VectorPushBack (filenames, StringNew ((*argvPtr)[1]));
       *argvPtr += 2;
       *argcPtr -= 2;
@@ -261,7 +261,7 @@ int parse_fast5 (int* argcPtr, char*** argvPtr, StringVector* filenames) {
 int parse_seq (int* argcPtr, char*** argvPtr, Kseq_container **seqsPtr) {
   if (*argcPtr > 0) {
     if (strcmp (**argvPtr, "-fasta") == 0) {
-      Assert (*argcPtr > 1, "-fasta must have an argument");
+      Assert (*argcPtr > 1, "%s must have an argument", **argvPtr);
       Assert (*seqsPtr == NULL, "Can't specify multiple fasta files");
       *seqsPtr = init_seqs ((*argvPtr)[1]);
       Assert (*seqsPtr != NULL, "Couldn't read fasta file %s", (*argvPtr)[1]);
@@ -329,9 +329,6 @@ int main (int argc, char** argv) {
 
   if (argc < 2)
     return help_failure ("Please specify a command.");
-
-  if (argc < 3)
-    return help_failure ("All commands need arguments.");
 
   const char* command = argv[1];
   argv += 2;
