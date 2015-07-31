@@ -2,13 +2,14 @@
 #include <stdarg.h>
 
 #include "../src/seqevtpair.h"
+#include "../src/basecaller.h"
 #include "../src/logsumexp.h"
 #include "../src/logger.h"
 
 const char* help_message = 
   "Usage: nanopair {seed,eventseed,normalize,count,train,align,squiggle} <args>\n"
   "\n"
-  " nanopair seed -fast5 <read.fast5>  >params.xml\n"
+  " nanopair modelseed -fast5 <read.fast5>  >params.xml\n"
   "  (to parameterize a model from the HMM in a FAST5 file)\n"
   "\n"
   " nanopair eventseed -fast5 <read.fast5> [-fast5 <read2.fast5> ...]  >params.xml\n"
@@ -31,10 +32,11 @@ const char* help_message =
   " nanopair align -params <params.xml> -fasta <refs.fasta> -fast5 <read.fast5> [more fast5...]  >hits.gff\n"
   "  (to align FAST5 reads to reference sequences via the Viterbi algorithm)\n"
   "\n"
-  "For 'align', 'train' & 'count' commands, to bypass the appropriate seed step,\n"
-  "use '-eventseed', '-priorseed' or '-modelseed' in place of '-params <params.xml>'.\n"
+  " nanopair basecall -params <params.xml> -fast5 <read.fast5> [more fast5...]  >seqs.fasta\n"
+  "  (to base-call FAST5 reads via the Viterbi algorithm)\n"
   "\n"
-  "Other options:\n"
+  "\n"
+  "Options:\n"
   " -verbose, -vv, -vvv, -v4, etc.\n"
   " -log <function_name>\n"
   "                 various levels of logging\n"
@@ -42,7 +44,10 @@ const char* help_message =
   " -mininc         minimum fractional log-likelihood increment for EM to proceed\n"
   " -maxiter        maximum number of iterations of EM\n"
   " -pseudo {[no_]skip,delete,extend,emit} <count>\n"
-  "                 override various pseudocounts from the command-line\n";
+  "                 override various pseudocounts from the command-line\n"
+  "\n"
+  "For 'align', 'train' & 'count' commands, in place of '-params <params.xml>',\n"
+  "can use '-eventseed', '-priorseed' or '-modelseed'.\n";
 
 #define MODEL_ORDER 5
 
@@ -334,8 +339,8 @@ int main (int argc, char** argv) {
   argv += 2;
   argc -= 2;
 
-  if (strcmp (command, "seed") == 0) {
-    /* SEED: initialize emit parameters from model in a FAST5 read file */
+  if (strcmp (command, "modelseed") == 0) {
+    /* MODELSEED: initialize emit parameters from model in a FAST5 read file */
     while (parse_fast5_filename (&argc, &argv, &npargs.fast5inFilename)
 	   || parseLogArgs (&argc, &argv, npargs.logger)
 	   || parse_seq_event_pair_config (&argc, &argv, &npargs.config)
@@ -441,6 +446,24 @@ int main (int argc, char** argv) {
     for (i = 0; i < npargs.seqs->n; ++i)
       for (j = 0; j < (int) VectorSize(npargs.event_arrays); ++j)
 	print_seq_evt_pair_alignments_as_stockholm (npargs.params, npargs.seqs->len[i], npargs.seqs->seq[i], npargs.seqs->name[i], npargs.both_strands, (Fast5_event_array*) VectorGet(npargs.event_arrays,j), stdout, 0.);
+
+  } else if (strcmp (command, "basecall") == 0) {
+    /* BASECALL: Viterbi algorithm on basecaller HMM */
+    while (parse_params (&argc, &argv, &npargs.seedFlag, &npargs.params, &npargs.model_order, npargs.prior)
+	   || parse_fast5 (&argc, &argv, npargs.fast5_filenames)
+	   || parseLogArgs (&argc, &argv, npargs.logger)
+	   || parse_unknown (argc, argv))
+      { }
+
+    init_event_arrays (npargs.fast5_filenames, npargs.event_arrays);
+    get_params (npargs.seedFlag, npargs.fast5_filenames, npargs.event_arrays, &npargs.params, npargs.model_order, npargs.logger, &npargs.config, npargs.prior);
+
+    /* loop through FAST5 files */
+    for (j = 0; j < (int) VectorSize(npargs.event_arrays); ++j) {
+      char* seq = basecall_fast5_event_array (npargs.params, (Fast5_event_array*) VectorGet(npargs.event_arrays,j));
+      printf (">%s\n%s\n", (char*) VectorGet(npargs.fast5_filenames,j), seq);
+      SafeFree (seq);
+    }
 
   } else if (strcmp (command, "squiggle") == 0) {
     /* SQUIGGLE: draw squiggle plot as SVG wrapped in HTML */

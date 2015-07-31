@@ -321,3 +321,12 @@ char* get_basecall_viterbi_matrix_traceback (Basecall_viterbi_matrix* matrix) {
   
   return seq;
 }
+
+char* basecall_fast5_event_array (Seq_event_pair_model* model, Fast5_event_array* events) {
+  Basecall_viterbi_matrix* matrix = new_basecall_viterbi_matrix (model, events);
+  fill_basecall_viterbi_matrix (matrix);
+  char *seq = get_basecall_viterbi_matrix_traceback (matrix);
+  delete_basecall_viterbi_matrix (matrix);
+  return seq;
+}
+

@@ -31,4 +31,7 @@ void delete_basecall_viterbi_matrix (Basecall_viterbi_matrix* matrix);
 void fill_basecall_viterbi_matrix (Basecall_viterbi_matrix* matrix);
 char* get_basecall_viterbi_matrix_traceback (Basecall_viterbi_matrix* matrix);
 
+/* wrapper */
+char* basecall_fast5_event_array (Seq_event_pair_model* model, Fast5_event_array* events);
+
 #endif /* BASECALLER_INCLUDED */
