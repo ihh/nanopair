@@ -25,11 +25,11 @@ Basecall_viterbi_matrix* new_basecall_viterbi_matrix (Seq_event_pair_model* mode
 
   matrix->logKmerProb = SafeMalloc (states * sizeof(double));
   matrix->logKmerConditionalProb = SafeMalloc (states * sizeof(double));
-  for (int prefix = 0; prefix < states; prefix += 4) {
+  for (int prefix = 0; prefix < states; prefix += AlphabetSize) {
     double norm = 0;
-    for (int state = prefix; state < prefix + 4; ++state)
+    for (int state = prefix; state < prefix + AlphabetSize; ++state)
       norm += model->kmerProb[state];
-    for (int state = prefix; state < prefix + 4; ++state) {
+    for (int state = prefix; state < prefix + AlphabetSize; ++state) {
       matrix->logKmerProb[state] = log (model->kmerProb[state]);
       matrix->logKmerConditionalProb[state] = log (model->kmerProb[state] / norm);
     }
@@ -97,7 +97,7 @@ void fill_basecall_viterbi_matrix (Basecall_viterbi_matrix* matrix) {
   for (int state = 0; state < states; ++state)
     matrix->vitMatch[Basecall_index(state,0)] = -INFINITY;
   
-  int firstBaseMultiplier = pow (4, model->order - 1);
+  int firstBaseMultiplier = pow (AlphabetSize, model->order - 1);
   long double longDel = matrix->longDelete;
   for (int n_event = 1; n_event <= n_events; ++n_event) {
     long double st = -INFINITY;
@@ -106,10 +106,10 @@ void fill_basecall_viterbi_matrix (Basecall_viterbi_matrix* matrix) {
 				+ matrix->logKmerProb[state],   /* Start -> Emit (x^N y) */
 				matrix->vitMatch[Basecall_index(state,n_event-1)]
 				+ matrix->matchEventYes[state]);  /* Emit -> Emit (y) */
-      int prefix = state / 4;
+      int prefix = state / AlphabetSize;
       long double logCondProb = matrix->logKmerConditionalProb[state];
       long double noDel = matrix->noDelete[state];
-      for (int prevBase = 0; prevBase < 4; ++prevBase) {
+      for (int prevBase = 0; prevBase < AlphabetSize; ++prevBase) {
 	int prevState = prefix + prevBase * firstBaseMultiplier;
 	m = max_func (m,
 		      matrix->vitMatch[Basecall_index(prevState,n_event-1)]
@@ -118,8 +118,8 @@ void fill_basecall_viterbi_matrix (Basecall_viterbi_matrix* matrix) {
 		      + logCondProb);   /* Emit -> Emit (xy) */
 	long double logPrevCondProb = matrix->logKmerConditionalProb[prevState];
 	long double shortDel = matrix->shortDelete[prevState];
-	int prePrefix = prevState / 4;
-	for (int prevPrevBase = 0; prevPrevBase < 4; ++prevPrevBase) {
+	int prePrefix = prevState / AlphabetSize;
+	for (int prevPrevBase = 0; prevPrevBase < AlphabetSize; ++prevPrevBase) {
 	  int prevPrevState = prePrefix + prevPrevBase * firstBaseMultiplier;
 	  m = max_func (m,
 			matrix->vitMatch[Basecall_index(prevPrevState,n_event-1)]

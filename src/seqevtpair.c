@@ -141,7 +141,7 @@ Seq_event_pair_model* new_seq_event_pair_model_from_prior (int order, StringDoub
   Seq_event_pair_model *model;
   model = SafeMalloc (sizeof (Seq_event_pair_model));
   model->order = order;
-  model->states = pow(4,order);
+  model->states = pow(AlphabetSize,order);
   model->pMatchEvent = SafeMalloc (model->states * sizeof(double));
   model->pMatchTick = SafeMalloc (model->states * sizeof(double));
   model->pMatchSkip = SafeMalloc (model->states * sizeof(double));
@@ -212,19 +212,19 @@ int base2token (char base) {
 }
 
 char token2base (int tok) {
-  return tok < 0 || tok >= 4 ? 'N' : dna_alphabet[tok];
+  return tok < 0 || tok >= AlphabetSize ? 'N' : dna_alphabet[tok];
 }
 
 void encode_state_identifier (int state, int order, char* state_id) {
   int k;
-  for (k = 0; k < order; ++k, state = state < 0 ? state : state / 4)
-    state_id[order - k - 1] = token2base (state < 0 ? -1 : (state % 4));
+  for (k = 0; k < order; ++k, state = state < 0 ? state : state / AlphabetSize)
+    state_id[order - k - 1] = token2base (state < 0 ? -1 : (state % AlphabetSize));
   state_id[order] = '\0';
 }
 
 int decode_state_identifier (int order, char* state_id) {
   int k, token, chartok, mul;
-  for (token = 0, mul = 1, k = 0; k < order; ++k, mul *= 4) {
+  for (token = 0, mul = 1, k = 0; k < order; ++k, mul *= AlphabetSize) {
     char c = state_id[order - k - 1];
     chartok = base2token (c);
     Assert (chartok >= 0, "Unknown character in k-mer: %c", c);

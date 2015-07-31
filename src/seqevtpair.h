@@ -7,6 +7,8 @@
 #include "logger.h"
 
 /* state encoding functions */
+#define AlphabetSize 4
+
 int base2token (char base);
 char token2base (int token);
 
