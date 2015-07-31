@@ -35,6 +35,7 @@ typedef struct Seq_event_pair_model {
   double pNullEvent, pNullTick, nullMean, nullPrecision;
   /* generator */
   double *kmerProb;
+  double emitProb;
   /* prior */
   StringDoubleMap *prior;
   /* configuration */
@@ -70,7 +71,7 @@ typedef struct Seq_event_pair_data {
   Fast5_event_array* events;  /* not owned */
   int *state;  /* owned */
   /* precalculated emit & transition scores */
-  long double *nullEventProb, *matchEventProb, *matchSkipYes, *matchSkipNo, *matchEventYes, *matchEventNo;
+  long double *nullEventLogLike, *matchEventLogLike, *matchSkipYes, *matchSkipNo, *matchEventYes, *matchEventNo;
   long double nullEventYes, nullEventNo;
   long double startEventYes, startEventNo;
   long double beginDeleteYes, beginDeleteNo;
@@ -101,8 +102,8 @@ typedef struct Seq_event_pair_fb_matrix {
   /* data */
   Seq_event_pair_data* data;
   /* dynamic programming matrices: entries are all in log-probability space */
-  long double *fwdStart, *fwdMatch, *fwdSkip, *fwdDelete, fwdTotal;
-  long double *backStart, *backMatch, *backSkip, *backDelete, backTotal;
+  long double *fwdStart, *fwdMatch, *fwdSkip, *fwdDelete, fwdResult;
+  long double *backStart, *backMatch, *backSkip, *backDelete, backResult;
 } Seq_event_pair_fb_matrix;
 
 Seq_event_pair_fb_matrix* new_seq_event_pair_fb_matrix (Seq_event_pair_model* model, int seqlen, char *seq, Fast5_event_array* events);  /* allocates only, does not fill */
@@ -113,8 +114,8 @@ void delete_seq_event_pair_fb_matrix (Seq_event_pair_fb_matrix* matrix);
 double log_gaussian_density (double x, double mean, double precision, double log_precision);
 double log_event_density (Fast5_event* event, double mean, double precision, double log_precision, double log_pTick, double log_pNoTick);
 
-void dump_seq_event_pair_matrix (FILE* file, const char* algorithm, Seq_event_pair_data *data, long double *mxStart, long double *mxMatch, long double *mxSkip, long double *mxDelete, long double mxTotal);
-void dump_seq_event_pair_matrix_to_file (const char* filename, const char* algorithm, Seq_event_pair_data *data, long double *mxStart, long double *mxMatch, long double *mxSkip, long double *mxDelete, long double mxTotal);
+void dump_seq_event_pair_matrix (FILE* file, const char* algorithm, Seq_event_pair_data *data, long double *mxStart, long double *mxMatch, long double *mxSkip, long double *mxDelete, long double mxResult);
+void dump_seq_event_pair_matrix_to_file (const char* filename, const char* algorithm, Seq_event_pair_data *data, long double *mxStart, long double *mxMatch, long double *mxSkip, long double *mxDelete, long double mxResult);
 
 /* Expected counts */
 
@@ -189,7 +190,7 @@ typedef struct Seq_event_pair_viterbi_matrix {
   /* data */
   Seq_event_pair_data* data;
   /* dynamic programming matrices: entries are all in log-probability space */
-  long double *vitStart, *vitMatch, *vitSkip, *vitDelete, vitTotal;
+  long double *vitStart, *vitMatch, *vitSkip, *vitDelete, vitResult;
 } Seq_event_pair_viterbi_matrix;
 
 Seq_event_pair_viterbi_matrix* new_seq_event_pair_viterbi_matrix (Seq_event_pair_model* model, int seqlen, char *seq, Fast5_event_array* events);  /* allocates only, does not fill */

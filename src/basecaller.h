@@ -9,15 +9,11 @@ typedef struct Basecall_viterbi_matrix {
   Fast5_event_array *events;
   unsigned long matrix_cells;
   /* precomputed scores */
-  long double *nullEmitDensity, *matchEmitDensity, *matchEmitYes, *matchEmitNo;
-  long double nullEmitYes, nullEmitNo;
-  long double startEmitYes, startEmitNo;
-  long double beginDeleteYes, beginDeleteNo;
-  long double extendDeleteYes, extendDeleteNo;
+  long double *matchEventLogLike, *noDelete, *shortDelete, *matchEventYes, *matchEventNo;
+  long double longDelete, emitNo;
   long double *logKmerProb, *logKmerConditionalProb;
   /* matrix */
-  long double *vitStart, *vitMatch, vitTotal;
-  long double nullModel;
+  long double *vitStart, *vitMatch, vitResult;
 } Basecall_viterbi_matrix;
 
 /* Basecall_index macros assume local variable 'states' is equal to matrix->model->states */

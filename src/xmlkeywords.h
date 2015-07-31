@@ -21,6 +21,7 @@
 #define XMLNP_START     "start"
 #define XMLNP_NULLMODEL "null"
 #define XMLNP_FREQ      "freq"
+#define XMLNP_SEQLEN    "seqlen"
 #define XMLNP_PSEUDO    "pseudo"
 #define XMLNP_PARAM     "param"
 #define XMLNP_COUNT     "count"

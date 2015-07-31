@@ -233,18 +233,42 @@ $\{ p^{\paramlabel{Skip}}_{x_1\ldots x_N}, p^{\paramlabel{MatchEvent}}_{x_1\ldot
 Transducer can {\em skip} an individual base (no event emissions for that base),
 or can {\em delete} a run of bases (no event emissions during the run).
 
-The transition weights for this transducer are shown in \secref{TransitionTable}.
+The transition weights for this transducer are shown in \secref{TransducerTransitionTable}.
 
 
 
 
-\subsection{Baum-Welch algorithm}
+\subsection{Basecalling model}
+\seclabel{BasecallingModel}
 
-As usual.
+\includegraphics[width=\textwidth]{figs/HMM.pdf}
 
-\subsection{Viterbi algorithm}
+\begin{itemize}
+\item Order-$N$ HMM.
+\item Unobserved transition labels: $\Omega = \{ A, C, G, T \}$ (nucleotides)
+\item Output alphabet: real numbers partitioned into events, as with null \& transducer models
+\item States: Start, End, $\{$ Emit${}_{x_1 \ldots x_N}$
+\item Parameters: same as transducer model, plus length parameter $p^{\paramlabel{Emit}}$,
+and kmer probability distribution
+  $q(x_1\ldots x_N)$
+together with associated conditional distributions
+  $q(x_{N+1}|x_2\ldots x_N)$
+and
+  $q(x_{N+1},x_{N+2}|x_2\ldots x_N) = q(x_{N+1}|x_2\ldots x_N) q(x_{N+2}|x_3\ldots x_{N+1})$.
+Also define
+\begin{eqnarray*}
+p^{\paramlabel{LongDelete}}
+& = & p^{\paramlabel{Emit}} p^{\paramlabel{BeginDelete}} p^{\paramlabel{ExtendDelete}}
+\\
+p^{\paramlabel{ShortDelete}}_{x_1\ldots x_N}
+& = & p^{\paramlabel{Emit}} \left( p^{\paramlabel{BeginDelete}} (1 - p^{\paramlabel{ExtendDelete}}) + (1 - p^{\paramlabel{BeginDelete}}) p^{\paramlabel{Skip}}_{x_1\ldots x_N} \right)
+\\
+p^{\paramlabel{NoDelete}}_{x_1\ldots x_N}
+& = & p^{\paramlabel{Emit}} (1 - p^{\paramlabel{BeginDelete}}) (1 - p^{\paramlabel{Skip}}_{x_1\ldots x_N})
+\end{eqnarray*}
+\end{itemize}
 
-As usual.
+The transition weights for this HMM are shown in \secref{HMMTransitionTable}.
 
 
 % Results and Discussion can be combined.
@@ -315,7 +339,7 @@ P(x|\mu,\tau)
 \newgeometry{left=0cm}
 
 \subsection{Transition table for nanopore transducer}
-\seclabel{TransitionTable}
+\seclabel{TransducerTransitionTable}
 
 The following table gives the transition weights for the transducer introduced in \secref{HomologyModel}.
 
@@ -354,6 +378,44 @@ Delete${}_{x_1 \ldots x_N}$ & Match${}_{x_2 \ldots x_{N+1}}$ & $(1 - p^{\paramla
 & & $\times (p^{\paramlabel{MatchTick}}_{x_2\ldots x_{N+1}})^{K_m} (1-p^{\paramlabel{MatchTick}}_{x_2\ldots x_{N+1}})$ & & $K_m \sim \mbox{Geometric}(p^{\paramlabel{MatchTick}}_{x_2\ldots x_{N+1}})$, \\
 & & $\times \displaystyle \prod_{k=1}^{K_m} P(y^{(k)}_m|\mu^{\paramlabel{Match}}_{x_2\ldots x_{N+1}},\tau^{\paramlabel{Match}}_{x_2\ldots x_{N+1}}) dy^{(k)}_m$ & & $y_m^{(k)} \sim \mbox{Normal}(\mu^{\paramlabel{Match}}_{x_2\ldots x_{N+1}},\tau^{\paramlabel{Match}}_{x_2\ldots x_{N+1}})$ \\
 End & End & 1 & $x \in \Omega$ & \\
+\hline
+\end{tabular}
+
+\normalsize
+\restoregeometry
+
+
+
+\newgeometry{left=0cm}
+
+\subsection{Transition table for basecalling HMM}
+\seclabel{HMMTransitionTable}
+
+The following table gives the transition weights for the transducer introduced in \secref{BasecallingModel}.
+
+\small
+
+\noindent
+\begin{tabular}{lllll}
+\hline
+Source & Destination & Weight & Unobserved & Observed \\
+\hline
+Start & Emit${}_{x_1 \ldots x_N}$ & $q(x_1 \ldots x_N)$ & $x_1 \ldots x_N \in \Omega^N$ & $\{ y_m^{(k)}: 1 \leq k \leq K_m \}$, \\
+& & $\times (p^{\paramlabel{MatchTick}}_{x_1\ldots x_N})^{K_m} (1-p^{\paramlabel{MatchTick}}_{x_1\ldots x_N})$ & & $K_m \sim \mbox{Geometric}(p^{\paramlabel{MatchTick}}_{x_1\ldots x_N})$, \\
+& & $\times \displaystyle \prod_{k=1}^{K_m} P(y^{(k)}_m|\mu^{\paramlabel{Match}}_{x_1\ldots x_N},\tau^{\paramlabel{Match}}_{x_1\ldots x_N}) dy^{(k)}_m$ & & $y_m^{(k)} \sim \mbox{Normal}(\mu^{\paramlabel{Match}}_{x_1\ldots x_N},\tau^{\paramlabel{Match}}_{x_1\ldots x_N})$ \\
+Emit${}_{x_1 \ldots x_N}$ & Emit${}_{x_1 \ldots x_N}$ & ${p^{\paramlabel{MatchEvent}}_{x_1\ldots x_N}}$ & & $\{ y_m^{(k)}: 1 \leq k \leq K_m \}$, \\
+& & $\times (p^{\paramlabel{MatchTick}}_{x_1\ldots x_N})^{K_m} (1-p^{\paramlabel{MatchTick}}_{x_1\ldots x_N} )$ & & $K_m \sim \mbox{Geometric}(p^{\paramlabel{MatchTick}}_{x_1\ldots x_N})$, \\
+& & $\times \displaystyle \prod_{k=1}^{K_m} P(y^{(k)}_m|\mu^{\paramlabel{Match}}_{x_1\ldots x_N},\tau^{\paramlabel{Match}}_{x_1\ldots x_N}) dy^{(k)}_m$ & & $y_m^{(k)} \sim \mbox{Normal}(\mu^{\paramlabel{Match}}_{x_1\ldots x_N},\tau^{\paramlabel{Match}}_{x_1\ldots x_N})$ \\
+Emit${}_{x_1 \ldots x_N}$ & Emit${}_{x_2 \ldots x_{N+1}}$ & $(1 - {p^{\paramlabel{MatchEvent}}_{x_1\ldots x_N}})$ & $x_{N+1} \in \Omega$ & $\{ y_m^{(k)}: 1 \leq k \leq K_m \}$, \\
+& & $\times q(x_{N+1}|x_2\ldots x_N) p^{\paramlabel{NoDelete}}_{x_2\ldots x_{N+1}}$ & & $K_m \sim \mbox{Geometric}(p^{\paramlabel{MatchTick}}_{x_2\ldots x_{N+1}})$, \\
+& & $\times (p^{\paramlabel{MatchTick}}_{x_2\ldots x_{N+1}})^{K_m} (1-p^{\paramlabel{MatchTick}}_{x_2\ldots x_{N+1}})$ & & $y_m^{(k)} \sim \mbox{Normal}(\mu^{\paramlabel{Match}}_{x_2\ldots x_{N+1}},\tau^{\paramlabel{Match}}_{x_2\ldots x_{N+1}})$ \\
+& & $\times \displaystyle \prod_{k=1}^{K_m} P(y^{(k)}_m|\mu^{\paramlabel{Match}}_{x_2\ldots x_{N+1}},\tau^{\paramlabel{Match}}_{x_2\ldots x_{N+1}}) dy^{(k)}_m$ \\
+Emit${}_{x_1 \ldots x_N}$ & Emit${}_{x_3 \ldots x_{N+2}}$ & $(1 - {p^{\paramlabel{MatchEvent}}_{x_1\ldots x_N}})$ & $x_{N+1} x_{N+2} \in \Omega^2$ & $\{ y_m^{(k)}: 1 \leq k \leq K_m \}$, \\
+& & $\times q(x_{N+1},x_{N+2}|x_2\ldots x_N) p^{\paramlabel{ShortDelete}}_{x_2\ldots x_{N+1}}$ & & $K_m \sim \mbox{Geometric}(p^{\paramlabel{MatchTick}}_{x_3\ldots x_{N+2}})$, \\
+& & $\times (p^{\paramlabel{MatchTick}}_{x_3\ldots x_{N+2}})^{K_m} (1-p^{\paramlabel{MatchTick}}_{x_3\ldots x_{N+2}})$ & & $y_m^{(k)} \sim \mbox{Normal}(\mu^{\paramlabel{Match}}_{x_3\ldots x_{N+2}},\tau^{\paramlabel{Match}}_{x_3\ldots x_{N+2}})$ \\
+& & $\times \displaystyle \prod_{k=1}^{K_m} P(y^{(k)}_m|\mu^{\paramlabel{Match}}_{x_3\ldots x_{N+2}},\tau^{\paramlabel{Match}}_{x_3\ldots x_{N+2}}) dy^{(k)}_m$ \\
+Emit${}_{x_1 \ldots x_N}$ & Start & $p^{\paramlabel{LongDelete}}$ & & \\
+Emit${}_{x_1 \ldots x_N}$ & End & $1 - p^{\paramlabel{Emit}}$ & & \\
 \hline
 \end{tabular}
 
