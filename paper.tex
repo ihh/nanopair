@@ -258,10 +258,10 @@ and
 Also define
 \begin{eqnarray*}
 p^{\paramlabel{LongDelete}}
-& = & p^{\paramlabel{Emit}} p^{\paramlabel{BeginDelete}} p^{\paramlabel{ExtendDelete}}
+& = & (p^{\paramlabel{Emit}})^N p^{\paramlabel{BeginDelete}} (p^{\paramlabel{ExtendDelete}})^{N-1} (1 - p^{\paramlabel{ExtendDelete}})
 \\
 p^{\paramlabel{ShortDelete}}_{x_1\ldots x_N}
-& = & p^{\paramlabel{Emit}} \left( p^{\paramlabel{BeginDelete}} (1 - p^{\paramlabel{ExtendDelete}}) + (1 - p^{\paramlabel{BeginDelete}}) p^{\paramlabel{Skip}}_{x_1\ldots x_N} \right)
+& = & (p^{\paramlabel{Emit}})^2 (1 - p^{\paramlabel{BeginDelete}}) p^{\paramlabel{Skip}}_{x_1\ldots x_N}
 \\
 p^{\paramlabel{NoDelete}}_{x_1\ldots x_N}
 & = & p^{\paramlabel{Emit}} (1 - p^{\paramlabel{BeginDelete}}) (1 - p^{\paramlabel{Skip}}_{x_1\ldots x_N})

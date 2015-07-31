@@ -27,11 +27,14 @@ Basecall_viterbi_matrix* new_basecall_viterbi_matrix (Seq_event_pair_model* mode
   matrix->matrix_cells = states * (n_events + 1);
 
   matrix->matchEventLogLike = SafeMalloc (matrix->matrix_cells * sizeof(long double));
-  matrix->noDelete = SafeMalloc (states * sizeof(long double));
-  matrix->shortDelete = SafeMalloc (states * sizeof(long double));
   matrix->matchEventYes = SafeMalloc (states * sizeof(long double));
   matrix->matchEventNo = SafeMalloc (states * sizeof(long double));
+  matrix->matchSkipYes = SafeMalloc (states * sizeof(long double));
+  matrix->matchSkipNo = SafeMalloc (states * sizeof(long double));
 
+  matrix->noDelete = SafeMalloc (states * sizeof(long double));
+  matrix->shortDelete = SafeMalloc (states * sizeof(long double));
+  
   matrix->logKmerProb = SafeMalloc (states * sizeof(long double));
   matrix->logKmerConditionalProb = SafeMalloc (states * sizeof(long double));
   for (int prefix = 0; prefix < states; prefix += AlphabetSize) {
@@ -54,6 +57,8 @@ void delete_basecall_viterbi_matrix (Basecall_viterbi_matrix* matrix) {
   SafeFree (matrix->matchEventLogLike);
   SafeFree (matrix->matchEventYes);
   SafeFree (matrix->matchEventNo);
+  SafeFree (matrix->matchSkipYes);
+  SafeFree (matrix->matchSkipNo);
   SafeFree (matrix->shortDelete);
   SafeFree (matrix->noDelete);
   SafeFree (matrix->logKmerProb);
@@ -73,17 +78,26 @@ void fill_basecall_viterbi_matrix (Basecall_viterbi_matrix* matrix) {
 
   /* calculate logs of transition probabilities & emit precisions */
 
-  matrix->longDelete = log(model->emitProb) + log(model->pBeginDelete) + log(model->pExtendDelete);
+  matrix->beginDeleteYes = log(model->pBeginDelete);
+  matrix->beginDeleteNo = log(1. - model->pBeginDelete);
+  matrix->extendDeleteYes = log(model->pExtendDelete);
+  matrix->extendDeleteNo = log(1. - model->pExtendDelete);
+  matrix->emitYes = log(model->emitProb);
   matrix->emitNo = log(1. - model->emitProb);
+
+  matrix->longDelete = matrix->emitYes * model->order + matrix->beginDeleteYes + matrix->extendDeleteYes * (model->order - 1) + matrix->extendDeleteNo;
+  long double longDel = matrix->longDelete;
   
   /* calculate emit densities & state-dependent transition probabilities */
   for (int state = 0; state < states; ++state) {
     matrix->matchEventYes[state] = log (model->pMatchEvent[state]);
     matrix->matchEventNo[state] = log (1. - model->pMatchEvent[state]);
 
-    matrix->noDelete[state] = log(model->emitProb) + log(1. - model->pBeginDelete) + log(1. - model->pMatchSkip[state]);
-    matrix->shortDelete[state] = log(model->emitProb) + log(model->pBeginDelete * (1. - model->pExtendDelete)
-							    + (1. - model->pBeginDelete) * model->pMatchSkip[state]);
+    matrix->matchSkipYes[state] = log (model->pMatchSkip[state]);
+    matrix->matchSkipNo[state] = log (1. - model->pMatchSkip[state]);
+
+    matrix->noDelete[state] = matrix->emitYes + matrix->beginDeleteNo + matrix->matchSkipNo[state];
+    matrix->shortDelete[state] = matrix->emitYes*2 + matrix->beginDeleteNo + matrix->matchSkipYes[state];
 
     double mean = model->matchMean[state];
     double precision = model->matchPrecision[state];
@@ -109,7 +123,6 @@ void fill_basecall_viterbi_matrix (Basecall_viterbi_matrix* matrix) {
     matrix->vitMatch[Basecall_index(state,0)] = -INFINITY;
   
   int firstBaseMultiplier = pow (AlphabetSize, model->order - 1);
-  long double longDel = matrix->longDelete;
 
   if (LogThisAt(2))
     init_progress ("Viterbi basecaller");

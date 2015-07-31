@@ -9,8 +9,10 @@ typedef struct Basecall_viterbi_matrix {
   Fast5_event_array *events;
   unsigned long matrix_cells;
   /* precomputed scores */
-  long double *matchEventLogLike, *noDelete, *shortDelete, *matchEventYes, *matchEventNo;
-  long double longDelete, emitNo;
+  long double *matchEventLogLike, *matchEventYes, *matchEventNo, *matchSkipYes, *matchSkipNo;
+  long double emitYes, emitNo, beginDeleteYes, beginDeleteNo, extendDeleteYes, extendDeleteNo;
+  long double *noDelete, *shortDelete;
+  long double longDelete;
   long double *logKmerProb, *logKmerConditionalProb;
   /* matrix */
   long double *vitStart, *vitMatch, vitResult;
