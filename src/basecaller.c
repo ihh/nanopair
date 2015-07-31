@@ -32,8 +32,8 @@ Basecall_viterbi_matrix* new_basecall_viterbi_matrix (Seq_event_pair_model* mode
   matrix->matchEventYes = SafeMalloc (states * sizeof(long double));
   matrix->matchEventNo = SafeMalloc (states * sizeof(long double));
 
-  matrix->logKmerProb = SafeMalloc (states * sizeof(double));
-  matrix->logKmerConditionalProb = SafeMalloc (states * sizeof(double));
+  matrix->logKmerProb = SafeMalloc (states * sizeof(long double));
+  matrix->logKmerConditionalProb = SafeMalloc (states * sizeof(long double));
   for (int prefix = 0; prefix < states; prefix += AlphabetSize) {
     double norm = 0;
     for (int state = prefix; state < prefix + AlphabetSize; ++state)
@@ -44,8 +44,8 @@ Basecall_viterbi_matrix* new_basecall_viterbi_matrix (Seq_event_pair_model* mode
     }
   }
 
-  matrix->vitStart = SafeMalloc ((n_events + 1) * sizeof(double));
-  matrix->vitMatch = SafeMalloc (matrix->matrix_cells * sizeof(double));
+  matrix->vitStart = SafeMalloc ((n_events + 1) * sizeof(long double));
+  matrix->vitMatch = SafeMalloc (matrix->matrix_cells * sizeof(long double));
 
   return matrix;
 }
@@ -148,7 +148,7 @@ void fill_basecall_viterbi_matrix (Basecall_viterbi_matrix* matrix) {
 			+ logCondProb);   /* Emit -> Emit (xxy) */
 	}
       }
-      int idx = Basecall_index(state,n_event);
+      unsigned long idx = Basecall_index(state,n_event);
       m += matrix->matchEventLogLike[idx];
       matrix->vitMatch[idx] = m;
       st = max_func (st, m + longDel);  /* Emit -> Start */
@@ -207,8 +207,8 @@ char* get_basecall_viterbi_matrix_traceback (Basecall_viterbi_matrix* matrix) {
 
   state = endState;
   
-  while (!(n_event == 0 && state != Start)) {
-    int idx = Basecall_index(state,n_event);
+  while (!(n_event == 0 && state == Start)) {
+    unsigned long idx = Basecall_index(state,n_event);
     loglike = -INFINITY;
     bestTrans = None;
     bestPrevState = NoState;
@@ -260,7 +260,7 @@ char* get_basecall_viterbi_matrix_traceback (Basecall_viterbi_matrix* matrix) {
       for (int prevState = 0; prevState < states; ++prevState)
 	update_max2 (&loglike,
 		     (int*) &bestTrans, &bestPrevState,
-		     matrix->vitMatch[Basecall_index(prevState,n_event-1)],
+		     matrix->vitMatch[Basecall_index(prevState,n_event)],
 		     EmitStart, prevState);  /* Emit -> Start */
       Assert (loglike + longDel == matrix->vitStart[n_event], "Traceback error");
 
