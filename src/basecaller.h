@@ -21,7 +21,7 @@ typedef struct Basecall_viterbi_matrix {
 #ifdef SEQEVTPAIR_DEBUG
 #define Basecall_index(state,n_event) ((n_event < 0 || n_event > n_events || state < 0 || state >= states) ? (Abort("Index (%d,%d) out of bounds for dimensions (%d,%d)",state,n_event,states,n_events), 0) : Unsafe_basecall_index(state,n_event))
 #else /* SEQEVTPAIR_DEBUG */
-#define Basecall_index(seqpos,n_event) Unsafe_basecall_index(seqpos,n_event)
+#define Basecall_index(state,n_event) Unsafe_basecall_index(state,n_event)
 #endif /* SEQEVTPAIR_DEBUG */
 unsigned long basecall_index_wrapper (Basecall_viterbi_matrix* matrix, int state, int n_event);
 

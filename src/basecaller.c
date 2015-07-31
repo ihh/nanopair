@@ -38,14 +38,41 @@ Basecall_viterbi_matrix* new_basecall_viterbi_matrix (Seq_event_pair_model* mode
   matrix->vitStart = SafeMalloc ((n_events + 1) * sizeof(double));
   matrix->vitMatch = SafeMalloc (matrix->matrix_cells * sizeof(double));
 
+  return matrix;
+}
+
+void delete_basecall_viterbi_matrix (Basecall_viterbi_matrix* matrix) {
+  SafeFree (matrix->matchEventLogLike);
+  SafeFree (matrix->matchEventYes);
+  SafeFree (matrix->matchEventNo);
+  SafeFree (matrix->shortDelete);
+  SafeFree (matrix->noDelete);
+  SafeFree (matrix->logKmerProb);
+  SafeFree (matrix->logKmerConditionalProb);
+  SafeFree (matrix->vitStart);
+  SafeFree (matrix->vitMatch);
+  SafeFree (matrix);
+}
+
+void fill_basecall_viterbi_matrix (Basecall_viterbi_matrix* matrix) {
+  Seq_event_pair_model* model = matrix->model;
+  Fast5_event_array* events = matrix->events;
+  int n_events = events->n_events;
+  int states = model->states;
+  
   /* calculate logs of transition probabilities & emit precisions */
 
-  /* TODO: WRITE ME */
+  matrix->longDelete = log(model->emitProb) + log(model->pBeginDelete) + log(model->pExtendDelete);
+  matrix->emitNo = log(1. - model->emitProb);
   
   /* calculate emit densities & state-dependent transition probabilities */
   for (int state = 0; state < states; ++state) {
     matrix->matchEventYes[state] = log (model->pMatchEvent[state]);
     matrix->matchEventNo[state] = log (1. - model->pMatchEvent[state]);
+
+    matrix->noDelete[state] = log(model->emitProb) + log(1. - model->pBeginDelete) + log(1. - model->pMatchSkip[state]);
+    matrix->shortDelete[state] = log(model->emitProb) + log(model->pBeginDelete * (1. - model->pExtendDelete)
+							    + (1. - model->pBeginDelete) * model->pMatchSkip[state]);
 
     double mean = model->matchMean[state];
     double precision = model->matchPrecision[state];
@@ -66,35 +93,56 @@ Basecall_viterbi_matrix* new_basecall_viterbi_matrix (Seq_event_pair_model* mode
     }
   }
 
-  return matrix;
-}
-
-void delete_basecall_viterbi_matrix (Basecall_viterbi_matrix* matrix) {
-  SafeFree (matrix->matchEventLogLike);
-  SafeFree (matrix->matchEventYes);
-  SafeFree (matrix->matchEventNo);
-  SafeFree (matrix->shortDelete);
-  SafeFree (matrix->noDelete);
-  SafeFree (matrix->logKmerProb);
-  SafeFree (matrix->logKmerConditionalProb);
-  SafeFree (matrix->vitStart);
-  SafeFree (matrix->vitMatch);
-  SafeFree (matrix);
-}
-
-void fill_basecall_viterbi_matrix (Basecall_viterbi_matrix* matrix) {
-  int n_events = matrix->events->n_events;
-  /*
-  int states = matrix->model->states;
-  */
-
   matrix->vitStart[0] = 0.;
+  for (int state = 0; state < states; ++state)
+    matrix->vitMatch[Basecall_index(state,0)] = -INFINITY;
+  
+  int firstBaseMultiplier = pow (4, model->order - 1);
+  long double longDel = matrix->longDelete;
   for (int n_event = 1; n_event <= n_events; ++n_event) {
-    /*
-    Fast5_event* event = &matrix->events->event[n_event - 1];
-    */
-    /* TODO: write me */
+    long double st = -INFINITY;
+    for (int state = 0; state < states; ++state) {
+      long double m = max_func (matrix->vitStart[n_event - 1]
+				+ matrix->logKmerProb[state],   /* Start -> Emit (x^N y) */
+				matrix->vitMatch[Basecall_index(state,n_event-1)]
+				+ matrix->matchEventYes[state]);  /* Emit -> Emit (y) */
+      int prefix = state / 4;
+      long double logCondProb = matrix->logKmerConditionalProb[state];
+      long double noDel = matrix->noDelete[state];
+      for (int prevBase = 0; prevBase < 4; ++prevBase) {
+	int prevState = prefix + prevBase * firstBaseMultiplier;
+	m = max_func (m,
+		      matrix->vitMatch[Basecall_index(prevState,n_event-1)]
+		      + matrix->matchEventNo[prevState]
+		      + noDel
+		      + logCondProb);   /* Emit -> Emit (xy) */
+	long double logPrevCondProb = matrix->logKmerConditionalProb[prevState];
+	long double shortDel = matrix->shortDelete[prevState];
+	int prePrefix = prevState / 4;
+	for (int prevPrevBase = 0; prevPrevBase < 4; ++prevPrevBase) {
+	  int prevPrevState = prePrefix + prevPrevBase * firstBaseMultiplier;
+	  m = max_func (m,
+			matrix->vitMatch[Basecall_index(prevPrevState,n_event-1)]
+			+ matrix->matchEventNo[prevPrevState]
+			+ logPrevCondProb
+			+ shortDel
+			+ logCondProb);   /* Emit -> Emit (xxy) */
+	}
+      }
+      int idx = Basecall_index(state,n_event);
+      m += matrix->matchEventLogLike[idx];
+      matrix->vitMatch[idx] = m;
+      st = max_func (st, m + longDel);  /* Emit -> Start */
+    }
+    matrix->vitStart[n_event] = st;
   }
+
+  long double end = -INFINITY;
+  for (int state = 0; state < states; ++state)
+    end = max_func (end,
+		    matrix->vitMatch[Basecall_index(state,n_events)]
+		    + matrix->emitNo);
+  matrix->vitResult = end;
 }
 
 char* get_basecall_viterbi_matrix_traceback (Basecall_viterbi_matrix* matrix) {
