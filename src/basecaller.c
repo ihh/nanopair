@@ -1,6 +1,15 @@
 #include <math.h>
 #include "basecaller.h"
 
+/* helper for finding index of max item in a set indexed by 2-tuples (for Viterbi traceback) */
+void update_max2 (long double *current_max,
+		  int* current_max_idx1,
+		  int* current_max_idx2,
+		  long double candidate_max,
+		  int candidate_max_idx1,
+		  int candidate_max_idx2);
+
+
 unsigned long basecall_index_wrapper (Basecall_viterbi_matrix* matrix, int state, int n_event) {
   int states, n_events;
   n_events = matrix->events->n_events;
@@ -60,6 +69,8 @@ void fill_basecall_viterbi_matrix (Basecall_viterbi_matrix* matrix) {
   int n_events = events->n_events;
   int states = model->states;
   
+  Logger* logger = model->logger;
+
   /* calculate logs of transition probabilities & emit precisions */
 
   matrix->longDelete = log(model->emitProb) + log(model->pBeginDelete) + log(model->pExtendDelete);
@@ -99,7 +110,15 @@ void fill_basecall_viterbi_matrix (Basecall_viterbi_matrix* matrix) {
   
   int firstBaseMultiplier = pow (AlphabetSize, model->order - 1);
   long double longDel = matrix->longDelete;
+
+  if (LogThisAt(2))
+    init_progress ("Viterbi basecaller");
+
   for (int n_event = 1; n_event <= n_events; ++n_event) {
+
+    if (LogThisAt(2))
+      log_progress (n_event / (double) n_events, "event %d/%d", n_event, n_events);
+
     long double st = -INFINITY;
     for (int state = 0; state < states; ++state) {
       long double m = max_func (matrix->vitStart[n_event - 1]
@@ -145,7 +164,160 @@ void fill_basecall_viterbi_matrix (Basecall_viterbi_matrix* matrix) {
   matrix->vitResult = end;
 }
 
+void update_max2 (long double *current_max,
+		  int* current_max_idx1,
+		  int* current_max_idx2,
+		  long double candidate_max,
+		  int candidate_max_idx1,
+		  int candidate_max_idx2) {
+  if (candidate_max > *current_max) {
+    *current_max = candidate_max;
+    *current_max_idx1 = candidate_max_idx1;
+    if (current_max_idx2)
+      *current_max_idx2 = candidate_max_idx2;
+  }
+}
+
 char* get_basecall_viterbi_matrix_traceback (Basecall_viterbi_matrix* matrix) {
-  /* TODO: write me */
-  return NULL;
+  const int Start = -1;
+  const int NoState = -2;
+  enum { None, StartEmit, EmitEmit0, EmitEmit1, EmitEmit2, EmitStart } bestTrans;
+  List *emittedBase;
+
+  Seq_event_pair_model* model = matrix->model;
+  Fast5_event_array* events = matrix->events;
+  int n_events = events->n_events;
+  int states = model->states;
+
+  int firstBaseMultiplier = pow (AlphabetSize, model->order - 1);
+  long double longDel = matrix->longDelete;
+
+  int state, bestPrevState, endState = -1;
+  long double loglike = -INFINITY;
+  for (state = 0; state < states; ++state)
+    update_max2 (&loglike,
+		 &endState, NULL,
+		 matrix->vitMatch[Basecall_index(state,n_events)]
+		 + matrix->emitNo,  /* Match -> End */
+		 state, -1);
+  Assert (endState >= 0, "Traceback failed");
+
+  int n_event = n_events;
+  emittedBase = newList (IntCopy, IntDelete, IntPrint);
+
+  state = endState;
+  
+  while (!(n_event == 0 && state != Start)) {
+    int idx = Basecall_index(state,n_event);
+    loglike = -INFINITY;
+    bestTrans = None;
+    bestPrevState = NoState;
+    
+    if (state >= 0) {
+      update_max2 (&loglike,
+		   (int*) &bestTrans, &bestPrevState,
+		   matrix->vitStart[n_event - 1]
+		   + matrix->logKmerProb[state],
+		   StartEmit, Start);  /* Start -> Emit (x^N y) */
+
+      update_max2 (&loglike,
+		   (int*) &bestTrans, &bestPrevState,
+		   matrix->vitMatch[Basecall_index(state,n_event-1)]
+		   + matrix->matchEventYes[state],
+		   EmitEmit0, state);  /* Emit -> Emit (y) */
+
+      int prefix = state / AlphabetSize;
+      long double logCondProb = matrix->logKmerConditionalProb[state];
+      long double noDel = matrix->noDelete[state];
+      for (int prevBase = 0; prevBase < AlphabetSize; ++prevBase) {
+	int prevState = prefix + prevBase * firstBaseMultiplier;
+	update_max2 (&loglike,
+		     (int*) &bestTrans, &bestPrevState,
+		     matrix->vitMatch[Basecall_index(prevState,n_event-1)]
+		     + matrix->matchEventNo[prevState]
+		     + noDel
+		     + logCondProb,
+		     EmitEmit1, prevState);   /* Emit -> Emit (xy) */
+
+	long double logPrevCondProb = matrix->logKmerConditionalProb[prevState];
+	long double shortDel = matrix->shortDelete[prevState];
+	int prePrefix = prevState / AlphabetSize;
+	for (int prevPrevBase = 0; prevPrevBase < AlphabetSize; ++prevPrevBase) {
+	  int prevPrevState = prePrefix + prevPrevBase * firstBaseMultiplier;
+	  update_max2 (&loglike,
+		       (int*) &bestTrans, &bestPrevState,
+		       matrix->vitMatch[Basecall_index(prevPrevState,n_event-1)]
+		       + matrix->matchEventNo[prevPrevState]
+		       + logPrevCondProb
+		       + shortDel
+		       + logCondProb,
+		       EmitEmit2, prevPrevState);   /* Emit -> Emit (xxy) */
+	}
+      }
+      Assert (loglike + matrix->matchEventLogLike[idx] == matrix->vitMatch[idx], "Traceback error");
+
+    } else if (state == Start) {
+      for (int prevState = 0; prevState < states; ++prevState)
+	update_max2 (&loglike,
+		     (int*) &bestTrans, &bestPrevState,
+		     matrix->vitMatch[Basecall_index(prevState,n_event-1)],
+		     EmitStart, prevState);  /* Emit -> Start */
+      Assert (loglike + longDel == matrix->vitStart[n_event], "Traceback error");
+
+    } else {
+      Abort ("Unknown traceback state");
+    }
+
+    switch (bestTrans) {
+
+    case StartEmit:
+      Assert (state >= 0, "oops");
+      --n_event;
+      int mul = 1;
+      for (int pos = 0; pos < model->order; ++pos) {
+	ListInsertBefore (emittedBase, emittedBase->head, IntNew((state / mul) % AlphabetSize));
+	mul *= AlphabetSize;
+      }
+      break;
+
+    case EmitEmit0:
+      Assert (state >= 0, "oops");
+      --n_event;
+      break;
+
+    case EmitEmit1:
+      Assert (state >= 0, "oops");
+      --n_event;
+      ListInsertBefore (emittedBase, emittedBase->head, IntNew(state % AlphabetSize));
+      break;
+
+    case EmitEmit2:
+      Assert (state >= 0, "oops");
+      --n_event;
+      ListInsertBefore (emittedBase, emittedBase->head, IntNew(state % AlphabetSize));
+      ListInsertBefore (emittedBase, emittedBase->head, IntNew((state / AlphabetSize) % AlphabetSize));
+      break;
+
+    case EmitStart:
+      Assert (state == Start, "oops");
+      break;
+
+    case None:
+    default:
+      Abort ("Unknown traceback transition");
+      break;
+    }
+
+    state = bestPrevState;
+  }
+  
+  char *seq = SafeMalloc ((ListSize(emittedBase) + 1) * sizeof(char));
+  int pos = 0;
+  for (ListNode* node = emittedBase->head; node; node = node->next)
+    seq[pos++] = (char) *((int*)node->value);
+  seq[pos] = '\0';
+  
+  deleteList (emittedBase);
+  
+  return seq;
 }

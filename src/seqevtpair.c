@@ -90,7 +90,7 @@ long double accum_count (long double back_src,
 			 long double *moment1,
 			 long double *moment2);
 
-/* helper for finding index of max item in a list */
+/* helper for finding index of max item in an indexed set (for Viterbi traceback) */
 void update_max (long double *current_max, int* current_max_idx, long double candidate_max, int candidate_max_idx);
 
 /* Metrichor_state_iterator
@@ -1686,7 +1686,8 @@ Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event
   for (seqpos = seqlen; seqpos >= order; --seqpos)
     update_max (&loglike,
 		&end_seqpos,
-		matrix->vitMatch[Seq_event_pair_index(seqpos,n_events)] + data->matchEventNo[seqpos],
+		matrix->vitMatch[Seq_event_pair_index(seqpos,n_events)]
+		+ data->matchEventNo[seqpos],  /* Match -> End */
 		seqpos);
   Assert (end_seqpos >= 0, "Traceback failed");
 
