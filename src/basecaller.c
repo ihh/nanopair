@@ -314,7 +314,7 @@ char* get_basecall_viterbi_matrix_traceback (Basecall_viterbi_matrix* matrix) {
   char *seq = SafeMalloc ((ListSize(emittedBase) + 1) * sizeof(char));
   int pos = 0;
   for (ListNode* node = emittedBase->head; node; node = node->next)
-    seq[pos++] = (char) *((int*)node->value);
+    seq[pos++] = token2base (*(int*)node->value);
   seq[pos] = '\0';
   
   deleteList (emittedBase);
