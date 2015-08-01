@@ -11,7 +11,6 @@ typedef struct Basecall_viterbi_matrix {
   /* precomputed scores */
   long double *matchEventLogLike, *matchEventYes, *matchEventNo, *matchSkipYes, *matchSkipNo;
   long double emitYes, emitNo, beginDeleteYes, beginDeleteNo, extendDeleteYes, extendDeleteNo;
-  long double *noDelete, *shortDelete;
   long double longDelete;
   long double *logKmerProb, *logKmerConditionalProb;
   /* matrix */
