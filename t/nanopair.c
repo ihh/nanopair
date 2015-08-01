@@ -61,7 +61,7 @@ typedef struct Nanopair_args_str {
   const char *fast5inFilename, *fast5outFilename;
   Vector *event_arrays;
   SeedFlag seedFlag;
-  int both_strands, model_order;
+  int model_order;
   Logger *logger;
   Seq_event_pair_config config;
 } Nanopair_args;
@@ -302,7 +302,7 @@ int parse_dp (int* argcPtr, char*** argvPtr, Nanopair_args* npargPtr) {
   return parse_params (argcPtr, argvPtr, &npargPtr->seedFlag, &npargPtr->params, &npargPtr->model_order, npargPtr->prior)
     || parse_fast5 (argcPtr, argvPtr, npargPtr->fast5_filenames)
     || parse_seq (argcPtr, argvPtr, &npargPtr->seqs)
-    || parse_both_strands (argcPtr, argvPtr, &npargPtr->both_strands)
+    || parse_both_strands (argcPtr, argvPtr, &npargPtr->config.both_strands)
     || parseLogArgs (argcPtr, argvPtr, npargPtr->logger)
     || parse_seq_event_pair_config (argcPtr, argvPtr, &npargPtr->config)
     || parse_unknown (*argcPtr, *argvPtr);
@@ -323,7 +323,6 @@ int main (int argc, char** argv) {
   npargs.seedFlag = ParamFile;
   npargs.fast5inFilename = NULL;
   npargs.fast5outFilename = NULL;
-  npargs.both_strands = 0;
   npargs.model_order = 5;
   npargs.prior = new_seq_event_pair_model_default_prior();
 
@@ -411,7 +410,7 @@ int main (int argc, char** argv) {
     get_params (npargs.seedFlag, npargs.fast5_filenames, npargs.event_arrays, &npargs.params, npargs.model_order, npargs.logger, &npargs.config, npargs.prior);
 
     /* get counts */
-    counts = get_seq_event_pair_counts (npargs.params, npargs.seqs, npargs.event_arrays, npargs.both_strands);
+    counts = get_seq_event_pair_counts (npargs.params, npargs.seqs, npargs.event_arrays);
 
     /* output counts */
     write_counts (counts);
@@ -428,7 +427,7 @@ int main (int argc, char** argv) {
     /* do Baum-Welch */
     fit_seq_event_kmer_model (npargs.params, npargs.seqs);
     fit_seq_event_null_model (npargs.params, npargs.event_arrays);
-    fit_seq_event_pair_model (npargs.params, npargs.seqs, npargs.event_arrays, npargs.both_strands);
+    fit_seq_event_pair_model (npargs.params, npargs.seqs, npargs.event_arrays);
 
     /* output model */
     write_params (npargs.params);
@@ -445,7 +444,7 @@ int main (int argc, char** argv) {
     /* loop through sequences, FAST5 files */
     for (i = 0; i < npargs.seqs->n; ++i)
       for (j = 0; j < (int) VectorSize(npargs.event_arrays); ++j)
-	print_seq_evt_pair_alignments_as_stockholm (npargs.params, npargs.seqs->len[i], npargs.seqs->seq[i], npargs.seqs->name[i], npargs.both_strands, (Fast5_event_array*) VectorGet(npargs.event_arrays,j), stdout, 0.);
+	print_seq_evt_pair_alignments_as_stockholm (npargs.params, npargs.seqs->len[i], npargs.seqs->seq[i], npargs.seqs->name[i], (Fast5_event_array*) VectorGet(npargs.event_arrays,j), stdout, 0.);
 
   } else if (strcmp (command, "basecall") == 0) {
     /* BASECALL: Viterbi algorithm on basecaller HMM */
