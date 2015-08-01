@@ -2339,13 +2339,19 @@ void print_labeled_seq_event_pair_transition (FILE *file, void* vlab) {
   encode_state_identifier (lab->src_kmer, lab->model->order, src_state_id);
   encode_state_identifier (lab->dest_kmer, lab->model->order, dest_state_id);
 
-  fprintf (file, "%s %s %s trans:%Lg", src_state_id, transition_name[lab->trans], dest_state_id, seq_event_pair_transition_trans_loglike (lab->model, lab->trans, lab->src_kmer, lab->dest_kmer));
-  if (seq_event_pair_transition_emit_count (lab->trans))
-    fprintf (file, " emit:%Lg", seq_event_pair_transition_emit_loglike (lab->model, lab->trans, lab->dest_kmer, lab->emission));
-  if (seq_event_pair_transition_absorb_count (lab->trans))
+  int emit = seq_event_pair_transition_emit_count (lab->trans);
+  int absorb = seq_event_pair_transition_absorb_count (lab->trans);
+  
+  fprintf (file, "%s %s %s", src_state_id, transition_name[lab->trans], dest_state_id);
+  if (absorb)
     fprintf (file, " in:%c", token2base (lab->dest_kmer % AlphabetSize));
-  if (seq_event_pair_transition_emit_count (lab->trans))
+  if (emit)
     fprintf (file, " out:(%g %g %g)", lab->emission->ticks, lab->emission->mean, lab->emission->stdv);
+  fprintf (file, " Score: transition %Lg", seq_event_pair_transition_trans_loglike (lab->model, lab->trans, lab->src_kmer, lab->dest_kmer));
+  if (absorb)
+    fprintf (file, ", in %Lg", seq_event_pair_transition_generator_loglike (lab->model, lab->trans, lab->dest_kmer));
+  if (emit)
+    fprintf (file, ", out %Lg", seq_event_pair_transition_emit_loglike (lab->model, lab->trans, lab->dest_kmer, lab->emission));
   fprintf (file, "\n");
 
   SafeFree(src_state_id);
@@ -2431,6 +2437,20 @@ long double seq_event_pair_transition_emit_loglike (Seq_event_pair_model* model,
   return 0;
 }
 
+long double seq_event_pair_transition_generator_loglike (Seq_event_pair_model* model, Seq_event_pair_transition trans, int dest_kmer_state) {
+  if (seq_event_pair_transition_absorb_count (trans)) {
+    int prefix = dest_kmer_state - (dest_kmer_state % AlphabetSize);
+    double norm = 0;
+    for (int offset = 0; offset < AlphabetSize; ++offset)
+      norm += model->kmerProb[prefix + offset];
+    return log (model->kmerProb[dest_kmer_state] / norm) + log (model->emitProb);
+  }
+  if (trans == MatchEndTransition)
+    return log (1. - model->emitProb);
+  return 0;
+}
+
+
 Labeled_seq_event_pair_path* new_labeled_seq_event_pair_path() {
   return newList (copy_labeled_seq_event_pair_transition,
 		  delete_labeled_seq_event_pair_transition,
@@ -2441,18 +2461,29 @@ void delete_labeled_seq_event_pair_path (Labeled_seq_event_pair_path* path) {
   deleteList (path);
 }
 
-long double labeled_seq_event_pair_transition_loglike (Labeled_seq_event_pair_transition* lab) {
+long double labeled_seq_event_pair_transition_conditional_loglike (Labeled_seq_event_pair_transition* lab) {
   return seq_event_pair_transition_trans_loglike (lab->model, lab->trans, lab->src_kmer, lab->dest_kmer) + seq_event_pair_transition_emit_loglike (lab->model, lab->trans, lab->dest_kmer, lab->emission);
 }
 
-long double labeled_seq_event_pair_path_loglike (Labeled_seq_event_pair_path* path) {
+long double labeled_seq_event_pair_transition_joint_loglike (Labeled_seq_event_pair_transition* lab) {
+  return labeled_seq_event_pair_transition_conditional_loglike (lab) + seq_event_pair_transition_generator_loglike (lab->model, lab->trans, lab->dest_kmer);
+}
+
+long double labeled_seq_event_pair_path_conditional_loglike (Labeled_seq_event_pair_path* path) {
   double ll = 0;
   for (ListNode* node = path->head; node; node = node->next)
-    ll += labeled_seq_event_pair_transition_loglike ((Labeled_seq_event_pair_transition*) node->value);
+    ll += labeled_seq_event_pair_transition_conditional_loglike ((Labeled_seq_event_pair_transition*) node->value);
+  return ll;
+}
+
+long double labeled_seq_event_pair_path_joint_loglike (Labeled_seq_event_pair_path* path) {
+  double ll = 0;
+  for (ListNode* node = path->head; node; node = node->next)
+    ll += labeled_seq_event_pair_transition_joint_loglike ((Labeled_seq_event_pair_transition*) node->value);
   return ll;
 }
 
 void print_labeled_seq_event_pair_path (FILE* file, Labeled_seq_event_pair_path* path) {
   ListPrint (file, path);
-  fprintf (file, "Log-likelihood: %Lg\n", labeled_seq_event_pair_path_loglike (path));
+  fprintf (file, "Log-likelihood: %Lg (conditional), %Lg (joint)\n", labeled_seq_event_pair_path_conditional_loglike (path),labeled_seq_event_pair_path_joint_loglike (path));
 }

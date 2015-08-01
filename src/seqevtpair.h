@@ -90,9 +90,13 @@ int seq_event_pair_transition_emit_count (Seq_event_pair_transition trans);
 
 long double seq_event_pair_transition_trans_loglike (Seq_event_pair_model* model, Seq_event_pair_transition trans, int src_kmer_state, int dest_kmer_state);
 long double seq_event_pair_transition_emit_loglike (Seq_event_pair_model* model, Seq_event_pair_transition trans, int kmer_state, Fast5_event* emission);
+long double seq_event_pair_transition_generator_loglike (Seq_event_pair_model* model, Seq_event_pair_transition trans, int dest_kmer_state);
 
-long double labeled_seq_event_pair_transition_loglike (Labeled_seq_event_pair_transition*);
-long double labeled_seq_event_pair_path_loglike (Labeled_seq_event_pair_path*);
+long double labeled_seq_event_pair_transition_conditional_loglike (Labeled_seq_event_pair_transition*);
+long double labeled_seq_event_pair_path_conditional_loglike (Labeled_seq_event_pair_path*);
+
+long double labeled_seq_event_pair_transition_joint_loglike (Labeled_seq_event_pair_transition*);
+long double labeled_seq_event_pair_path_joint_loglike (Labeled_seq_event_pair_path*);
 
 /* Data + precomputed log-likelihoods for DP */
 
