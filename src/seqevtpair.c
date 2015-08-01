@@ -105,6 +105,7 @@ int parse_seq_event_pair_config (int* argcPtr, char*** argvPtr, Seq_event_pair_c
       *argvPtr += 2;
       *argcPtr -= 2;
       return 1;
+
     } else if (strcmp (arg, "-mininc") == 0) {
       Assert (*argcPtr > 1, "%s must have an argument", **argvPtr);
       const char* val = (*argvPtr)[1];
@@ -112,6 +113,7 @@ int parse_seq_event_pair_config (int* argcPtr, char*** argvPtr, Seq_event_pair_c
       *argvPtr += 2;
       *argcPtr -= 2;
       return 1;
+
     } else if (strcmp (arg, "-matrixdumpfile") == 0) {
       Assert (*argcPtr > 1, "%s must have an argument", **argvPtr);
       const char* val = (*argvPtr)[1];
@@ -119,7 +121,14 @@ int parse_seq_event_pair_config (int* argcPtr, char*** argvPtr, Seq_event_pair_c
       *argvPtr += 2;
       *argcPtr -= 2;
       return 1;
+
+    } else if (strcmp (arg, "-bothstrands") == 0) {
+      config->both_strands = 1;
+      ++*argvPtr;
+      --*argcPtr;
+      return 1;
     }
+
   }
   return 0;
 }

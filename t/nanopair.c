@@ -278,18 +278,6 @@ int parse_seq (int* argcPtr, char*** argvPtr, Kseq_container **seqsPtr) {
   return 0;
 }
 
-int parse_both_strands (int* argcPtr, char*** argvPtr, int *bothStrandsPtr) {
-  if (*argcPtr > 0) {
-    if (strcmp (**argvPtr, "-bothstrands") == 0) {
-      *bothStrandsPtr = 1;
-      ++*argvPtr;
-      --*argcPtr;
-      return 1;
-    }
-  }
-  return 0;
-}
-
 int parse_unknown (int argc, char** argv) {
   if (argc > 0) {
     (void) help_failure ("Unknown option: %s", *argv);
@@ -302,7 +290,6 @@ int parse_dp (int* argcPtr, char*** argvPtr, Nanopair_args* npargPtr) {
   return parse_params (argcPtr, argvPtr, &npargPtr->seedFlag, &npargPtr->params, &npargPtr->model_order, npargPtr->prior)
     || parse_fast5 (argcPtr, argvPtr, npargPtr->fast5_filenames)
     || parse_seq (argcPtr, argvPtr, &npargPtr->seqs)
-    || parse_both_strands (argcPtr, argvPtr, &npargPtr->config.both_strands)
     || parseLogArgs (argcPtr, argvPtr, npargPtr->logger)
     || parse_seq_event_pair_config (argcPtr, argvPtr, &npargPtr->config)
     || parse_unknown (*argcPtr, *argvPtr);
@@ -342,7 +329,6 @@ int main (int argc, char** argv) {
     /* MODELSEED: initialize emit parameters from model in a FAST5 read file */
     while (parse_fast5_filename (&argc, &argv, &npargs.fast5inFilename)
 	   || parseLogArgs (&argc, &argv, npargs.logger)
-	   || parse_seq_event_pair_config (&argc, &argv, &npargs.config)
 	   || parse_pseudo (&argc, &argv, npargs.prior)
 	   || parse_unknown (argc, argv))
       { }
@@ -370,7 +356,6 @@ int main (int argc, char** argv) {
     /* EVENTSEED: initialize parameters from base-called reads */
     while (parse_fast5 (&argc, &argv, npargs.fast5_filenames)
 	   || parseLogArgs (&argc, &argv, npargs.logger)
-	   || parse_seq_event_pair_config (&argc, &argv, &npargs.config)
 	   || parse_pseudo (&argc, &argv, npargs.prior)
 	   || parse_unknown (argc, argv))
       { }
@@ -391,7 +376,6 @@ int main (int argc, char** argv) {
     /* NORMALIZE: write out normalized fast5 file */
     while (parse_normalize (&argc, &argv, &npargs.fast5inFilename, &npargs.fast5outFilename)
 	   || parseLogArgs (&argc, &argv, npargs.logger)
-	   || parse_seq_event_pair_config (&argc, &argv, &npargs.config)
 	   || parse_unknown (argc, argv))
       { }
 
@@ -469,7 +453,6 @@ int main (int argc, char** argv) {
     while (parse_fast5_filename (&argc, &argv, &npargs.fast5inFilename)
 	   || parse_params (&argc, &argv, &npargs.seedFlag, &npargs.params, &npargs.model_order, npargs.prior)
 	   || parseLogArgs (&argc, &argv, npargs.logger)
-	   || parse_seq_event_pair_config (&argc, &argv, &npargs.config)
 	   || parse_unknown (argc, argv))
       { }
 
