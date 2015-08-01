@@ -288,11 +288,7 @@ char* get_basecall_viterbi_matrix_traceback (Basecall_viterbi_matrix* matrix) {
     case StartEmit:
       Assert (state >= 0, "oops");
       --n_event;
-      int mul = 1;
-      for (int pos = 0; pos < model->order; ++pos) {
-	ListInsertBefore (emittedBase, emittedBase->head, IntNew((state / mul) % AlphabetSize));
-	mul *= AlphabetSize;
-      }
+      /* Don't call bases on Start->Emit transition, or we just get ridiculous inserts */
       break;
 
     case EmitEmit0:
