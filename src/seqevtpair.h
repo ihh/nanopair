@@ -61,26 +61,38 @@ double get_seq_event_prior_mode (Seq_event_pair_model* model, const char* param)
 double get_seq_event_log_beta_prior (Seq_event_pair_model* model, const char* param, double x);
 #define BetaMode(YesCount,NoCount) (1. / (1. + ((NoCount) / (YesCount))))
 
-/* Representations of model states and transitions */
+/* Representations of model states, transitions, paths */
 
 typedef enum { PairMatchState = 0, PairSkipState = 1, PairDeleteState = 2, PairStartState = 3, PairEndState = 4 } Seq_event_pair_state;
 
-typedef enum { UndefinedTransition, StartMatchOutTransition, MatchMatchOutTransition, MatchSkipInTransition, SkipSkipInTransition, MatchMatchInOutTransition, SkipMatchInOutTransition, MatchDeleteInTransition, DeleteDeleteInTransition, DeleteMatchInOutTransition } Seq_event_pair_transition;
+typedef enum { UndefinedTransition, StartStartOutTransition, StartMatchOutTransition, MatchMatchOutTransition, MatchSkipInTransition, SkipSkipInTransition, MatchMatchInOutTransition, SkipMatchInOutTransition, MatchDeleteInTransition, DeleteDeleteInTransition, DeleteMatchInOutTransition, MatchEndTransition } Seq_event_pair_transition;
 
 typedef struct Labeled_seq_event_pair_transition {
+  Seq_event_pair_model* model;
   Seq_event_pair_transition trans;
-  int dest_kmer;
+  int src_kmer, dest_kmer;
   Fast5_event* emission;
 } Labeled_seq_event_pair_transition;
 
-Labeled_seq_event_pair_transition* new_labeled_seq_event_pair_transition (Seq_event_pair_transition trans, int dest_kmer, Fast5_event* emission);
+Labeled_seq_event_pair_transition* new_labeled_seq_event_pair_transition (Seq_event_pair_model* model, Seq_event_pair_transition trans, int src_kmer, int dest_kmer, Fast5_event* emission);
 
 void* copy_labeled_seq_event_pair_transition (void*);
 void delete_labeled_seq_event_pair_transition (void*);
 void print_labeled_seq_event_pair_transition (FILE*, void*);
 
+typedef List Labeled_seq_event_pair_path;
+Labeled_seq_event_pair_path* new_labeled_seq_event_pair_path();
+void delete_labeled_seq_event_pair_path (Labeled_seq_event_pair_path*);
+void print_labeled_seq_event_pair_path (FILE*, Labeled_seq_event_pair_path*);
+
 int seq_event_pair_transition_absorb_count (Seq_event_pair_transition trans);
 int seq_event_pair_transition_emit_count (Seq_event_pair_transition trans);
+
+long double seq_event_pair_transition_trans_loglike (Seq_event_pair_model* model, Seq_event_pair_transition trans, int src_kmer_state, int dest_kmer_state);
+long double seq_event_pair_transition_emit_loglike (Seq_event_pair_model* model, Seq_event_pair_transition trans, int kmer_state, Fast5_event* emission);
+
+long double labeled_seq_event_pair_transition_loglike (Labeled_seq_event_pair_transition*);
+long double labeled_seq_event_pair_path_loglike (Labeled_seq_event_pair_path*);
 
 /* Data + precomputed log-likelihoods for DP */
 
@@ -198,7 +210,7 @@ typedef struct Seq_event_pair_alignment {
      thus, number of aligned bases = end_seqpos - start_seqpos */
   int seqlen, start_seqpos, end_seqpos, start_n_event;
   long double log_likelihood_ratio;
-  List* basecall_path;  /* equivalent path through generator (basecalling) HMM */
+  Labeled_seq_event_pair_path* basecall_path;  /* equivalent path through generator (basecalling) HMM */
 } Seq_event_pair_alignment;
 
 Seq_event_pair_alignment* new_seq_event_pair_alignment (Fast5_event_array *events, char *seq, int seqlen);
