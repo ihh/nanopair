@@ -260,8 +260,8 @@ Also define
 p^{\paramlabel{LongDelete}}
 & = & (p^{\paramlabel{Emit}})^N p^{\paramlabel{BeginDelete}} (p^{\paramlabel{ExtendDelete}})^{N-1} (1 - p^{\paramlabel{ExtendDelete}})
 \\
-p^{\paramlabel{ShortDelete}}_{x_1\ldots x_N}
-& = & (p^{\paramlabel{Emit}})^2 (1 - p^{\paramlabel{BeginDelete}}) p^{\paramlabel{Skip}}_{x_1\ldots x_N}
+p^{\paramlabel{ShortDelete}}_{x_1\ldots x_{N+1}}
+& = & (p^{\paramlabel{Emit}})^2 (1 - p^{\paramlabel{BeginDelete}}) p^{\paramlabel{Skip}}_{x_1\ldots x_N} (1 - p^{\paramlabel{Skip}}_{x_2\ldots x_{N+1}})
 \\
 p^{\paramlabel{NoDelete}}_{x_1\ldots x_N}
 & = & p^{\paramlabel{Emit}} (1 - p^{\paramlabel{BeginDelete}}) (1 - p^{\paramlabel{Skip}}_{x_1\ldots x_N})
@@ -411,7 +411,7 @@ Emit${}_{x_1 \ldots x_N}$ & Emit${}_{x_2 \ldots x_{N+1}}$ & $(1 - {p^{\paramlabe
 & & $\times (p^{\paramlabel{MatchTick}}_{x_2\ldots x_{N+1}})^{K_m} (1-p^{\paramlabel{MatchTick}}_{x_2\ldots x_{N+1}})$ & & $y_m^{(k)} \sim \mbox{Normal}(\mu^{\paramlabel{Match}}_{x_2\ldots x_{N+1}},\tau^{\paramlabel{Match}}_{x_2\ldots x_{N+1}})$ \\
 & & $\times \displaystyle \prod_{k=1}^{K_m} P(y^{(k)}_m|\mu^{\paramlabel{Match}}_{x_2\ldots x_{N+1}},\tau^{\paramlabel{Match}}_{x_2\ldots x_{N+1}}) dy^{(k)}_m$ \\
 Emit${}_{x_1 \ldots x_N}$ & Emit${}_{x_3 \ldots x_{N+2}}$ & $(1 - {p^{\paramlabel{MatchEvent}}_{x_1\ldots x_N}})$ & $x_{N+1} x_{N+2} \in \Omega^2$ & $\{ y_m^{(k)}: 1 \leq k \leq K_m \}$, \\
-& & $\times q(x_{N+1},x_{N+2}|x_2\ldots x_N) p^{\paramlabel{ShortDelete}}_{x_2\ldots x_{N+1}}$ & & $K_m \sim \mbox{Geometric}(p^{\paramlabel{MatchTick}}_{x_3\ldots x_{N+2}})$, \\
+& & $\times q(x_{N+1},x_{N+2}|x_2\ldots x_N) p^{\paramlabel{ShortDelete}}_{x_2\ldots x_{N+2}}$ & & $K_m \sim \mbox{Geometric}(p^{\paramlabel{MatchTick}}_{x_3\ldots x_{N+2}})$, \\
 & & $\times (p^{\paramlabel{MatchTick}}_{x_3\ldots x_{N+2}})^{K_m} (1-p^{\paramlabel{MatchTick}}_{x_3\ldots x_{N+2}})$ & & $y_m^{(k)} \sim \mbox{Normal}(\mu^{\paramlabel{Match}}_{x_3\ldots x_{N+2}},\tau^{\paramlabel{Match}}_{x_3\ldots x_{N+2}})$ \\
 & & $\times \displaystyle \prod_{k=1}^{K_m} P(y^{(k)}_m|\mu^{\paramlabel{Match}}_{x_3\ldots x_{N+2}},\tau^{\paramlabel{Match}}_{x_3\ldots x_{N+2}}) dy^{(k)}_m$ \\
 Emit${}_{x_1 \ldots x_N}$ & Start & $p^{\paramlabel{LongDelete}}$ & & \\
