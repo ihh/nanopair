@@ -23,8 +23,8 @@ int StringCompare(void* a, void* b) {
   return cmp > 0 ? +1 : (cmp < 0 ? -1 : 0);
 }
 
-void StringPrint(void* a) {
-  printf("%i",*(int*)a);
+void StringPrint(FILE* file, void* a) {
+  fprintf(file,"%i",*(int*)a);
 }
 
 char* StringConcat (const char *a, const char *b) {

@@ -14,7 +14,7 @@ void* StringNew(const char *a);
 void* StringCopy(void* a);
 void StringDelete(void* a);
 int StringCompare(void* a, void* b);
-void StringPrint(void* a);
+void StringPrint(FILE*, void* a);
 
 /* more string utilities */
 char* StringConcat (const char *a, const char *b);

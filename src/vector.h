@@ -24,7 +24,7 @@ void VectorSet (Vector* vec, size_t n, void* value);  /* uses DestroyFunction to
 void VectorReserve (Vector* vec, size_t n);
 void VectorPushBack (Vector* vec, void* value);
 void* VectorPop (Vector* vec);   /* caller assumes responsibility for deleting val */
-void VectorPrint (Vector* vec);  /* debug */
+void VectorPrint (FILE*file, Vector* vec);  /* debug */
 
 #define VectorSize(VEC) ((size_t) ((VEC)->end - (VEC)->begin))
 #define VectorCapacity(VEC) ((size_t) ((VEC)->endAlloc - (VEC)->begin))
@@ -38,7 +38,7 @@ void VectorPrint (Vector* vec);  /* debug */
 
 /* void wrappers for copy, print & delete */
 void* VectorDeepCopyVoid(void*);
-void VectorPrintVoid(void*);
+void VectorPrintVoid(FILE*,void*);
 void VectorDeleteVoid(void*);
 
 #endif /* VECTOR_INCLUDED */

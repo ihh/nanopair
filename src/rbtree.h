@@ -59,14 +59,14 @@ RBNode* RBTreeLast(RBTree*);
 int RBTreeIteratorFinished(RBTree*,RBNode*);
 int RBTreeIsBeforeFirst(RBTree*, void* key);
 int RBTreeIsAfterLast(RBTree*, void* key);
-void RBTreePrint(RBTree*);  /* debug */
+void RBTreePrint(FILE*, RBTree*);  /* debug */
 
 void RBTreeRetain(RBTree*, RBTree*);  /* retains all keys of first RBTree that are also in second RBTree */
 void RBTreeRemove(RBTree*, RBTree*);  /* removes all keys of first RBTree that are also in second RBTree */
 
 /* void versions of copy, print & delete */
 void* RBTreeDeepCopyVoid(void*);
-void RBTreePrintVoid(void*);
+void RBTreePrintVoid(FILE*,void*);
 void RBTreeDeleteVoid(void*);
 
 #endif /* RED_BLACK_TREE_INCLUDED */

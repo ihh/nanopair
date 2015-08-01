@@ -31,6 +31,62 @@ static const char* gff3_source = "nanopair";
 static const char* gff3_feature = "Match";
 static const char* gff3_gap_attribute = "Gap";
 
+/* helper for finding index of max item in an indexed set (for Viterbi traceback) */
+void update_max (long double *current_max, int* current_max_idx, long double candidate_max, int candidate_max_idx);
+
+/* squiggle plot config */
+const double pixels_per_tick = .02;
+const double pixels_per_lev = 10;
+
+/* normalize a model */
+void normalize_model (Seq_event_pair_model* model);
+
+/* accum_count(back_src,fwd_src,trans,back_dest,matrix,count,event,moment0,moment1,moment2)
+   increments *count by (weight = exp(fwd_src + trans + back_dest - matrix->fwdResult))
+   also increments (moment0,moment1,moment2) by weight * event->(ticks,sumticks_cur,sumticks_cur_sq)
+   returns log_sum_exp(back_src,trans + back_dest)
+ */
+long double accum_count (long double back_src,
+			 long double fwd_src,
+			 long double trans,
+			 long double back_dest,
+			 Seq_event_pair_fb_matrix *matrix,
+			 long double *count,
+			 Fast5_event *event,
+			 long double *moment0,
+			 long double *moment1,
+			 long double *moment2);
+
+/* Metrichor_state_iterator
+   Used to populate the emission parameters of a Seq_event_pair_model from a Metrichor model description in a FAST5 file */
+typedef struct Metrichor_state_iterator {
+  Seq_event_pair_model *model;
+  size_t kmer_offset, level_mean_offset, level_sd_offset;
+} Metrichor_state_iterator;
+
+double read_metrichor_model_attribute (hid_t dataset, const char* attr_name)
+{
+  herr_t ret;
+  hid_t attr;
+  double attr_val;
+  attr = H5Aopen_name(dataset,attr_name);
+  ret = H5Aread(attr, H5T_NATIVE_DOUBLE, &attr_val);
+  ret = H5Aclose(attr);
+  return attr_val;
+}
+
+herr_t populate_seq_event_model_emit_params (void *elem, hid_t type_id, unsigned ndim, 
+					     const hsize_t *point, void *operator_data)
+{
+  Metrichor_state_iterator *iter = (Metrichor_state_iterator*) operator_data;
+  int state = decode_state_identifier (iter->model->order, (char*) elem + iter->kmer_offset);
+  iter->model->matchMean[state] = *((double*) (elem + iter->level_mean_offset));
+  double sd = MAX (DBL_MIN, *((double*) (elem + iter->level_sd_offset)));
+  iter->model->matchPrecision[state] = 1 / (sd * sd);
+  return 0;
+}
+
+/* main function bodies */
 void init_seq_event_pair_config (Seq_event_pair_config *config) {
   /* EM convergence criteria */
   config->seq_evt_pair_EM_max_iterations = 100;
@@ -67,62 +123,6 @@ int parse_seq_event_pair_config (int* argcPtr, char*** argvPtr, Seq_event_pair_c
   return 0;
 }
 
-/* squiggle plot config */
-const double pixels_per_tick = .02;
-const double pixels_per_lev = 10;
-
-/* normalize a model */
-void normalize_model (Seq_event_pair_model* model);
-
-/* accum_count(back_src,fwd_src,trans,back_dest,matrix,count,event,moment0,moment1,moment2)
-   increments *count by (weight = exp(fwd_src + trans + back_dest - matrix->fwdResult))
-   also increments (moment0,moment1,moment2) by weight * event->(ticks,sumticks_cur,sumticks_cur_sq)
-   returns log_sum_exp(back_src,trans + back_dest)
- */
-long double accum_count (long double back_src,
-			 long double fwd_src,
-			 long double trans,
-			 long double back_dest,
-			 Seq_event_pair_fb_matrix *matrix,
-			 long double *count,
-			 Fast5_event *event,
-			 long double *moment0,
-			 long double *moment1,
-			 long double *moment2);
-
-/* helper for finding index of max item in an indexed set (for Viterbi traceback) */
-void update_max (long double *current_max, int* current_max_idx, long double candidate_max, int candidate_max_idx);
-
-/* Metrichor_state_iterator
-   Used to populate the emission parameters of a Seq_event_pair_model from a Metrichor model description in a FAST5 file */
-typedef struct Metrichor_state_iterator {
-  Seq_event_pair_model *model;
-  size_t kmer_offset, level_mean_offset, level_sd_offset;
-} Metrichor_state_iterator;
-
-double read_metrichor_model_attribute (hid_t dataset, const char* attr_name)
-{
-  herr_t ret;
-  hid_t attr;
-  double attr_val;
-  attr = H5Aopen_name(dataset,attr_name);
-  ret = H5Aread(attr, H5T_NATIVE_DOUBLE, &attr_val);
-  ret = H5Aclose(attr);
-  return attr_val;
-}
-
-herr_t populate_seq_event_model_emit_params (void *elem, hid_t type_id, unsigned ndim, 
-					     const hsize_t *point, void *operator_data)
-{
-  Metrichor_state_iterator *iter = (Metrichor_state_iterator*) operator_data;
-  int state = decode_state_identifier (iter->model->order, (char*) elem + iter->kmer_offset);
-  iter->model->matchMean[state] = *((double*) (elem + iter->level_mean_offset));
-  double sd = MAX (DBL_MIN, *((double*) (elem + iter->level_sd_offset)));
-  iter->model->matchPrecision[state] = 1 / (sd * sd);
-  return 0;
-}
-
-/* main function bodies */
 StringDoubleMap* new_seq_event_pair_model_default_prior() {
   StringDoubleMap *prior = newStringDoubleMap();
   StringDoubleMapSet (prior, "no_skip", 9);
@@ -753,7 +753,7 @@ void fill_seq_event_pair_fb_matrix_and_inc_counts (Seq_event_pair_fb_matrix* mat
 			   matrix->fwdMatch[outputIdx]
 			   + data->matchEventYes[seqpos]
 			   + data->matchEventLogLike[idx]);     /* Match -> Match (output) */
-      
+
 	mat = log_sum_exp (mat,
 			   matrix->fwdStart[n_event-1]
 			   + data->startEventNo
@@ -1357,10 +1357,14 @@ Seq_event_pair_alignment* new_seq_event_pair_alignment (Fast5_event_array *event
   align->start_seqpos = 0;
   align->end_seqpos = 0;
   align->start_n_event = events->n_events;
+  align->basecall_path = newList (copy_labeled_seq_event_pair_transition,
+				  delete_labeled_seq_event_pair_transition,
+				  print_labeled_seq_event_pair_transition);
   return align;
 }
 
 void delete_seq_event_pair_alignment (Seq_event_pair_alignment* align) {
+  deleteList (align->basecall_path);
   SafeFreeOrNull (align->events_at_pos);
   SafeFree (align);
 }
@@ -1662,12 +1666,12 @@ void fill_seq_event_pair_viterbi_matrix (Seq_event_pair_viterbi_matrix* matrix) 
 Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event_pair_viterbi_matrix* matrix) {
   Seq_event_pair_model* model;
   Seq_event_pair_data* data;
-  int seqlen, n_events, order, seqpos, n_event, end_seqpos, start_seqpos, start_n_event, n, k;
+  int seqlen, n_events, order, seqpos, states, n_event, end_seqpos, start_seqpos, start_n_event, n, k;
   long double loglike;
   unsigned long idx, inputIdx, outputIdx, ioIdx;
   Fast5_event* event;
-  enum { None, StartMatchOut, MatchMatchOut, MatchSkipIn, SkipSkipIn, MatchMatchInOut, SkipMatchInOut, MatchDeleteIn, DeleteDeleteIn, DeleteMatchInOut } trans;
-  enum { Start, Match, Skip, Delete } state;
+  Seq_event_pair_transition trans;
+  Seq_event_pair_state state;
   Vector *events_emitted;
   Seq_event_pair_alignment *align;
 
@@ -1676,7 +1680,10 @@ Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event
   n_events = data->events->n_events;
   model = data->model;
   order = model->order;
+  states = model->states;
 
+  Logger* logger = model->logger;
+  
   start_seqpos = seqlen;
   start_n_event = n_events;
   
@@ -1693,13 +1700,15 @@ Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event
 
   seqpos = end_seqpos;
   n_event = n_events;
-  state = Match;
+  state = PairMatchState;
   inputIdx = outputIdx = ioIdx = -1;
 
   events_emitted = newVector (IntCopy, IntDelete, IntPrint);
   VectorPushBack (events_emitted, IntNew(0));
 
-  while (state != Start) {
+  align = new_seq_event_pair_alignment (data->events, data->seq, seqlen);
+  
+  while (state != PairStartState) {
     idx = Seq_event_pair_index(seqpos,n_event);
     if (seqpos > 0)
       inputIdx = Seq_event_pair_index(seqpos-1,n_event);
@@ -1711,24 +1720,24 @@ Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event
     event = n_event > 0 ? &data->events->event[n_event - 1] : NULL;
 
     loglike = -INFINITY;
-    trans = None;
+    trans = UndefinedTransition;
 
     switch (state) {
-    case Match:
+    case PairMatchState:
       if (n_event > 0) {
 	update_max (&loglike,
 		    (int*) &trans,
 		    matrix->vitMatch[outputIdx]
 		    + data->matchEventYes[seqpos]
 		    + data->matchEventLogLike[idx],
-		    MatchMatchOut);    /* Match -> Match (output) */
+		    MatchMatchOutTransition);    /* Match -> Match (output) */
 
 	update_max (&loglike,
 		    (int*) &trans,
 		    matrix->vitStart[n_event-1]
 		    + data->startEventNo
 		    + data->matchEventLogLike[idx],
-		    StartMatchOut);   /* Start -> Match (output) */      
+		    StartMatchOutTransition);   /* Start -> Match (output) */      
 
 	if (seqpos > order) {
 	  update_max (&loglike,
@@ -1738,51 +1747,51 @@ Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event
 		      + data->beginDeleteNo
 		      + data->matchSkipNo[seqpos]
 		      + data->matchEventLogLike[idx],
-		      MatchMatchInOut);    /* Match -> Match (input/output) */
+		      MatchMatchInOutTransition);    /* Match -> Match (input/output) */
 
 	  update_max (&loglike,
 		      (int*) &trans,
 		      matrix->vitSkip[ioIdx]
 		      + data->matchSkipNo[seqpos]
 		      + data->matchEventLogLike[idx],
-		      SkipMatchInOut);    /* Skip -> Match (input/output) */
+		      SkipMatchInOutTransition);    /* Skip -> Match (input/output) */
 
 	  update_max (&loglike,
 		      (int*) &trans,
 		      matrix->vitDelete[ioIdx]
 		      + data->extendDeleteNo
 		      + data->matchEventLogLike[idx],
-		      DeleteMatchInOut);    /* Delete -> Match (input/output) */
+		      DeleteMatchInOutTransition);    /* Delete -> Match (input/output) */
 	}
       } else
 	Abort ("Traceback error");
       Assert (loglike == matrix->vitMatch[idx], "Traceback error");
       break;
 
-    case Skip:
+    case PairSkipState:
       update_max (&loglike,
 		  (int*) &trans,
 		  matrix->vitMatch[inputIdx] + data->matchEventNo[seqpos-1] + data->beginDeleteNo + data->matchSkipYes[seqpos],
-		  MatchSkipIn);    /* Match -> Skip (input) */
+		  MatchSkipInTransition);    /* Match -> Skip (input) */
 
       update_max (&loglike,
 		  (int*) &trans,
 		  matrix->vitSkip[inputIdx] + data->matchSkipYes[seqpos],
-		  SkipSkipIn);    /* Skip -> Skip (input) */
+		  SkipSkipInTransition);    /* Skip -> Skip (input) */
 
       Assert (loglike == matrix->vitSkip[idx], "Traceback error");
       break;
 
-    case Delete:
+    case PairDeleteState:
 	update_max (&loglike,
 		    (int*) &trans,
 		    matrix->vitMatch[inputIdx] + data->matchEventNo[seqpos-1] + data->beginDeleteYes,
-		    MatchDeleteIn);   /* Match -> Delete (input) */
+		    MatchDeleteInTransition);   /* Match -> Delete (input) */
 
 	update_max (&loglike,
 		    (int*) &trans,
 		    matrix->vitDelete[inputIdx] + data->extendDeleteYes,
-		    DeleteDeleteIn);   /* Delete -> Delete (input) */
+		    DeleteDeleteInTransition);   /* Delete -> Delete (input) */
 
 	Assert (loglike == matrix->vitDelete[idx], "Traceback error");
 	break;
@@ -1792,80 +1801,84 @@ Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event
       break;
     }
 
+    int dest_kmer = decode_state_identifier (order, data->seq + seqpos - order);
+    ListInsertBefore (align->basecall_path, align->basecall_path->head, new_labeled_seq_event_pair_transition (trans, dest_kmer, event));
+
     switch (trans) {
 
-    case StartMatchOut:
-      state = Start;
+    case StartMatchOutTransition:
+      state = PairStartState;
       --n_event;
       ++*((int*) VectorBack (events_emitted));
       start_n_event = n_event;
       start_seqpos = seqpos;
       break;
 
-    case MatchMatchOut:
-      Assert (state == Match, "oops");
+    case MatchMatchOutTransition:
+      Assert (state == PairMatchState, "oops");
       --n_event;
       ++*((int*) VectorBack (events_emitted));
       break;
 
-    case MatchSkipIn:
-      Assert (state == Skip, "oops");
-      state = Match;
+    case MatchSkipInTransition:
+      Assert (state == PairSkipState, "oops");
+      state = PairMatchState;
       --seqpos;
       VectorPushBack (events_emitted, IntNew(0));
       break;
 
-    case SkipSkipIn:
-      Assert (state == Skip, "oops");
+    case SkipSkipInTransition:
+      Assert (state == PairSkipState, "oops");
       --seqpos;
       VectorPushBack (events_emitted, IntNew(0));
       break;
 
-    case MatchMatchInOut:
-      Assert (state == Match, "oops");
-      --seqpos;
-      --n_event;
-      ++*((int*) VectorBack (events_emitted));
-      VectorPushBack (events_emitted, IntNew(0));
-      break;
-
-    case SkipMatchInOut:
-      Assert (state == Match, "oops");
-      state = Skip;
+    case MatchMatchInOutTransition:
+      Assert (state == PairMatchState, "oops");
       --seqpos;
       --n_event;
       ++*((int*) VectorBack (events_emitted));
       VectorPushBack (events_emitted, IntNew(0));
       break;
 
-    case MatchDeleteIn:
-      state = Match;
-      --seqpos;
-      VectorPushBack (events_emitted, IntNew(0));
-      break;
-
-    case DeleteDeleteIn:
-      Assert (state == Delete, "oops");
-      --seqpos;
-      VectorPushBack (events_emitted, IntNew(0));
-      break;
-
-    case DeleteMatchInOut:
-      state = Delete;
+    case SkipMatchInOutTransition:
+      Assert (state == PairMatchState, "oops");
+      state = PairSkipState;
       --seqpos;
       --n_event;
       ++*((int*) VectorBack (events_emitted));
       VectorPushBack (events_emitted, IntNew(0));
       break;
 
-    case None:
+    case MatchDeleteInTransition:
+      Assert (state == PairDeleteState, "oops");
+      state = PairMatchState;
+      --seqpos;
+      VectorPushBack (events_emitted, IntNew(0));
+      break;
+
+    case DeleteDeleteInTransition:
+      Assert (state == PairDeleteState, "oops");
+      --seqpos;
+      VectorPushBack (events_emitted, IntNew(0));
+      break;
+
+    case DeleteMatchInOutTransition:
+      Assert (state == PairMatchState, "oops");
+      state = PairDeleteState;
+      --seqpos;
+      --n_event;
+      ++*((int*) VectorBack (events_emitted));
+      VectorPushBack (events_emitted, IntNew(0));
+      break;
+
+    case UndefinedTransition:
     default:
       Abort ("Unknown traceback transition");
       break;
     }
   }
 
-  align = new_seq_event_pair_alignment (data->events, data->seq, seqlen);
   align->log_likelihood_ratio = matrix->vitResult + matrix->data->logPrior - matrix->data->nullModel - matrix->data->logNullPrior;
   align->start_seqpos = start_seqpos - 1;
   align->end_seqpos = end_seqpos - 1;
@@ -1873,9 +1886,14 @@ Seq_event_pair_alignment* get_seq_event_pair_viterbi_matrix_traceback (Seq_event
   align->events_at_pos = SafeMalloc (VectorSize(events_emitted) * sizeof(int));
   for (n = ((int) VectorSize(events_emitted)) - 1, k = 0; n >= 0; --n, ++k)
     align->events_at_pos[k] = *((int*) VectorGet (events_emitted, n));
-
+  
   deleteVector (events_emitted);
 
+  if (LogThisAt(5)) {
+    fprintf (stderr, "Traceback:\n");
+    ListPrint (stderr, align->basecall_path);
+  }
+  
   return align;
 }
 
@@ -2252,4 +2270,58 @@ void normalize_model (Seq_event_pair_model* model) {
   }
   model->nullMean = (model->nullMean - mean) / sd;
   model->nullPrecision *= var;
+}
+
+Labeled_seq_event_pair_transition* new_labeled_seq_event_pair_transition (Seq_event_pair_transition trans, int dest_kmer, Fast5_event* emission) {
+  Labeled_seq_event_pair_transition* lab = SafeMalloc (sizeof (Labeled_seq_event_pair_transition));
+  lab->trans = trans;
+  lab->dest_kmer = dest_kmer;
+  lab->emission = emission;
+  return lab;
+}
+
+void* copy_labeled_seq_event_pair_transition (void* vlab) {
+  Labeled_seq_event_pair_transition* lab = (Labeled_seq_event_pair_transition*) vlab;
+  return new_labeled_seq_event_pair_transition (lab->trans, lab->dest_kmer, lab->emission);
+}
+
+void delete_labeled_seq_event_pair_transition (void* vlab) {
+  Labeled_seq_event_pair_transition* lab = (Labeled_seq_event_pair_transition*) vlab;
+  SafeFree (lab);
+}
+
+static char* transition_name[] = { "Undefined", "Start->Match", "Match->Match(out)", "Match->Skip", "Skip->Skip", "Match->Match(in/out)", "Skip->Match", "Match->Delete", "Delete->Delete", "Delete->Match" };
+
+int seq_event_pair_transition_absorb_count (Seq_event_pair_transition trans) {
+  return
+    (trans == MatchSkipInTransition
+     || trans == SkipSkipInTransition
+     || trans == MatchMatchInOutTransition
+     || trans == SkipMatchInOutTransition
+     || trans == MatchDeleteInTransition
+     || trans == DeleteDeleteInTransition
+     || trans == DeleteMatchInOutTransition)
+    ? 1
+    : 0;
+}
+
+int seq_event_pair_transition_emit_count (Seq_event_pair_transition trans) {
+  return
+    (trans == StartMatchOutTransition
+     || trans == MatchMatchOutTransition
+     || trans == MatchMatchInOutTransition
+     || trans == SkipMatchInOutTransition
+     || trans == DeleteMatchInOutTransition)
+    ? 1
+    : 0;
+}
+
+void print_labeled_seq_event_pair_transition (FILE *file, void* vlab) {
+  Labeled_seq_event_pair_transition* lab = (Labeled_seq_event_pair_transition*) vlab;
+  fprintf (file, "%s", transition_name[lab->trans]);
+  if (seq_event_pair_transition_absorb_count (lab->trans))
+    fprintf (file, " in:%c", token2base (lab->dest_kmer % AlphabetSize));
+  if (seq_event_pair_transition_emit_count (lab->trans))
+    fprintf (file, " out:(%g %g %g)", lab->emission->ticks, lab->emission->sumticks_cur, lab->emission->sumticks_cur_sq);
+  fprintf (file, "\n");
 }

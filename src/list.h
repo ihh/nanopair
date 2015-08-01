@@ -27,7 +27,7 @@ List* ListSpliceBefore(List* list, ListNode* node, List* subList);  /* frees lis
 void ListErase(List* list, ListNode* node);
 void* ListPop (List* list);  /* removes last node in list, returns value; caller must dealloc by calling (*list->Destroy)(poppedItem) */
 void* ListShift (List* list);  /* removes first node in list, returns value; caller must dealloc by calling (*list->Destroy)(poppedItem) */
-void ListPrint (List* list);  /* debug */
+void ListPrint (FILE* file, List* list);  /* debug */
 
 #define ListAppend(LIST,VALUE) ListInsertBefore(LIST,NULL,VALUE)
 #define ListPrepend(LIST,VALUE) ListInsertBefore(LIST,(LIST)->head,VALUE)
@@ -37,7 +37,7 @@ void ListPrint (List* list);  /* debug */
 
 /* void versions of copy, print & delete */
 void* ListDeepCopyVoid(void*);
-void ListPrintVoid(void*);
+void ListPrintVoid(FILE*,void*);
 void ListDeleteVoid(void*);
 
 /* A Stack is like a List, but never deletes its values & only returns them via StackPop */

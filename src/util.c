@@ -67,7 +67,7 @@ void *SafeCalloc(size_t count, size_t size) {
 
 void* NullCopyFunction(void * item) { return item; }
 void NullDestroyFunction(void * junk) { ; }
-void NullPrintFunction(void * junk) { ; }
+void NullPrintFunction(FILE*file,void * junk) { ; }
 
 /* Abort null functions */
 void AbortDestroyFunction(void* junk) { Abort ("Unimplemented destroy function called"); }
@@ -95,8 +95,8 @@ int IntCompare(void* a, void* b) {
   return 0;
 }
 
-void IntPrint(void* a) {
-  printf("%d",*(int*)a);
+void IntPrint(FILE* file, void* a) {
+  fprintf(file,"%d",*(int*)a);
 }
 
 /* Double functions */
@@ -121,8 +121,8 @@ int DoubleCompare(void* a, void* b) {
   return(0);
 }
 
-void DoublePrint(void* a) {
-  printf("%g",*(double*)a);
+void DoublePrint(FILE* file, void* a) {
+  fprintf(file,"%g",*(double*)a);
 }
 
 /* char* to unsigned int conversions */

@@ -2,7 +2,7 @@
 
 Vector* newVector (void* (*CopyFunc)(void*),
 		   void (*DestroyFunc)(void*),
-		   void (*PrintFunc)(void*)) {
+		   void (*PrintFunc)(FILE*,void*)) {
   Vector* vec;
   vec = SafeMalloc (sizeof (Vector));
   vec->Copy = CopyFunc;
@@ -59,10 +59,10 @@ void* VectorPop (Vector* vec) {
   return val;
 }
 
-void VectorPrint (Vector* vec) {
+void VectorPrint (FILE*file,Vector* vec) {
   void** ptr;
   for (ptr = vec->begin; ptr != vec->end; ++ptr)
-    (*vec->Print) (*ptr);
+    (*vec->Print) (file, *ptr);
 }
 
 void* VectorGet (Vector* vec, size_t n) {
@@ -78,5 +78,5 @@ void VectorSet (Vector* vec, size_t n, void* value) {
 }
 
 void* VectorDeepCopyVoid(void* vector) { return (void*) VectorDeepCopy ((Vector*) vector); }
-void VectorPrintVoid(void* vector) { VectorPrint ((Vector*) vector); }
+void VectorPrintVoid(FILE*file, void* vector) { VectorPrint (file, (Vector*) vector); }
 void VectorDeleteVoid(void* vector) { deleteVector ((Vector*) vector); }

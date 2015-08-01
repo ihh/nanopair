@@ -61,6 +61,27 @@ double get_seq_event_prior_mode (Seq_event_pair_model* model, const char* param)
 double get_seq_event_log_beta_prior (Seq_event_pair_model* model, const char* param, double x);
 #define BetaMode(YesCount,NoCount) (1. / (1. + ((NoCount) / (YesCount))))
 
+/* Representations of model states and transitions */
+
+typedef enum { PairMatchState = 0, PairSkipState = 1, PairDeleteState = 2, PairStartState = 3, PairEndState = 4 } Seq_event_pair_state;
+
+typedef enum { UndefinedTransition, StartMatchOutTransition, MatchMatchOutTransition, MatchSkipInTransition, SkipSkipInTransition, MatchMatchInOutTransition, SkipMatchInOutTransition, MatchDeleteInTransition, DeleteDeleteInTransition, DeleteMatchInOutTransition } Seq_event_pair_transition;
+
+typedef struct Labeled_seq_event_pair_transition {
+  Seq_event_pair_transition trans;
+  int dest_kmer;
+  Fast5_event* emission;
+} Labeled_seq_event_pair_transition;
+
+Labeled_seq_event_pair_transition* new_labeled_seq_event_pair_transition (Seq_event_pair_transition trans, int dest_kmer, Fast5_event* emission);
+
+void* copy_labeled_seq_event_pair_transition (void*);
+void delete_labeled_seq_event_pair_transition (void*);
+void print_labeled_seq_event_pair_transition (FILE*, void*);
+
+int seq_event_pair_transition_absorb_count (Seq_event_pair_transition trans);
+int seq_event_pair_transition_emit_count (Seq_event_pair_transition trans);
+
 /* Data + precomputed log-likelihoods for DP */
 
 typedef struct Seq_event_pair_data {
@@ -177,6 +198,7 @@ typedef struct Seq_event_pair_alignment {
      thus, number of aligned bases = end_seqpos - start_seqpos */
   int seqlen, start_seqpos, end_seqpos, start_n_event;
   long double log_likelihood_ratio;
+  List* basecall_path;  /* equivalent path through generator (basecalling) HMM */
 } Seq_event_pair_alignment;
 
 Seq_event_pair_alignment* new_seq_event_pair_alignment (Fast5_event_array *events, char *seq, int seqlen);

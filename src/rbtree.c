@@ -27,8 +27,8 @@ RBTree* newRBTree( int (*CompFunc) (void*,void*),
 		   void* (*ValueCopyFunc) (void*),
 		   void (*DestFunc) (void*),
 		   void (*ValueDestFunc) (void*),
-		   void (*PrintFunc) (void*),
-		   void (*PrintValue)(void*)) {
+		   void (*PrintFunc) (FILE*, void*),
+		   void (*PrintValue)(FILE*, void*)) {
   RBTree* newTree;
   RBNode* temp;
 
@@ -407,23 +407,23 @@ RBNode* RBTreePredecessor(RBTree* tree, RBNode* x) {
 /*    Note:    This function should only be called from RBTreePrint */
 /***********************************************************************/
 
-void InorderTreePrint(RBTree* tree, RBNode* x) {
+void InorderTreePrint(FILE* file, RBTree* tree, RBNode* x) {
   RBNode* nilt=tree->nilt;
   RBNode* root=tree->root;
   if (x != tree->nilt) {
-    InorderTreePrint(tree,x->left);
-    printf("value=");
-    tree->PrintValue(x->value);
-    printf("  key="); 
-    tree->PrintKey(x->key);
-    printf("  l->key=");
-    if( x->left == nilt) printf("NULL"); else tree->PrintKey(x->left->key);
-    printf("  r->key=");
-    if( x->right == nilt) printf("NULL"); else tree->PrintKey(x->right->key);
-    printf("  p->key=");
-    if( x->parent == root) printf("NULL"); else tree->PrintKey(x->parent->key);
-    printf("  red=%i\n",x->red);
-    InorderTreePrint(tree,x->right);
+    InorderTreePrint(file,tree,x->left);
+    fprintf(file,"value=");
+    tree->PrintValue(file,x->value);
+    fprintf(file,"  key="); 
+    tree->PrintKey(file,x->key);
+    fprintf(file,"  l->key=");
+    if( x->left == nilt) fprintf(file,"NULL"); else tree->PrintKey(file,x->left->key);
+    fprintf(file,"  r->key=");
+    if( x->right == nilt) fprintf(file,"NULL"); else tree->PrintKey(file,x->right->key);
+    fprintf(file,"  p->key=");
+    if( x->parent == root) fprintf(file,"NULL"); else tree->PrintKey(file,x->parent->key);
+    fprintf(file,"  red=%i\n",x->red);
+    InorderTreePrint(file,tree,x->right);
   }
 }
 
@@ -490,8 +490,8 @@ void deleteRBTree(RBTree* tree) {
 /**/
 /***********************************************************************/
 
-void RBTreePrint(RBTree* tree) {
-  InorderTreePrint(tree,tree->root->left);
+void RBTreePrint(FILE*file,RBTree* tree) {
+  InorderTreePrint(file,tree,tree->root->left);
 }
 
 
@@ -761,7 +761,7 @@ int RBTreeIsAfterLast (RBTree* tree, void* key) {
 }
 
 void* RBTreeDeepCopyVoid(void* rbTree) { return (void*) RBTreeDeepCopy ((RBTree*) rbTree); }
-void RBTreePrintVoid(void* rbTree) { RBTreePrint ((RBTree*) rbTree); }
+void RBTreePrintVoid(FILE* file,void* rbTree) { RBTreePrint (file,(RBTree*) rbTree); }
 void RBTreeDeleteVoid(void* rbTree) { deleteRBTree ((RBTree*) rbTree); }
 
 void RBTreeRetain(RBTree* t, RBTree* u) {

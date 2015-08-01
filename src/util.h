@@ -2,6 +2,7 @@
 #define UTIL_INCLUDED
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <time.h>
 
 /* uncomment to enable NaN checks */
@@ -11,12 +12,12 @@
 typedef int (*CompareFunction) (void*, void*);
 typedef void (*DestroyFunction) (void*);
 typedef void* (*CopyFunction) (void*);
-typedef void (*PrintFunction) (void*);
+typedef void (*PrintFunction) (FILE*, void*);
 
 /* null functions for generic containers */
 void NullDestroyFunction(void*);  /* does nothing */
 void* NullCopyFunction(void*);  /* returns the supplied parameter without doing anything */
-void NullPrintFunction(void*);  /* does nothing */
+void NullPrintFunction(FILE*, void*);  /* does nothing */
 
 /* abort functions for when null functions should never be called */
 void AbortDestroyFunction(void*);
@@ -32,14 +33,14 @@ void* IntNew(int a);
 void* IntCopy(void* a);
 void IntDelete(void* a);
 int IntCompare(void* a, void* b);
-void IntPrint(void* a);
+void IntPrint(FILE*, void* a);
 
 /* Container functions for double's. */
 void* DoubleNew(double a);
 void* DoubleCopy(void* a);
 void DoubleDelete(void* a);
 int DoubleCompare(void* a, void* b);
-void DoublePrint(void* a);
+void DoublePrint(FILE*, void* a);
 
 /* DUMP */
 #undef DUMP

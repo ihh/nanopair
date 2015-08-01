@@ -5,7 +5,7 @@ ListNode* newListNode (void* value);
 
 List* newList(void* (*CopyFunc)(void*),
 	      void (*DestroyFunc)(void*),
-	      void (*PrintFunc)(void*)) {
+	      void (*PrintFunc)(FILE*,void*)) {
   List* list;
   list = SafeMalloc (sizeof(List));
   list->Copy = CopyFunc;
@@ -127,10 +127,10 @@ void* ListShift (List* list) {
   return val;
 }
 
-void ListPrint (List* list) {
+void ListPrint (FILE* file, List* list) {
   ListNode* node;
   for (node = list->head; node != NULL; node = node->next)
-    (*list->Print) (node->value);
+    (*list->Print) (file, node->value);
 }
 
 ListNode* newListNode (void* value) {
@@ -142,5 +142,5 @@ ListNode* newListNode (void* value) {
 }
 
 void* ListDeepCopyVoid(void* list) { return (void*) ListDeepCopy ((List*) list); }
-void ListPrintVoid(void* list) { ListPrint ((List*) list); }
+void ListPrintVoid(FILE* file, void* list) { ListPrint (file, (List*) list); }
 void ListDeleteVoid(void* list) { deleteList ((List*) list); }
