@@ -151,7 +151,6 @@ void delete_seq_event_pair_fb_matrix (Seq_event_pair_fb_matrix* matrix);
 
 /* DP helper functions */
 
-double log_gaussian_density (double x, double mean, double precision, double log_precision);
 double log_event_density (Fast5_event* event, double mean, double precision, double log_precision, double log_pTick, double log_pNoTick);
 
 void dump_seq_event_pair_matrix (FILE* file, const char* algorithm, Seq_event_pair_data *data, long double *mxStart, long double *mxMatch, long double *mxSkip, long double *mxDelete, long double mxResult);

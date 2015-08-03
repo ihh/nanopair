@@ -702,12 +702,6 @@ void add_weighted_seq_event_pair_counts (Seq_event_pair_counts* counts, Seq_even
   counts->loglike += loglike_all;
 }
 
-double log_gaussian_density (double x, double mean, double precision, double log_precision) {
-  double xz;
-  xz = x - mean;
-  return log_precision/2. - log_sqrt2pi - precision*xz*xz/2.;
-}
-
 double log_event_density (Fast5_event* event, double mean, double precision, double log_precision, double log_pTick, double log_pNoTick) {
   return event->ticks * (log_pTick + log_precision/2. - log_sqrt2pi - precision*mean*mean/2)
     - precision*(event->sumticks_cur_sq/2. - event->sumticks_cur*mean)
