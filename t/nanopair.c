@@ -7,13 +7,16 @@
 #include "../src/logger.h"
 
 const char* help_message = 
-  "Usage: nanopair {seed,eventseed,normalize,count,train,align,squiggle} <args>\n"
+  "Usage: nanopair {modelseed,eventseed,priorseed,normalize,count,train,align,squiggle} <args>\n"
   "\n"
   " nanopair modelseed -fast5 <read.fast5>  >params.xml\n"
   "  (to parameterize a model from the HMM in a FAST5 file)\n"
   "\n"
   " nanopair eventseed -fast5 <read.fast5> [-fast5 <read2.fast5> ...]  >params.xml\n"
   "  (to parameterize a model from the basecalled event data in a FAST5 file)\n"
+  "\n"
+  " nanopair priorseed  >params.xml\n"
+  "  (to parameterize a model with the mode of the prior distribution)\n"
   "\n"
   " nanopair normalize -in <in.fast5> -out <out.fast5>\n"
   "  (to normalize events in a FAST5 file)\n"
@@ -368,6 +371,21 @@ int main (int argc, char** argv) {
       return EXIT_FAILURE;
 
     copy_prior (npargs.params, npargs.prior);
+
+    /* output model */
+    write_params (npargs.params);
+
+  } else if (strcmp (command, "priorseed") == 0) {
+    /* PRIORSEED: initialize parameters from prior */
+    while (parseLogArgs (&argc, &argv, npargs.logger)
+	   || parse_pseudo (&argc, &argv, npargs.prior)
+	   || parse_unknown (argc, argv))
+      { }
+
+    /* initialize model */
+    npargs.params = new_seq_event_pair_model_from_prior (npargs.model_order, npargs.prior);
+    if (npargs.params == NULL)
+      return EXIT_FAILURE;
 
     /* output model */
     write_params (npargs.params);
