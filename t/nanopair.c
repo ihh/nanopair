@@ -46,7 +46,7 @@ const char* help_message =
   " -bothstrands    do forward & reverse complement FASTA (default is forward only)\n"
   " -mininc         minimum fractional log-likelihood increment for EM to proceed\n"
   " -maxiter        maximum number of iterations of EM\n"
-  " -pseudo {[no_]skip,delete,extend,emit} <count>\n"
+  " -pseudo {[no_]event,tick,skip,delete,extend,emit} <count>\n"
   "                 override various pseudocounts from the command-line\n"
   "\n"
   "For 'align', 'train' & 'count' commands, in place of '-params <params.xml>',\n"
