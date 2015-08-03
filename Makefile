@@ -48,7 +48,7 @@ CPPFLAGS += -I${HDF5}/include -W -Wall -Wno-unused-function -Wno-unused-paramete
 LDFLAGS += -L${HDF5}/lib -Wl,-rpath -Wl,${HDF5}/lib -lz
 endif
 
-LIBS += -lhdf5_hl -lhdf5
+LIBS += -lhdf5_hl -lhdf5 -lgsl
 # CFLAGS += -O2 -g
 CFLAGS += -g
 

@@ -7,12 +7,13 @@
 #include <hdf5.h>
 #include <hdf5_hl.h>
 
+#include <gsl/gsl_randist.h>
+
 #include "seqevtpair.h"
 #include "xmlutil.h"
 #include "xmlkeywords.h"
 #include "kseqcontainer.h"
 #include "logsumexp.h"
-#include "gamma.h"
 
 /* log(sqrt(2*pi)) */
 static const double log_sqrt2pi = 1.83787706640935;
@@ -210,9 +211,9 @@ double get_seq_event_prior_mode (Seq_event_pair_model* model, const char* param)
 double get_seq_event_log_beta_prior (Seq_event_pair_model* model, const char* param, double x) {
   char *no_param = SafeMalloc ((strlen(param) + 4) * sizeof(char));
   sprintf (no_param, "no_%s", param);
-  double lp = log_beta_dist (x,
-			     get_seq_event_pair_pseudocount(model,param) + 1,
-			     get_seq_event_pair_pseudocount(model,no_param) + 1);
+  double lp = log (gsl_ran_beta_pdf (x,
+				     get_seq_event_pair_pseudocount(model,param) + 1,
+				     get_seq_event_pair_pseudocount(model,no_param) + 1));
   SafeFree (no_param);
   return lp;
 }
