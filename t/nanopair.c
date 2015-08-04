@@ -39,7 +39,7 @@ const char* help_message =
   "  (to base-call FAST5 reads via the Viterbi algorithm)\n"
   "\n"
   "\n"
-  "Options:\n"
+  "Options (some are only available in certain command modes):\n"
   " -verbose, -vv, -vvv, -v4, etc.\n"
   " -log <function_name>\n"
   "                 various levels of logging\n"
