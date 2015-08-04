@@ -20,11 +20,12 @@ typedef struct Seq_event_pair_config {
   int seq_evt_pair_EM_max_iterations;
   double seq_evt_pair_EM_min_fractional_loglike_increment;
   const char *debug_matrix_filename;
-  int both_strands;
+  int both_strands, all_vs_all;
 } Seq_event_pair_config;
 
 void init_seq_event_pair_config (Seq_event_pair_config *config);
-int parse_seq_event_pair_config (int* argcPtr, char*** argvPtr, Seq_event_pair_config *config);
+int parse_seq_event_pair_config_general (int* argcPtr, char*** argvPtr, Seq_event_pair_config *config);
+int parse_seq_event_pair_config_training (int* argcPtr, char*** argvPtr, Seq_event_pair_config *config);
 
 /* Parameters */
 

@@ -43,7 +43,8 @@ const char* help_message =
   " -verbose, -vv, -vvv, -v4, etc.\n"
   " -log <function_name>\n"
   "                 various levels of logging\n"
-  " -bothstrands    do forward & reverse complement FASTA (default is forward only)\n"
+  " -bothstrands    use forward & reverse complement of FASTA (default is forward only)\n"
+  " -allvsall       train all reads on all references, instead of trying to pair them up\n"
   " -mininc         minimum fractional log-likelihood increment for EM to proceed\n"
   " -maxiter        maximum number of iterations of EM\n"
   " -pseudo {[no_]event,tick,skip,delete,extend,emit} <count>\n"
@@ -294,7 +295,7 @@ int parse_dp (int* argcPtr, char*** argvPtr, Nanopair_args* npargPtr) {
     || parse_fast5 (argcPtr, argvPtr, npargPtr->fast5_filenames)
     || parse_seq (argcPtr, argvPtr, &npargPtr->seqs)
     || parseLogArgs (argcPtr, argvPtr, npargPtr->logger)
-    || parse_seq_event_pair_config (argcPtr, argvPtr, &npargPtr->config)
+    || parse_seq_event_pair_config_general (argcPtr, argvPtr, &npargPtr->config)
     || parse_unknown (*argcPtr, *argvPtr);
 }
 
@@ -404,7 +405,8 @@ int main (int argc, char** argv) {
 
   } else if (strcmp (command, "count") == 0) {
     /* COUNT: single E-step of Baum-Welch/EM algorithm */
-    while (parse_dp (&argc, &argv, &npargs))
+    while (parse_dp (&argc, &argv, &npargs)
+	   || parse_seq_event_pair_config_training (&argc, &argv, &npargs.config))
       { }
 
     Assert (npargs.seqs != NULL, "Reference sequences not specified");
@@ -419,7 +421,8 @@ int main (int argc, char** argv) {
 
   } else if (strcmp (command, "train") == 0) {
     /* TRAIN: Baum-Welch/EM algorithm */
-    while (parse_dp (&argc, &argv, &npargs))
+    while (parse_dp (&argc, &argv, &npargs)
+	   || parse_seq_event_pair_config_training (&argc, &argv, &npargs.config))
       { }
 
     Assert (npargs.seqs != NULL, "Reference sequences not specified");

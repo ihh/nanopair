@@ -94,9 +94,32 @@ void init_seq_event_pair_config (Seq_event_pair_config *config) {
   config->seq_evt_pair_EM_min_fractional_loglike_increment = 0.0001;
   config->debug_matrix_filename = "npmatrix";
   config->both_strands = 0;
+  config->all_vs_all = 0;
 }
 
-int parse_seq_event_pair_config (int* argcPtr, char*** argvPtr, Seq_event_pair_config *config) {
+int parse_seq_event_pair_config_general (int* argcPtr, char*** argvPtr, Seq_event_pair_config *config) {
+  if (*argcPtr > 0) {
+    const char* arg = **argvPtr;
+    if (strcmp (arg, "-matrixdumpfile") == 0) {
+      Assert (*argcPtr > 1, "%s must have an argument", **argvPtr);
+      const char* val = (*argvPtr)[1];
+      config->debug_matrix_filename = val;
+      *argvPtr += 2;
+      *argcPtr -= 2;
+      return 1;
+
+    } else if (strcmp (arg, "-bothstrands") == 0) {
+      config->both_strands = 1;
+      ++*argvPtr;
+      --*argcPtr;
+      return 1;
+    }
+
+  }
+  return 0;
+}
+
+int parse_seq_event_pair_config_training (int* argcPtr, char*** argvPtr, Seq_event_pair_config *config) {
   if (*argcPtr > 0) {
     const char* arg = **argvPtr;
     if (strcmp (arg, "-maxiter") == 0) {
@@ -115,23 +138,16 @@ int parse_seq_event_pair_config (int* argcPtr, char*** argvPtr, Seq_event_pair_c
       *argcPtr -= 2;
       return 1;
 
-    } else if (strcmp (arg, "-matrixdumpfile") == 0) {
-      Assert (*argcPtr > 1, "%s must have an argument", **argvPtr);
-      const char* val = (*argvPtr)[1];
-      config->debug_matrix_filename = val;
-      *argvPtr += 2;
-      *argcPtr -= 2;
-      return 1;
-
-    } else if (strcmp (arg, "-bothstrands") == 0) {
-      config->both_strands = 1;
+    } else if (strcmp (arg, "-allvsall") == 0) {
+      config->all_vs_all = 1;
       ++*argvPtr;
       --*argcPtr;
       return 1;
     }
 
   }
-  return 0;
+
+  return parse_seq_event_pair_config_general (argcPtr, argvPtr, config);
 }
 
 StringDoubleMap* new_seq_event_pair_model_default_prior() {
@@ -1303,6 +1319,9 @@ Seq_event_pair_counts* get_seq_event_pair_counts (Seq_event_pair_model* model, K
 
   Logger *logger = model->logger;
 
+  if (!model->config.all_vs_all)
+    Assert (seqs->n == (int) VectorSize(event_arrays), "Must have same number of reads as sequences; or, specify -allvsall");
+
   rev = SafeMalloc (seqs->n * sizeof(char*));
   for (n_seq = 0; n_seq < seqs->n; ++n_seq)
     rev[n_seq] = new_revcomp_seq (seqs->seq[n_seq], seqs->len[n_seq]);
@@ -1328,7 +1347,10 @@ Seq_event_pair_counts* get_seq_event_pair_counts (Seq_event_pair_model* model, K
 
   for (events_iter = event_arrays->begin; events_iter != event_arrays->end; ++events_iter) {
     events = (Fast5_event_array*) *events_iter;
-    for (n_seq = 0; n_seq < 2 * seqs->n; n_seq += (model->config.both_strands ? 1 : 2)) {
+    int n_seq_begin = model->config.all_vs_all ? 0 : (2*(events_iter - event_arrays->begin));
+    int n_seq_end = model->config.all_vs_all ? (2 * seqs->n) : (n_seq_begin + 2);
+    int n_seq_step = model->config.both_strands ? 1 : 2;
+    for (n_seq = n_seq_begin; n_seq < n_seq_end; n_seq += n_seq_step) {
       reset_seq_event_pair_counts (seqrev_counts[n_seq]);
       inc_seq_event_pair_counts_via_fb (model, seqrev_counts[n_seq], seqrev_len[n_seq], seqrev[n_seq], events);
       if (LogThisAt(2))
